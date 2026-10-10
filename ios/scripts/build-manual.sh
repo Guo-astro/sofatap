@@ -16,7 +16,7 @@ BUILD_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/tiltro-ios-${BUILD_MODE}.XXXXXX")"
 APP_BUNDLE="$BUILD_STAGE/Tiltro.app"
 mkdir -p "$APP_BUNDLE"
 sources=()
-while IFS= read -r source; do sources+=("$source"); done < <(rg --files "$IOS_ROOT/Tiltro" -g '*.swift' | sort)
+while IFS= read -r source; do sources+=("$source"); done < <(find "$IOS_ROOT/Tiltro" -type f -name '*.swift' | LC_ALL=C sort)
 compile_args=(-emit-executable -target "$BUILD_TARGET" -sdk "$BUILD_SDK_PATH" -swift-version 5 -module-name Tiltro)
 if [[ "$BUILD_MODE" == simulator ]]; then
   # Match Xcode's simulated entitlement sections. Putting iOS identity into the macOS
