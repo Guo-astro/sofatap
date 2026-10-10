@@ -1,17 +1,27 @@
-# Tiltro Windows 接收端
+# Sofa Tap Windows 接收端
 
-1. 将整个文件夹解压到固定位置，例如 `C:\Users\你的用户名\Apps\Tiltro`。
-2. 双击 `Start-Tiltro.cmd` 或 `Tiltro.exe`。此版本包含 .NET 运行时，不需要另装 Python、Node 或 .NET。
+本说明对应 **`v0.1.1-alpha`** 的 `SofaTap-Windows-x64.zip`。校验文件为 `SofaTap-Windows-x64.zip.sha256`；它记录 ZIP 的 SHA256，而非解压后单个 EXE 的摘要。
+
+1. 将整个 `SofaTap-Windows-x64.zip` 文件夹内容解压到固定位置，例如 `C:\Users\你的用户名\Apps\SofaTap`。
+2. 双击 `Start-SofaTap.cmd` 或 `SofaTap.exe`。此版本包含 .NET 运行时，不需要另装 Python、Node 或 .NET。
 3. 如果 Windows 防火墙询问是否允许连接，只允许你信任的家庭“专用网络”。不用关闭防火墙，也不用给路由器设置公网端口转发。
 4. 程序打开本机配对页面。电脑可接网线，iPhone 连接同一个家庭局域网。访客 Wi-Fi 的设备隔离可能阻止连接。
-5. 在 Tiltro iPhone App 中扫描电脑显示的二维码。如果有多个网卡，选择手机可以到达的家庭局域网地址。
+5. 在 Sofa Tap iPhone App 中扫描电脑显示的二维码。如果有多个网卡，选择手机可以到达的家庭局域网地址。
 6. 配对后打开记事本并点进输入区域。在手机触控板上滑动、轻点；输入一句“你好 Windows 👋”，点击手机上的发送。文字发送不会额外追加回车；草稿本身的换行会按 Windows 文本控件惯例发送，具体软件如何处理换行需要测试。
 
-手机文本框可调用 iOS 系统听写和 Typeless 等第三方键盘。先验证系统听写，再验证 Typeless 的 App 切换、中文、标点和换行。Tiltro 不采集或转发麦克风音频。
+手机文本框可调用 iOS 系统听写和 Typeless 等第三方键盘。先验证系统听写，再验证 Typeless 的 App 切换、中文、标点和换行。Sofa Tap 不采集或转发麦克风音频。
 
 电脑端窗口关闭或按 Ctrl+C 会停止接收并释放由程序按住的鼠标键。手机进入后台会停止移动、结束拖动并断开连接；返回时保留草稿，重连不会自动重发文字。
 
 二维码包含控制凭据，只用你自己的手机扫描，不要发布截图。连接使用 TLS，iPhone 只接受二维码中记录的电脑证书指纹。更换证书或撤销凭据后需重新配对。
+
+## 从旧名称版本升级
+
+若已有旧版本，请先关闭旧接收端。如果设置过登录后自动启动，在旧安装目录运行其 `Disable-Autostart.ps1`，或打开 `shell:startup` 并删除旧的 `Tiltro.lnk` 快捷方式；之后再启动新版本。新版本的关闭自动启动脚本只管理 `SofaTap.lnk`，不能替你移除旧名称的快捷方式。
+
+Sofa Tap 使用新的 `%LOCALAPPDATA%\SofaTap` 配对目录、`sofatap://` 配对链接和 `com.chekusu.sofatap` iPhone bundle ID。旧版本的配对凭据与手机草稿不会自动迁移；如需保留旧草稿，请先手动复制，然后安装两端的新版本并重新扫描新二维码。不要复用旧名称的配对链接。
+
+这次更名不代表已通过实机联合验收；下列限制仍适用。
 
 ## 登录后自动启动（可选）
 

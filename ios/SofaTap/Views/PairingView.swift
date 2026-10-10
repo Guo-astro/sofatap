@@ -18,7 +18,7 @@ struct PairingView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("连接你的客厅电脑")
                             .font(.system(size: 27, weight: .semibold))
-                        Text("在 Windows 上打开 Tiltro 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
+                        Text("在 Windows 上打开 Sofa Tap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
                             .font(.system(size: 15)).foregroundStyle(Palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -31,7 +31,7 @@ struct PairingView: View {
                     }
                     VStack(alignment: .leading, spacing: 12) {
                         Text("或粘贴完整配对链接").font(.system(size: 14, weight: .medium))
-                        TextField("tiltro://pair?host=…", text: $rawLink, axis: .vertical)
+                        TextField("sofatap://pair?host=…", text: $rawLink, axis: .vertical)
                             .font(.system(size: 13, design: .monospaced))
                             .lineLimit(3...6)
                             .textInputAutocapitalization(.never)
@@ -129,7 +129,7 @@ private struct QRScanner: UIViewControllerRepresentable {
 
 private final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     private let capture = AVCaptureSession()
-    private let cameraQueue = DispatchQueue(label: "com.chekusu.tiltro.camera")
+    private let cameraQueue = DispatchQueue(label: "com.chekusu.sofatap.camera")
     private let onScan: (String) -> Void
     private let onError: (String) -> Void
     private var preview: AVCaptureVideoPreviewLayer?
@@ -182,7 +182,7 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard !scanned, let value = (metadataObjects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
         // Invalid or unrelated QRs stay in the scanner with actionable feedback.
-        guard (try? Pairing.parse(value)) != nil else { onError("这不是有效的 Tiltro 配对二维码。请扫描电脑接收器显示的二维码。"); return }
+        guard (try? Pairing.parse(value)) != nil else { onError("这不是有效的 Sofa Tap 配对二维码。请扫描电脑接收器显示的二维码。"); return }
         scanned = true
         stop()
         onScan(value)

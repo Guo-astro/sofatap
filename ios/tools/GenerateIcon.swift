@@ -21,5 +21,5 @@ let seam = NSBezierPath()
 seam.move(to: NSPoint(x: 512, y: 450)); seam.line(to: NSPoint(x: 512, y: 683))
 seam.lineWidth = 12; seam.lineCapStyle = .round; seam.stroke()
 NSGraphicsContext.restoreGraphicsState()
-let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "Tiltro/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
 try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: output))

@@ -1,2 +1,2 @@
 using System.Runtime.CompilerServices;
-[assembly: InternalsVisibleTo("Tiltro.Host.Tests")]
+[assembly: InternalsVisibleTo("SofaTap.Host.Tests")]

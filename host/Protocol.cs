@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Security.Cryptography;
 
-namespace Tiltro;
+namespace SofaTap;
 
 public sealed record ActionMessage(string Id, string Type, double Dx = 0, double Dy = 0,
     string? Button = null, bool Down = false, string? Key = null, string[]? Modifiers = null, string? Text = null);

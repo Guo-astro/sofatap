@@ -1,12 +1,14 @@
-# Tiltro protocol v1
+# Sofa Tap protocol v1
 
 Native iPhone controller and Windows receiver, local network, TLS with certificate pinning.
+
+The `v0.1.1-alpha` release adopts the Sofa Tap brand and the `sofatap://` pairing scheme. The wire protocol remains version 1. Its new iOS bundle ID (`com.chekusu.sofatap`) and Windows profile (`%LOCALAPPDATA%\SofaTap`) do not automatically migrate previous pairing credentials; both ends must be paired again.
 
 ## Pairing
 
 Windows shows a QR code containing:
 
-`tiltro://pair?host=192.0.2.17&port=53319&token=<base64url-32-random-bytes>&fingerprint=<lowercase-sha256-hex-of-DER-leaf-certificate>`
+`sofatap://pair?host=192.0.2.17&port=53319&token=<base64url-32-random-bytes>&fingerprint=<lowercase-sha256-hex-of-DER-leaf-certificate>`
 
 No cloud service. Client stores the pairing in Keychain. Validate all QR fields: IP/hostname only (no URL path/userinfo), port 1..65535, token 32+ characters, fingerprint exactly 64 hex characters. IPv4 is the initial advertised host format.
 

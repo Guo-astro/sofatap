@@ -13,7 +13,7 @@ struct Pairing: Codable, Equatable {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard text.utf8.count <= 2048,
               let url = URLComponents(string: text),
-              url.scheme?.lowercased() == "tiltro", url.host == "pair",
+              url.scheme?.lowercased() == "sofatap", url.host == "pair",
               url.user == nil, url.password == nil, url.port == nil,
               url.path.isEmpty, url.fragment == nil,
               let items = url.queryItems, items.count == 4 else { throw PairingError.invalid }
@@ -61,7 +61,7 @@ enum PairingError: LocalizedError {
     case invalid, storeFailed
     var errorDescription: String? {
         switch self {
-        case .invalid: return "配对链接不完整。请复制 Windows 窗口里的完整 tiltro://pair 链接，或重新扫描二维码。"
+        case .invalid: return "配对链接不完整。请复制 Windows 窗口里的完整 sofatap://pair 链接，或重新扫描二维码。"
         case .storeFailed: return "无法将配对安全保存到钥匙串，请重试。"
         }
     }
@@ -70,7 +70,7 @@ enum PairingError: LocalizedError {
 enum PairingStore {
     private static let query: [String: Any] = [
         kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: "com.chekusu.tiltro.pairing",
+        kSecAttrService as String: "com.chekusu.sofatap.pairing",
         kSecAttrAccount as String: "living-room-pc"
     ]
 

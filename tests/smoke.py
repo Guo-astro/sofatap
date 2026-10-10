@@ -98,7 +98,7 @@ async def exercise(dashboard_port, control_port):
         if sys.platform == "darwin":
             # OpenSSL alone does not enforce Apple's private-anchor lifetime policy.
             # Scope this check to the paired leaf; never install it as a system CA.
-            with tempfile.TemporaryDirectory(prefix="tiltro-native-trust-") as temporary:
+            with tempfile.TemporaryDirectory(prefix="sofatap-native-trust-") as temporary:
                 leaf = Path(temporary) / "leaf.pem"
                 leaf.write_text(ssl.DER_cert_to_PEM_cert(peer_der))
                 native = subprocess.run(["security", "verify-cert", "-c", str(leaf), "-r", str(leaf),
@@ -175,9 +175,9 @@ async def exercise(dashboard_port, control_port):
 
 def main():
     dashboard_port, control_port = unused_port(), unused_port()
-    dotnet = os.environ.get("TILTRO_DOTNET", str(ROOT / ".tools/dotnet/dotnet"))
-    assembly = ROOT / "host/bin/Release/net10.0/Tiltro.dll"
-    with tempfile.TemporaryDirectory(prefix="tiltro-smoke-") as temporary:
+    dotnet = os.environ.get("SOFATAP_DOTNET", str(ROOT / ".tools/dotnet/dotnet"))
+    assembly = ROOT / "host/bin/Release/net10.0/SofaTap.dll"
+    with tempfile.TemporaryDirectory(prefix="sofatap-smoke-") as temporary:
         log_path = Path(temporary) / "host.log"
         with log_path.open("wb") as log:
             process = subprocess.Popen([dotnet, str(assembly), "--dry-run", "--no-browser", "--data-dir", str(Path(temporary) / "profile"),
@@ -202,7 +202,7 @@ def main():
                 except subprocess.TimeoutExpired:
                     process.kill()
                     process.wait()
-        check("host logs contain no pairing URL", "tiltro://pair?" not in log_path.read_text())
+        check("host logs contain no pairing URL", "sofatap://pair?" not in log_path.read_text())
     report = {"suite": "TLS and WebSocket integration", "mode": "dry-run, no OS input", "passed": RESULTS}
     (ROOT / "artifacts").mkdir(exist_ok=True)
     (ROOT / "artifacts/transport-tests.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))

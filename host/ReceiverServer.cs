@@ -9,7 +9,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using QRCoder;
 
-namespace Tiltro;
+namespace SofaTap;
 
 public sealed record ReceiverOptions(bool DryRun, string DataDirectory, int DashboardPort = 53318, int ControlPort = 53319, bool OpenBrowser = true);
 
@@ -167,7 +167,7 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         catch (WebSocketException) { }
         catch (OperationCanceledException) { }
     }
-    private string PairingUrl(string host) => $"tiltro://pair?host={Uri.EscapeDataString(host)}&port={options.ControlPort}&token={credentials.Token}&fingerprint={credentials.Fingerprint}";
+    private string PairingUrl(string host) => $"sofatap://pair?host={Uri.EscapeDataString(host)}&port={options.ControlPort}&token={credentials.Token}&fingerprint={credentials.Fingerprint}";
     private string DashboardHtml()
     {
         var addresses = LocalAddresses();
@@ -175,12 +175,12 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         var status = options.DryRun ? "演练模式 · 不会操作电脑" : input.Available ? "已就绪 · 可以操作 Windows 桌面" : "请登录并解锁 Windows 桌面";
         return $$"""
             <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Tiltro · 配对 iPhone</title><style>
+            <title>Sofa Tap · 配对 iPhone</title><style>
             body{background:#111b1a;color:#f0f6ed;font:17px system-ui,sans-serif;margin:0;padding:48px;line-height:1.5}main{max-width:1000px;margin:auto}h1{font-size:42px;margin:10px 0}h2{font-size:20px}small{color:#b6cec7}.status{color:#a7e3aa}.cards{display:flex;gap:24px;flex-wrap:wrap}section{background:#20312d;border-radius:20px;padding:24px;text-align:center;max-width:330px}details{text-align:left;max-width:330px;font-size:14px}summary{cursor:pointer}textarea{box-sizing:border-box;width:100%;background:#111b1a;color:#f0f6ed;border:1px solid #64877c;border-radius:8px;padding:10px;resize:vertical;font:12px ui-monospace,monospace}img{background:white;border-radius:10px;max-width:100%;height:auto}p{max-width:720px}code{font-size:15px}
-            </style><main><small>TILTRO / 电脑接收端</small><h1>配对你的 iPhone</h1><p class="status">{{HtmlEncoder.Default.Encode(status)}}</p>
-            <p>请让 iPhone 和电脑连接同一个家庭网络，再扫描电脑家庭网络地址下的二维码。若家庭网络地址改变，请重启 Tiltro 后重新扫码。二维码可授权操作电脑，请妥善保管。</p>
+            </style><main><small>SOFA TAP / 电脑接收端</small><h1>配对你的 iPhone</h1><p class="status">{{HtmlEncoder.Default.Encode(status)}}</p>
+            <p>请让 iPhone 和电脑连接同一个家庭网络，再扫描电脑家庭网络地址下的二维码。若家庭网络地址改变，请重启 Sofa Tap 后重新扫码。二维码可授权操作电脑，请妥善保管。</p>
             <div class="cards">{{cards}}</div><p>操作电脑时请保持接收端运行。发送的文字会输入当前获得焦点的输入框。管理员程序和 Windows 安全桌面可能拒绝接收输入。</p>
-            <p>超时或断开连接后，接收端会释放按住的鼠标按钮。如需撤销已配对的手机，请关闭 Tiltro，删除本机配对配置，再启动并扫描新的二维码。</p>
+            <p>超时或断开连接后，接收端会释放按住的鼠标按钮。如需撤销已配对的手机，请关闭 Sofa Tap，删除本机配对配置，再启动并扫描新的二维码。</p>
             <small>控制端口 {{options.ControlPort}} · 本机配对页端口 {{options.DashboardPort}} · iPhone 固定验证 TLS 证书 · 无云服务</small></main></html>
             """;
     }

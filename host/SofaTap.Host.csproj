@@ -4,7 +4,9 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>Tiltro</AssemblyName>
+    <AssemblyName>SofaTap</AssemblyName>
+    <Version>0.1.1</Version>
+    <Product>Sofa Tap</Product>
     <InvariantGlobalization>true</InvariantGlobalization>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

@@ -1,22 +1,18 @@
-# Tiltro
+# Sofa Tap
 
-**Tiltro by chekusu** combines *tilt* and *remote*: move your phone to move your computer's pointer. The name has six letters; the repository is `chekusu/tiltro`.
+**Sofa Tap by chekusu** combines *sofa* and *tap*: sit on the sofa and tap your phone to control the computer. The user selected this name on **2026-10-11**. It directly describes the intended couch remote experience.
+
+The public brand is **Sofa Tap**. Source targets, executable names and other code identifiers use **SofaTap**; the repository is **`chekusu/sofatap`**.
 
 ## Domain research
 
-Cloudflare Registrar's production `POST /accounts/{account_id}/registrar/domain-check` returned the following live registry results at **2026-10-10 11:59:41 UTC**. This is an availability lookup, not a registration or reservation.
+Cloudflare Registrar's production domain check returned the following authoritative availability results at **2026-10-10T12:55:18.285Z**. These are results from that lookup, not a new registration or reservation.
 
 | Domain | Result at lookup | First year | Annual renewal |
 | --- | --- | --- | --- |
-| `tiltro.app` | Available, standard tier | US$8.20 | US$14.20 |
-| `tiltro.dev` | Available, standard tier | US$8.20 | US$12.20 |
-| `tiltro.com` | Unavailable | — | — |
-| `tilpi.app` | Available, standard tier; alternative name | US$8.20 | US$14.20 |
+| `sofatap.app` | Available, standard tier | US$8.20 | US$14.20 |
+| `sofatap.com` | Unavailable | — | — |
 
-`tiltro.app` is the preferred candidate. No domain was purchased, reserved, or connected to this repository. Availability and registry prices can change after the lookup.
+`sofatap.app` is the matching domain candidate. **No domain was purchased, reserved, or connected to this project.** Availability and registry prices can change after the lookup.
 
-## Public name checks
-
-GitHub repository-name searches, the US App Store Search API, and public web searches found no exact-name Tiltro software or remote-mouse project at the time of research. Related TiltRotor repositories are different projects. Tilpi was the shorter alternative; Remto was rejected because an existing software project uses that name.
-
-The canonical project address is currently **https://github.com/chekusu/tiltro**.
+The canonical project address is **https://github.com/chekusu/sofatap**. The `v0.1.1-alpha` preview adopts the Sofa Tap name; installation and pairing changes are described in the [README](../README.md) and [Windows setup guide](WINDOWS-START.md).

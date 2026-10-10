@@ -1,16 +1,16 @@
-# Tiltro
+# Sofa Tap
 
-**Your iPhone, your Windows remote.** Tiltro is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for a Windows PC. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** physical iPhone and Windows end-to-end acceptance is still pending; Bluetooth and a hosted service are not implemented.
+**Your iPhone, your Windows remote.** Sofa Tap is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for a Windows PC. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** physical iPhone and Windows end-to-end acceptance is still pending; Bluetooth and a hosted service are not implemented.
 
-[Source](https://github.com/chekusu/tiltro) · [Issues](https://github.com/chekusu/tiltro/issues) · [Releases](https://github.com/chekusu/tiltro/releases) · [MIT license](LICENSE)
+[Source](https://github.com/chekusu/sofatap) · [Issues](https://github.com/chekusu/sofatap/issues) · [Releases](https://github.com/chekusu/sofatap/releases) · [MIT license](LICENSE)
 
-<img src="docs/images/tiltro-demo.png" width="280" alt="Tiltro iPhone simulator demo showing the remote control interface" />
+<img src="docs/images/sofatap-demo.png" width="280" alt="Sofa Tap iPhone simulator demo showing the remote control interface" />
 
 *Simulator demo; the screenshot does not establish physical-device behavior.*
 
 ## 用 iPhone 操作客厅里的 Windows
 
-Tiltro 把 iPhone 变成 Windows 的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制 Windows 实际系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
+Sofa Tap 把 iPhone 变成 Windows 的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制 Windows 实际系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
 
 当前是 **alpha 预览版**。源码已经实现两端、通过本地编译与协议测试；实际 Windows 输入、真实 iPhone 的 Typeless、扫码和陀螺仪手感仍需实机验收。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
 
@@ -27,13 +27,19 @@ Tiltro 把 iPhone 变成 Windows 的触控板、空中鼠标和文字输入器�
 
 ## 开始使用
 
-Windows 预览包如已发布，可从 [Releases](https://github.com/chekusu/tiltro/releases) 下载；也可以按下文从源码构建。解压并运行 `Start-Tiltro.cmd`，本机会打开配对页面。防火墙只允许接收端通过家庭的专用网络。
+本次更名版本为 **`v0.1.1-alpha`**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`；可从 [发布页面](https://github.com/chekusu/sofatap/releases/tag/v0.1.1-alpha) 下载，也可以按下文从源码构建。解压并运行 `Start-SofaTap.cmd`，本机会打开配对页面。防火墙只允许接收端通过家庭的专用网络。
 
-在 Xcode 中打开 `ios/Tiltro.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
+在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
 
 手机扫描电脑页面里的二维码，或粘贴完整配对链接。连上后，在电视上找到目标输入框并点选，在手机文字页完成输入，再明确点发送。Typeless 的实际兼容性需要在真机上验证。
 
 详细步骤见 [Windows 启动说明](docs/WINDOWS-START.md)、[iOS 构建说明](ios/README.md) 和 [实机验收清单](docs/ACCEPTANCE.md)。配对链接含有控制凭据，应保留在自己的设备上。
+
+## 从旧名称版本升级
+
+`v0.1.1-alpha` 使用新的 `sofatap://` 配对链接、`com.chekusu.sofatap` iPhone bundle ID 和 `%LOCALAPPDATA%\SofaTap` Windows 配对目录。旧配对和手机草稿不会自动迁移；如需保留旧草稿，请先手动复制，再用新版本重新扫码配对。
+
+如果已经安装过旧版本，先关闭旧接收端，在旧安装目录运行其 `Disable-Autostart.ps1`，或在 `shell:startup` 中删除旧的 `Tiltro.lnk` 快捷方式，再启动 `SofaTap.exe`。否则旧接收端可能占用端口。完整步骤见 [Windows 启动说明](docs/WINDOWS-START.md#从旧名称版本升级)。
 
 ## 从源码构建
 
@@ -43,12 +49,12 @@ Windows 接收端需要 .NET 10 SDK。在 Mac/Unix 上构建包含许可文本�
 bash scripts/build-windows.sh
 ```
 
-如 SDK 在自定义位置，可将 `TILTRO_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3 和 `zip`，结果写入 `artifacts/Tiltro-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
+如 SDK 在自定义位置，可将 `SOFATAP_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3 和 `zip`，结果写入 `artifacts/SofaTap-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
 
 Windows 开发者可以在 PowerShell 中构建本地测试用可执行文件：
 
 ```powershell
-dotnet publish host/Tiltro.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
 分发自包含程序时也应附上 `LICENSE`、`THIRD-PARTY-NOTICES.md` 和相应第三方许可；完整打包流程见构建脚本。
@@ -61,10 +67,10 @@ Mac 上安装 .NET 10 SDK、Python 3 后：
 
 ```sh
 python3 -m pip install websockets==16.0
-dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
-TILTRO_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
-swiftc ios/Tiltro/Core/Pairing.swift tests/PairingTests.swift -o /tmp/tiltro-pairing-tests
-/tmp/tiltro-pairing-tests
+dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+SOFATAP_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
+swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-pairing-tests
+/tmp/sofatap-pairing-tests
 bash ios/scripts/build-manual.sh device
 ```
 
@@ -88,6 +94,6 @@ Host runner 使用模拟输入器。TLS/WebSocket 测试启动临时接收端并
 
 ## 参与和许可
 
-欢迎通过 [Issues](https://github.com/chekusu/tiltro/issues) 和 Pull Request 参与，提交前请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎通过 [Issues](https://github.com/chekusu/sofatap/issues) 和 Pull Request 参与，提交前请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
-Tiltro 采用 [MIT 许可](LICENSE)。第三方依赖见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+Sofa Tap 采用 [MIT 许可](LICENSE)。第三方依赖见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

@@ -1,7 +1,7 @@
 import SwiftUI
 
 @main
-struct TiltroApp: App {
+struct SofaTapApp: App {
     @StateObject private var controller = ControllerModel()
     @Environment(\.scenePhase) private var scenePhase
 

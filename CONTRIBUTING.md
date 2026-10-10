@@ -1,6 +1,6 @@
-# Contributing to Tiltro
+# Contributing to Sofa Tap
 
-Thanks for helping improve [Tiltro](https://github.com/chekusu/tiltro).
+Thanks for helping improve [Sofa Tap](https://github.com/chekusu/sofatap).
 
 - Open an issue describing the device, OS versions, expected behavior and a reproducible example. Never include pairing QR codes, tokens, private keys or personal draft text.
 - Keep changes focused. Update `PROTOCOL.md` when changing the wire format and include both client and receiver implications.

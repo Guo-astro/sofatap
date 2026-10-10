@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Tiltro;
+namespace SofaTap;
 
 public interface IInputInjector
 {

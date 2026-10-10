@@ -29,15 +29,15 @@ jobs:
       - name: Install integration-test dependency
         run: python3 -m pip install websockets==16.0
       - name: Host checks with fake input
-        run: dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
+        run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
       - name: TLS and WebSocket integration in dry-run mode
         shell: bash
-        run: TILTRO_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
+        run: SOFATAP_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
       - name: Native pairing parser checks
         shell: bash
         run: |
-          swiftc ios/Tiltro/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/tiltro-pairing-tests"
-          "$RUNNER_TEMP/tiltro-pairing-tests"
+          swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/sofatap-pairing-tests"
+          "$RUNNER_TEMP/sofatap-pairing-tests"
       - name: Compile unprovisioned iPhone app without installation
         run: bash ios/scripts/build-manual.sh device
       - name: Build Windows distribution and include licenses
@@ -53,6 +53,6 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - name: Host checks with fake input
-        run: dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
+        run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
       - name: Compile self-contained Windows receiver without launching it
-        run: dotnet publish host/Tiltro.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci
+        run: dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci

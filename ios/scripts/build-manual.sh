@@ -12,12 +12,12 @@ esac
 BUILD_SDK_PATH="$(xcrun --sdk "$BUILD_SDK" --show-sdk-path)"
 # FileProvider-backed Documents folders may add FinderInfo immediately after xattr removal.
 # Build and sign in a fresh temporary directory, never mutate global Xcode caches or simulators.
-BUILD_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/tiltro-ios-${BUILD_MODE}.XXXXXX")"
-APP_BUNDLE="$BUILD_STAGE/Tiltro.app"
+BUILD_STAGE="$(mktemp -d "${TMPDIR:-/tmp}/sofatap-ios-${BUILD_MODE}.XXXXXX")"
+APP_BUNDLE="$BUILD_STAGE/SofaTap.app"
 mkdir -p "$APP_BUNDLE"
 sources=()
-while IFS= read -r source; do sources+=("$source"); done < <(find "$IOS_ROOT/Tiltro" -type f -name '*.swift' | LC_ALL=C sort)
-compile_args=(-emit-executable -target "$BUILD_TARGET" -sdk "$BUILD_SDK_PATH" -swift-version 5 -module-name Tiltro)
+while IFS= read -r source; do sources+=("$source"); done < <(find "$IOS_ROOT/SofaTap" -type f -name '*.swift' | LC_ALL=C sort)
+compile_args=(-emit-executable -target "$BUILD_TARGET" -sdk "$BUILD_SDK_PATH" -swift-version 5 -module-name SofaTap)
 if [[ "$BUILD_MODE" == simulator ]]; then
   # Match Xcode's simulated entitlement sections. Putting iOS identity into the macOS
   # host code signature is restricted and makes amfid reject an adhoc simulator app.
@@ -25,24 +25,24 @@ if [[ "$BUILD_MODE" == simulator ]]; then
   compile_args+=(-Xlinker -sectcreate -Xlinker __TEXT -Xlinker __entitlements -Xlinker "$IOS_ROOT/Simulator.entitlements"
                  -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker "$BUILD_STAGE/Simulator.entitlements.der")
 fi
-xcrun --sdk "$BUILD_SDK" swiftc "${compile_args[@]}" "${sources[@]}" -o "$APP_BUNDLE/Tiltro"
-python3 - "$IOS_ROOT/Tiltro/Info.plist" "$APP_BUNDLE/Info.plist" "$BUILD_PLATFORM" "$BUILD_SDK" <<'PY'
+xcrun --sdk "$BUILD_SDK" swiftc "${compile_args[@]}" "${sources[@]}" -o "$APP_BUNDLE/SofaTap"
+python3 - "$IOS_ROOT/SofaTap/Info.plist" "$APP_BUNDLE/Info.plist" "$BUILD_PLATFORM" "$BUILD_SDK" <<'PY'
 import plistlib
 import sys
 from pathlib import Path
 source, output, platform, sdk = sys.argv[1:]
 data = plistlib.loads(Path(source).read_bytes())
 data.update({
-    'CFBundleName': 'Tiltro', 'CFBundleIdentifier': 'com.chekusu.tiltro',
-    'CFBundleExecutable': 'Tiltro', 'CFBundleShortVersionString': '0.1.0',
-    'CFBundleVersion': '1', 'CFBundleSupportedPlatforms': [platform],
+    'CFBundleName': 'SofaTap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
+    'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.1.1',
+    'CFBundleVersion': '2', 'CFBundleSupportedPlatforms': [platform],
     'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],
     'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}}
 })
 Path(output).write_bytes(plistlib.dumps(data))
 PY
-sips -z 120 120 "$IOS_ROOT/Tiltro/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@2x.png" >/dev/null
-sips -z 180 180 "$IOS_ROOT/Tiltro/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@3x.png" >/dev/null
+sips -z 120 120 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@2x.png" >/dev/null
+sips -z 180 180 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@3x.png" >/dev/null
 xattr -cr "$APP_BUNDLE"
 if [[ "$BUILD_MODE" == simulator ]]; then
   codesign --force --sign - "$APP_BUNDLE"

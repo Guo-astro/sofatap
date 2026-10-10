@@ -5,7 +5,7 @@ struct PairingTests {
     static func main() throws {
         let token = String(repeating: "a", count: 43)
         let fingerprint = String(repeating: "0a", count: 32)
-        let good = "tiltro://pair?host=192.0.2.17&port=53319&token=\(token)&fingerprint=\(fingerprint)"
+        let good = "sofatap://pair?host=192.0.2.17&port=53319&token=\(token)&fingerprint=\(fingerprint)"
         var passed = 0
         func check(_ name: String, _ body: () throws -> Bool) throws {
             guard try body() else { throw NSError(domain: "PairingTests", code: 1, userInfo: [NSLocalizedDescriptionKey: name]) }
@@ -17,7 +17,7 @@ struct PairingTests {
         try check("hostname") { try Pairing.parse(good.replacingOccurrences(of: "192.0.2.17", with: "Living-Room.local")).host == "living-room.local" }
         try check("leading/trailing whitespace") { try Pairing.parse(" \n" + good + "\n ") == Pairing.parse(good) }
         let invalid: [(String, String)] = [
-            ("wrong scheme", good.replacingOccurrences(of: "tiltro:", with: "https:")),
+            ("wrong scheme", good.replacingOccurrences(of: "sofatap:", with: "https:")),
             ("wrong target", good.replacingOccurrences(of: "//pair?", with: "//other?")),
             ("userinfo", good.replacingOccurrences(of: "//pair?", with: "//user@pair?")),
             ("path", good.replacingOccurrences(of: "//pair?", with: "//pair/path?")),

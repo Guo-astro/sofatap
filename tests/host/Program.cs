@@ -1,6 +1,6 @@
 using System.Text;
 using System.Text.Json;
-using Tiltro;
+using SofaTap;
 
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
@@ -61,7 +61,7 @@ Check(bounded.Execute(committed).Ok, "dedup bounded session first action");
 try { bounded.Execute(committed with { Id = Guid.NewGuid().ToString("D") }); throw new Exception("FAIL: action cap accepted"); }
 catch (ProtocolException) { passed++; }
 
-var directory = Path.Combine(Path.GetTempPath(), "tiltro-host-tests-" + Guid.NewGuid().ToString("N"));
+var directory = Path.Combine(Path.GetTempPath(), "sofatap-host-tests-" + Guid.NewGuid().ToString("N"));
 try
 {
     string token; string fingerprint;

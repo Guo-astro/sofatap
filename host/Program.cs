@@ -1,8 +1,8 @@
-using Tiltro;
+using SofaTap;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("Tiltro receiver\n  --dry-run             Validate transport without injecting input\n  --no-browser          Do not open local pairing dashboard\n  --data-dir <path>     Store pairing credentials in a separate profile\n  --dashboard-port <n>  Local-only dashboard (default 53318)\n  --port <n>            TLS control endpoint (default 53319)");
+    Console.WriteLine("Sofa Tap receiver\n  --dry-run             Validate transport without injecting input\n  --no-browser          Do not open local pairing dashboard\n  --data-dir <path>     Store pairing credentials in a separate profile\n  --dashboard-port <n>  Local-only dashboard (default 53318)\n  --port <n>            TLS control endpoint (default 53319)");
     return;
 }
 try
@@ -30,13 +30,13 @@ try
     IInputInjector input = dryRun ? new DryRunInput() : new WindowsInput();
     var server = new ReceiverServer(options, credentials, input);
     await using var app = server.Build();
-    Console.WriteLine($"Tiltro {(dryRun ? "DRY RUN: input disabled" : "Windows receiver")}. Pair at http://localhost:{options.DashboardPort}/ on this PC. Press Ctrl+C to stop.");
+    Console.WriteLine($"Sofa Tap {(dryRun ? "DRY RUN: input disabled" : "Windows receiver")}. Pair at http://localhost:{options.DashboardPort}/ on this PC. Press Ctrl+C to stop.");
     try { await app.RunAsync(); }
     finally { input.ReleaseAll(); }
 }
 catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or FormatException or System.Text.Json.JsonException or System.Security.Cryptography.CryptographicException)
 {
     // Never dump request bodies, pairing tokens, certificate bytes, or raw framework exceptions.
-    Console.Error.WriteLine(error is ArgumentException or InvalidOperationException ? error.Message : "Tiltro could not read its local profile or open its ports. Check file permissions and whether another receiver is running.");
+    Console.Error.WriteLine(error is ArgumentException or InvalidOperationException ? error.Message : "Sofa Tap could not read its local profile or open its ports. Check file permissions and whether another receiver is running.");
     Environment.ExitCode = 1;
 }

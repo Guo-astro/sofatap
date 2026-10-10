@@ -15,10 +15,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "DB58E5DB620A723919B6DC75"
-               BuildableName = "Tiltro.app"
-               BlueprintName = "Tiltro"
-               ReferencedContainer = "container:Tiltro.xcodeproj">
+               BlueprintIdentifier = "61F58B00D5A248300819BFBC"
+               BuildableName = "SofaTap.app"
+               BlueprintName = "SofaTap"
+               ReferencedContainer = "container:SofaTap.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "DB58E5DB620A723919B6DC75"
-            BuildableName = "Tiltro.app"
-            BlueprintName = "Tiltro"
-            ReferencedContainer = "container:Tiltro.xcodeproj">
+            BlueprintIdentifier = "61F58B00D5A248300819BFBC"
+            BuildableName = "SofaTap.app"
+            BlueprintName = "SofaTap"
+            ReferencedContainer = "container:SofaTap.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <Testables>
@@ -57,10 +57,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "DB58E5DB620A723919B6DC75"
-            BuildableName = "Tiltro.app"
-            BlueprintName = "Tiltro"
-            ReferencedContainer = "container:Tiltro.xcodeproj">
+            BlueprintIdentifier = "61F58B00D5A248300819BFBC"
+            BuildableName = "SofaTap.app"
+            BlueprintName = "SofaTap"
+            ReferencedContainer = "container:SofaTap.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>
@@ -76,10 +76,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "DB58E5DB620A723919B6DC75"
-            BuildableName = "Tiltro.app"
-            BlueprintName = "Tiltro"
-            ReferencedContainer = "container:Tiltro.xcodeproj">
+            BlueprintIdentifier = "61F58B00D5A248300819BFBC"
+            BuildableName = "SofaTap.app"
+            BlueprintName = "SofaTap"
+            ReferencedContainer = "container:SofaTap.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <CommandLineArguments>

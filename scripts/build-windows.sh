@@ -2,22 +2,22 @@
 set -euo pipefail
 repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$repo_dir"
-dotnet_cmd="${TILTRO_DOTNET:-$repo_dir/.tools/dotnet/dotnet}"
+dotnet_cmd="${SOFATAP_DOTNET:-$repo_dir/.tools/dotnet/dotnet}"
 if [ ! -x "$dotnet_cmd" ]; then
   dotnet_cmd="$(command -v dotnet || true)"
 fi
 if [ -z "$dotnet_cmd" ]; then
-  echo "Install the .NET 10 SDK, or set TILTRO_DOTNET to its executable." >&2
+  echo "Install the .NET 10 SDK, or set SOFATAP_DOTNET to its executable." >&2
   exit 1
 fi
-release_dir="$repo_dir/artifacts/Tiltro-Windows-x64"
+release_dir="$repo_dir/artifacts/SofaTap-Windows-x64"
 mkdir -p "$release_dir"
-"$dotnet_cmd" publish host/Tiltro.Host.csproj -c Release -r win-x64 \
+"$dotnet_cmd" publish host/SofaTap.Host.csproj -c Release -r win-x64 \
   --self-contained true -p:PublishSingleFile=true \
   -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false \
   -p:DebugType=None -p:DebugSymbols=false -o "$release_dir"
-if [ ! -f "$release_dir/Tiltro.exe" ]; then
-  echo "Publish did not produce the expected Tiltro.exe." >&2
+if [ ! -f "$release_dir/SofaTap.exe" ]; then
+  echo "Publish did not produce the expected SofaTap.exe." >&2
   exit 1
 fi
 cp LICENSE "$release_dir/LICENSE"
@@ -79,11 +79,11 @@ for name, version in sorted(packages.items()):
 print("Included license documents for " + str(len(resolved)) + " resolved packages.")
 PY
 cp docs/WINDOWS-START.md "$release_dir/开始使用.md"
-cp scripts/windows/Start-Tiltro.cmd "$release_dir/Start-Tiltro.cmd"
+cp scripts/windows/Start-SofaTap.cmd "$release_dir/Start-SofaTap.cmd"
 cp scripts/windows/Enable-Autostart.ps1 "$release_dir/Enable-Autostart.ps1"
 cp scripts/windows/Disable-Autostart.ps1 "$release_dir/Disable-Autostart.ps1"
 cd "$repo_dir/artifacts"
-rm -f Tiltro-Windows-x64.zip
-zip -q -r Tiltro-Windows-x64.zip Tiltro-Windows-x64
-shasum -a 256 Tiltro-Windows-x64.zip > Tiltro-Windows-x64.zip.sha256
-echo "Built artifacts/Tiltro-Windows-x64.zip"
+rm -f SofaTap-Windows-x64.zip
+zip -q -r SofaTap-Windows-x64.zip SofaTap-Windows-x64
+shasum -a 256 SofaTap-Windows-x64.zip > SofaTap-Windows-x64.zip.sha256
+echo "Built artifacts/SofaTap-Windows-x64.zip"
