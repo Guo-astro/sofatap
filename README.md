@@ -1,0 +1,93 @@
+# Tiltro
+
+**Your iPhone, your Windows remote.** Tiltro is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for a Windows PC. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** physical iPhone and Windows end-to-end acceptance is still pending; Bluetooth and a hosted service are not implemented.
+
+[Source](https://github.com/chekusu/tiltro) · [Issues](https://github.com/chekusu/tiltro/issues) · [Releases](https://github.com/chekusu/tiltro/releases) · [MIT license](LICENSE)
+
+<img src="docs/images/tiltro-demo.png" width="280" alt="Tiltro iPhone simulator demo showing the remote control interface" />
+
+*Simulator demo; the screenshot does not establish physical-device behavior.*
+
+## 用 iPhone 操作客厅里的 Windows
+
+Tiltro 把 iPhone 变成 Windows 的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制 Windows 实际系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
+
+当前是 **alpha 预览版**。源码已经实现两端、通过本地编译与协议测试；实际 Windows 输入、真实 iPhone 的 Typeless、扫码和陀螺仪手感仍需实机验收。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
+
+## 已实现
+
+- 原生 SwiftUI iPhone App，最低 iOS 17；标准 `UITextView` 保留第三方键盘、中文输入组合和听写流程。
+- 触控板、左右点击、按住拖动、滚动，以及按住按钮转动手机的空中鼠标。
+- Windows 接收端通过 Win32 `SendInput` 注入鼠标、按键和完整 Unicode 文本，不自动追加回车。
+- 局域网 WSS/TLS、二维码配对、证书指纹校验；iPhone Keychain 和 Windows DPAPI 保存配对凭据。
+- 前后台切换保护、发送确认、草稿保留、断线禁止自动重放。
+- Windows x64 自包含可执行文件，运行不需要另外安装 .NET。
+
+第一版通过家庭局域网连接。蓝牙连接尚未实现。手机与电脑需要网络互通；客人 Wi-Fi 的设备隔离可能阻止连接。
+
+## 开始使用
+
+Windows 预览包如已发布，可从 [Releases](https://github.com/chekusu/tiltro/releases) 下载；也可以按下文从源码构建。解压并运行 `Start-Tiltro.cmd`，本机会打开配对页面。防火墙只允许接收端通过家庭的专用网络。
+
+在 Xcode 中打开 `ios/Tiltro.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
+
+手机扫描电脑页面里的二维码，或粘贴完整配对链接。连上后，在电视上找到目标输入框并点选，在手机文字页完成输入，再明确点发送。Typeless 的实际兼容性需要在真机上验证。
+
+详细步骤见 [Windows 启动说明](docs/WINDOWS-START.md)、[iOS 构建说明](ios/README.md) 和 [实机验收清单](docs/ACCEPTANCE.md)。配对链接含有控制凭据，应保留在自己的设备上。
+
+## 从源码构建
+
+Windows 接收端需要 .NET 10 SDK。在 Mac/Unix 上构建包含许可文本的 Windows ZIP：
+
+```sh
+bash scripts/build-windows.sh
+```
+
+如 SDK 在自定义位置，可将 `TILTRO_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3 和 `zip`，结果写入 `artifacts/Tiltro-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
+
+Windows 开发者可以在 PowerShell 中构建本地测试用可执行文件：
+
+```powershell
+dotnet publish host/Tiltro.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+```
+
+分发自包含程序时也应附上 `LICENSE`、`THIRD-PARTY-NOTICES.md` 和相应第三方许可；完整打包流程见构建脚本。
+
+iPhone 用 Xcode 打开现成工程即可。`ios/project.yml` 是 XcodeGen 工程源；修改它后运行 `xcodegen generate --spec ios/project.yml`。备用直接编译方式见 [iOS 说明](ios/README.md)，设备编译成功不等于完成签名安装。
+
+## 开发验证
+
+Mac 上安装 .NET 10 SDK、Python 3 后：
+
+```sh
+python3 -m pip install websockets==16.0
+dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
+TILTRO_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
+swiftc ios/Tiltro/Core/Pairing.swift tests/PairingTests.swift -o /tmp/tiltro-pairing-tests
+/tmp/tiltro-pairing-tests
+bash ios/scripts/build-manual.sh device
+```
+
+Host runner 使用模拟输入器。TLS/WebSocket 测试启动临时接收端并明确使用 `--dry-run`，不会向系统注入输入。最后一项编译并链接未配置签名的 ARM64 iOS App，不安装到手机。CI 执行相同层级的检查。
+
+编译、模拟器界面和协议测试分别只证明对应层工作。完整可用性需要在实际 Windows 桌面验证指针与文字，在实际 iPhone 验证 Typeless、麦克风切换、相机扫码、局域网权限和陀螺仪。
+
+## 源码目录
+
+| 路径 | 内容 |
+| --- | --- |
+| `ios/` | iPhone App、Xcode 工程和工程生成配置 |
+| `host/` | Windows 接收端和跨平台协议实现 |
+| `tests/` | 协议、认证和输入边界检查 |
+| `PROTOCOL.md` | 两端通信协议 |
+| `docs/` | 安装和实机验收说明 |
+| `scripts/build-windows.sh` | Windows x64 自包含包构建 |
+| `licenses/` | 第三方许可和通知原文 |
+
+本机构建产物、配对凭据和签名材料不属于源码。
+
+## 参与和许可
+
+欢迎通过 [Issues](https://github.com/chekusu/tiltro/issues) 和 Pull Request 参与，提交前请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+Tiltro 采用 [MIT 许可](LICENSE)。第三方依赖见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。

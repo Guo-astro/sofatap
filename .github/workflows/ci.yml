@@ -1,0 +1,58 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-and-transport:
+    name: macOS · protocol, TLS and iOS compile
+    runs-on: macos-15
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: Install integration-test dependency
+        run: python3 -m pip install websockets==16.0
+      - name: Host checks with fake input
+        run: dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
+      - name: TLS and WebSocket integration in dry-run mode
+        shell: bash
+        run: TILTRO_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
+      - name: Native pairing parser checks
+        shell: bash
+        run: |
+          swiftc ios/Tiltro/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/tiltro-pairing-tests"
+          "$RUNNER_TEMP/tiltro-pairing-tests"
+      - name: Compile unprovisioned iPhone app without installation
+        run: bash ios/scripts/build-manual.sh device
+      - name: Build Windows distribution and include licenses
+        run: bash scripts/build-windows.sh
+
+  windows-host:
+    name: Windows · host checks and self-contained build
+    runs-on: windows-2025
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: '10.0.x'
+      - name: Host checks with fake input
+        run: dotnet run --project tests/host/Tiltro.Host.Tests.csproj -c Release
+      - name: Compile self-contained Windows receiver without launching it
+        run: dotnet publish host/Tiltro.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci

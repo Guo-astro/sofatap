@@ -1,0 +1,4 @@
+* text=auto eol=lf
+*.png binary
+# Keep upstream legal notices byte-for-byte, including their original line endings.
+licenses/** -text -whitespace
