@@ -83,7 +83,18 @@ cp scripts/windows/Start-SofaTap.cmd "$release_dir/Start-SofaTap.cmd"
 cp scripts/windows/Enable-Autostart.ps1 "$release_dir/Enable-Autostart.ps1"
 cp scripts/windows/Disable-Autostart.ps1 "$release_dir/Disable-Autostart.ps1"
 cd "$repo_dir/artifacts"
-rm -f SofaTap-Windows-x64.zip
-zip -q -r SofaTap-Windows-x64.zip SofaTap-Windows-x64
+# zipfile marks non-ASCII paths as UTF-8 so the Chinese guide keeps its name
+# in Windows Explorer and standard ZIP readers.
+python3 - "$release_dir" "$repo_dir/artifacts/SofaTap-Windows-x64.zip" <<'PYZIP'
+from pathlib import Path
+import sys
+import zipfile
+
+release, archive = map(Path, sys.argv[1:])
+with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as package:
+    for path in sorted(release.rglob("*")):
+        if path.is_file():
+            package.write(path, path.relative_to(release.parent).as_posix())
+PYZIP
 shasum -a 256 SofaTap-Windows-x64.zip > SofaTap-Windows-x64.zip.sha256
 echo "Built artifacts/SofaTap-Windows-x64.zip"

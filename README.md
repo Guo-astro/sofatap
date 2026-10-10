@@ -49,7 +49,7 @@ Windows 接收端需要 .NET 10 SDK。在 Mac/Unix 上构建包含许可文本�
 bash scripts/build-windows.sh
 ```
 
-如 SDK 在自定义位置，可将 `SOFATAP_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3 和 `zip`，结果写入 `artifacts/SofaTap-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
+如 SDK 在自定义位置，可将 `SOFATAP_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3，结果写入 `artifacts/SofaTap-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
 
 Windows 开发者可以在 PowerShell 中构建本地测试用可执行文件：
 
