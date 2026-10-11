@@ -9,3 +9,11 @@ Thanks for helping improve [Sofa Tap](https://github.com/chekusu/sofatap).
 - Do not add arbitrary command execution or weaken TLS validation to make tests pass.
 
 Pull requests are welcome. Contributions are licensed under the repository's [MIT license](LICENSE).
+
+## Maintainer synchronization
+
+After checks pass and changes are committed, maintainers can run `python3 scripts/notify-sandbank.py --push` to push the current clean branch to `chekusu/sofatap` and notify Sandbank Dev through Yobiru. Without `--push`, the script only sends if the exact commit is already the tip of that branch on origin. `--branch main` can assert the expected current branch. This internal workflow is not required for external contributions.
+
+The script discovers the installed Yobiru CLI, or accepts its file path in `YOBIRU_CLI`; `YOBIRU_HOME` selects an existing configured data home. `SOFATAP_SYNC_TARGET` or `--target` selects the known Sandbank Dev `host/agent`. No receiver, permissions or background service is configured by this script.
+
+Failed sends return a nonzero exit status and retain a pending receipt inside `.git/sofatap-sync/` (the worktree's Git directory when applicable). Run `python3 scripts/notify-sandbank.py --retry` to retry; this does not publish local changes and is safe while the working tree has other edits. Every retry rechecks origin. If the branch has advanced, publish/notify its new head instead and review the older pending receipt. A timeout may have delivered the original request, so retries include the same request key for recipient deduplication. HTTP 200/202 means delivery; only a matching authenticated reply confirms the server's fast-forward synchronization.

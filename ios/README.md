@@ -10,6 +10,12 @@ Text uses an ordinary `UITextView` so iOS keyboards, dictation and Typeless can 
 
 Launching with `--demo` displays a clearly labelled offline interface and never connects to a computer. A receiver with `inputAvailable=false` is labelled as dry run and all input controls are disabled.
 
+## Privacy manifest
+
+`SofaTap/PrivacyInfo.xcprivacy` declares `UserDefaults` (`CA92.1`) for this app's local draft and delivery markers, and system boot time (`35F9.1`) to discard motion samples older than 150 ms. The uptime value and motion timestamps are not transmitted. XcodeGen includes the manifest in the app's resources; verify it is present in the final `.app` before distribution. See Apple's [required-reason API guidance](https://developer.apple.com/documentation/bundleresources/describing-use-of-required-reason-api).
+
+This declaration covers required-reason APIs, not the separate App Store privacy answers or a privacy policy. The current client sends control events and explicitly submitted text directly to the paired computer, keeps credentials in Keychain, and stores the draft locally. It does not record microphone audio; dictation and third-party keyboards have their own data handling. Review the final app, companion receiver and any future SDKs against Apple's [data collection definition](https://developer.apple.com/app-store/app-privacy-details/#data-collection) before completing distribution metadata.
+
 ## Build fallback for mismatched Xcode SDK/runtime installations
 
 Normal Xcode project builds are preferred. If `xcodebuild` cannot select a destination because the installed SDK is newer than available simulator runtimes, the following compiles and links the exact same native source directly against the selected SDK without installing anything or altering Xcode:
