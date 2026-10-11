@@ -9,13 +9,16 @@ import AppKit
 import CoreImage
 import Foundation
 import SwiftUI
+import Vision
 
 @main
 struct ReceiverAppearanceFixtures {
     @MainActor static func main() throws {
         let destination = URL(fileURLWithPath: CommandLine.arguments.dropFirst().first ?? "artifacts/mint-calm", isDirectory: true)
         try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        let qr = try demoQR().base64EncodedString()
+        let qrData = try demoQR()
+        let qrChecks = try verifyQRRendering(qrData, destination: destination)
+        let qr = qrData.base64EncodedString()
         let pairing = ReceiverPairing(host: "192.0.2.24", uri: "fixture://not-a-pairing-link", qrPng: qr)
         let longHost = "2001:db8:1234:5678:abcd:1234:abcd:5678"
         let secondPairing = ReceiverPairing(host: longHost, uri: "fixture://not-a-pairing-link", qrPng: qr)
@@ -85,7 +88,7 @@ struct ReceiverAppearanceFixtures {
         }
         let data = try JSONSerialization.data(withJSONObject: manifest, options: [.prettyPrinted, .sortedKeys])
         try data.write(to: destination.appendingPathComponent("macos-fixtures.json"), options: .atomic)
-        print("Rendered \(states.count) production-view offscreen fixtures. No receiver or native window was launched.")
+        print("Rendered \(states.count) production-view offscreen fixtures; \(qrChecks) QR sharpness/readback checks passed. No receiver or native window was launched.")
     }
 
     static func state(_ inputStatus: String, name: String = "客厅电脑", connected: Bool = false,
@@ -94,9 +97,61 @@ struct ReceiverAppearanceFixtures {
                       dryRun: dryRun, connected: connected, pairings: pairings)
     }
 
+    /// Test the same QR view used by the receiver using the unscaled, one-pixel-per-
+    /// module source. Upscaling the fixture itself would hide NSImage interpolation.
+    @MainActor static func verifyQRRendering(_ png: Data, destination: URL) throws -> Int {
+        guard let source = ReceiverQRCode.decode(png) else { throw FixtureError.qrFailed }
+        var reports: [[String: Any]] = []
+        for scale in [1.0, 2.0] {
+            let renderer = ImageRenderer(content: ReceiverQRCode(image: source).background(.white))
+            renderer.proposedSize = ProposedViewSize(width: 224, height: 224)
+            renderer.scale = scale
+            renderer.isOpaque = true
+            guard let image = renderer.cgImage else { throw FixtureError.qrFailed }
+            let width = image.width, height = image.height
+            var pixels = [UInt8](repeating: 0, count: width * height * 4)
+            try pixels.withUnsafeMutableBytes { storage in
+                guard let context = CGContext(data: storage.baseAddress, width: width, height: height,
+                                              bitsPerComponent: 8, bytesPerRow: width * 4,
+                                              space: CGColorSpaceCreateDeviceRGB(),
+                                              bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
+                    throw FixtureError.qrFailed
+                }
+                context.interpolationQuality = .none
+                context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            }
+            var intermediatePixels = 0
+            for index in stride(from: 0, to: pixels.count, by: 4) {
+                let rgb = pixels[index..<(index + 3)]
+                if !rgb.allSatisfy({ $0 <= 1 }) && !rgb.allSatisfy({ $0 >= 254 }) {
+                    intermediatePixels += 1
+                }
+            }
+            guard intermediatePixels == 0 else {
+                throw FixtureError.blurredQR(scale, intermediatePixels)
+            }
+            let request = VNDetectBarcodesRequest()
+            request.symbologies = [.qr]
+            try VNImageRequestHandler(cgImage: image, options: [:]).perform([request])
+            guard request.results?.compactMap(\.payloadStringValue) == [demoPayload] else {
+                throw FixtureError.qrReadbackFailed(scale)
+            }
+            reports.append([
+                "scale": scale, "sourceWidth": source.width, "sourceHeight": source.height,
+                "renderedWidth": width, "renderedHeight": height,
+                "intermediatePixels": intermediatePixels, "decodedFixturePayloadMatches": true
+            ])
+        }
+        let data = try JSONSerialization.data(withJSONObject: reports, options: [.prettyPrinted, .sortedKeys])
+        try data.write(to: destination.appendingPathComponent("macos-qr-render-checks.json"), options: .atomic)
+        return reports.count * 2
+    }
+
+    private static let demoPayload = "Sofatap UI fixture. This is not a pairing code."
+
     static func demoQR() throws -> Data {
         guard let filter = CIFilter(name: "CIQRCodeGenerator") else { throw FixtureError.qrFailed }
-        filter.setValue(Data("Sofatap UI fixture. This is not a pairing code.".utf8), forKey: "inputMessage")
+        filter.setValue(Data(demoPayload.utf8), forKey: "inputMessage")
         filter.setValue("M", forKey: "inputCorrectionLevel")
         guard let output = filter.outputImage,
               let image = CIContext(options: [.useSoftwareRenderer: true]).createCGImage(output, from: output.extent),
@@ -120,5 +175,7 @@ private struct Fixture {
 
 private enum FixtureError: Error {
     case qrFailed
+    case blurredQR(Double, Int)
+    case qrReadbackFailed(Double)
     case renderFailed(String)
 }

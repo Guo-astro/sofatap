@@ -1,4 +1,5 @@
 import AppKit
+import ImageIO
 import SwiftUI
 
 #if !SOFATAP_UI_FIXTURE
@@ -260,11 +261,10 @@ struct ReceiverContent: View {
 
     private func pairingCard(_ state: ReceiverState) -> some View {
         VStack(spacing: 16) {
-            if let pairing = selectedPairing, let data = pairing.pngData, let image = NSImage(data: data) {
+            if let pairing = selectedPairing, let data = pairing.pngData, let image = ReceiverQRCode.decode(data) {
                 // Preserve every module and the complete QR quiet zone. No brand mark,
                 // caption or decorative element is painted over the pairing code.
-                Image(nsImage: image).resizable().interpolation(.none).scaledToFit()
-                    .frame(width: 224, height: 224)
+                ReceiverQRCode(image: image)
                     .padding(10)
                     .background(.white, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityLabel("用 iPhone 的 Sofatap 扫描此二维码以配对 Mac")
@@ -379,6 +379,26 @@ struct ReceiverContent: View {
                 .keyboardShortcut("q", modifiers: .command)
                 .disabled(isStopping)
         }
+    }
+}
+
+/// Decode the source pixels directly. NSImage may rasterize a small representation
+/// with interpolation before SwiftUI sees it, even when Image uses `.none`.
+/// Keeping CGImage pixels intact makes the production and fixture paths identical.
+struct ReceiverQRCode: View {
+    let image: CGImage
+
+    var body: some View {
+        Image(decorative: image, scale: 1)
+            .resizable()
+            .interpolation(.none)
+            .scaledToFit()
+            .frame(width: 224, height: 224)
+    }
+
+    static func decode(_ data: Data) -> CGImage? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil) else { return nil }
+        return CGImageSourceCreateImageAtIndex(source, 0, nil)
     }
 }
 
