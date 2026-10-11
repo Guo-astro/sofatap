@@ -35,7 +35,7 @@ Sofatap sends Wayland text as XKB keysyms. Unicode support depends on the compos
 
 Dictation and third-party iPhone keyboards work through Sofatap's text field: finish composing, review the text, then send it to the computer's focused application. This Linux implementation still needs physical iPhone acceptance testing; automated protocol checks and virtual desktop tests do not prove microphone, voice keyboard or real-device behavior.
 
-Development version 0.5.0 can report focused editable fields through an optional AT-SPI helper. On Debian/Ubuntu it uses `gir1.2-atspi-2.0` and a working accessibility bus (normally `at-spi2-core`), with apps that expose accessible text state. This is separate from Wayland input permission. No accessibility settings are changed automatically. Unsupported applications/sessions retain manual keyboard input, and startup waits for a focus event. Only a field classification is sent to the phone, never its contents; see [focus detection](../../docs/TEXT-FOCUS.md).
+Development version 0.5.0 can report focused editable fields through an optional AT-SPI helper. On Debian/Ubuntu it uses the existing `python3-gi`/Gio runtime and a working accessibility bus (normally `at-spi2-core`), with apps that expose accessible text state. It does not require the Atspi typelib. This is separate from Wayland input permission. No accessibility settings are changed automatically. Unsupported applications/sessions retain manual keyboard input, and startup waits for a focus event. Only a field classification and connection-local revision are sent to the phone, never its contents; see [focus detection](../../docs/TEXT-FOCUS.md).
 
 ## Optional applications-menu entry
 
