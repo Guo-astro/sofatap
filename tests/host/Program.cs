@@ -4,6 +4,7 @@ using SofaTap;
 
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
+LinuxInputChecks.Run(Check);
 ActionMessage Parse(string body) => Protocol.Parse(Encoding.UTF8.GetBytes(body));
 string Message(string fields, string? id = null) => "{\"id\":\"" + (id ?? Guid.NewGuid().ToString("D")) + "\"," + fields + "}";
 void Reject(string body, string name)

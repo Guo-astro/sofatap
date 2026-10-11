@@ -1,6 +1,6 @@
 # Sofa Tap 实机验收
 
-适用于 0.3.0 原生窗口版。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与 Windows 的联合验收。
+适用于原生窗口版（Windows/Mac 0.3.0、Linux 0.4.0）。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与 Windows 的联合验收。
 
 先在记事本里测试，再进入浏览器和日常软件。测试不使用密码或私人内容。
 
@@ -44,3 +44,17 @@
 | 普通用户分发 | 在干净的另一台 Mac 下载正式构建并打开 | Developer ID 签名及公证可验证；安装、授权和退出全流程不需要终端 |
 
 ad-hoc 本地签名与交叉编译成功不能替代正式分发或真实 Intel Mac/iPhone 联合测试。测试报告应单独列出构建验证、传输演练、辅助功能授权、物理输入和未执行项目。
+
+## Linux (0.4.0) device acceptance still required
+
+Run the native GTK receiver in a logged-in test desktop. Test X11 and each intended
+Wayland compositor separately. On Wayland, deny authorization once, then approve
+from the receiver's native button; verify controls remain disabled until approved,
+and become unavailable when the session is revoked. Confirm native QR scanning,
+TLS connection, multilingual/emoji text in the intended applications, pointer
+movement, left/right clicks, scrolling, dragging, shortcuts, disconnect cleanup,
+lock/unlock and receiver shutdown. Check that clipboard content is unchanged.
+
+CI uses its own Xvfb and private mock D-Bus service. This tests X11/GTK mechanics
+and portal wire behavior; it does not substitute for a physical iPhone, a real
+Wayland permission dialog or compositor-level Unicode compatibility.

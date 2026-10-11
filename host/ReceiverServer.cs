@@ -139,6 +139,10 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         catch (OperationCanceledException) { }
     }
     private string PairingUrl(string host) => $"sofatap://pair?host={Uri.EscapeDataString(host)}&port={options.ControlPort}&token={credentials.Token}&fingerprint={credentials.Fingerprint}";
+    public void RequestLinuxAccess()
+    {
+        if (!options.DryRun && input is LinuxInput linux) linux.RequestAccess();
+    }
     public object NativeState()
     {
         var pairings = LocalAddresses().Select(address =>

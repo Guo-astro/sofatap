@@ -87,13 +87,32 @@ jobs:
         run: dotnet publish desktop/windows/SofaTap.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ui-ci
 
   linux-native-protocol:
-    name: Linux · native shell protocol checks without GUI or input
+    name: Linux · native GTK, X11 input and isolated portal protocol
     runs-on: ubuntu-24.04
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          python-version: '3.13'
-      - name: GTK shell protocol and owned-process checks without importing GTK
-        run: PYTHONDONTWRITEBYTECODE=1 python3 -W error::ResourceWarning desktop/linux/check_protocol.py
+          dotnet-version: '10.0.x'
+      - name: Install isolated graphical test dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 xvfb xauth dbus libx11-6 libxtst6 libxdo3
+      - name: Host checks and worker failure lifecycle
+        run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+      - name: Linux worker and native window checks without input
+        run: |
+          /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_protocol.py
+          /usr/bin/python3 -B desktop/linux/check_input.py
+          /usr/bin/python3 -B desktop/linux/check_wayland_input.py
+      - name: Wayland portal wire protocol on a private mock D-Bus service
+        run: /usr/bin/python3 -B desktop/linux/check_portal_dbus.py
+      - name: Real X11 events on a private Xvfb server
+        run: /usr/bin/python3 -B desktop/linux/check_x11_integration.py
+      - name: Build Linux distributions and verify included licenses
+        run: |
+          SOFATAP_DOTNET="$(command -v dotnet)" bash scripts/build-linux.sh x64
+          SOFATAP_DOTNET="$(command -v dotnet)" bash scripts/build-linux.sh arm64
+      - name: Native GTK window rendering and child lifetime on private Xvfb
+        run: SOFATAP_TEST_BACKEND="$PWD/artifacts/SofaTap-Linux-x64/lib/SofaTapHost" /usr/bin/python3 -B desktop/linux/check_gtk_integration.py

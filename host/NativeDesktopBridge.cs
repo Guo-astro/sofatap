@@ -32,6 +32,7 @@ public static class NativeDesktopBridge
                 if (line is null) break; // Closing the parent UI closes input and ends control.
                 var command = ParseCommand(line);
                 if (command == "quit") break;
+                if (command == "requestAccess" && OperatingSystem.IsLinux() && !dryRun) server.RequestLinuxAccess();
                 if (command == "requestAccess" && OperatingSystem.IsMacOS() && !dryRun)
                 {
                     MacInput.RequestAccess();

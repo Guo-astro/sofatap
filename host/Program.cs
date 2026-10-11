@@ -25,12 +25,14 @@ try
     if (!nativeUi || !Console.IsInputRedirected || !Console.IsOutputRedirected)
         throw new InvalidOperationException("Open the native Sofa Tap desktop app. The backend requires its private input/output pipes.");
     var dryRun = args.Contains("--dry-run", StringComparer.Ordinal);
-    if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !dryRun)
-        throw new InvalidOperationException("Sofa Tap currently supports input on Windows and macOS. Linux input is planned; use --dry-run only for transport tests.");
+    if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !OperatingSystem.IsLinux() && !dryRun)
+        throw new InvalidOperationException("Sofa Tap requires Windows, macOS or a supported Linux desktop.");
     var options = new ReceiverOptions(dryRun, Value("--data-dir") ?? Credentials.DefaultDirectory,
         Port("--port", Port("--control-port", 53319)));
     using var credentials = Credentials.LoadOrCreate(Path.GetFullPath(options.DataDirectory));
-    IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput() : new WindowsInput();
+    IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput()
+        : OperatingSystem.IsLinux() ? new LinuxInput() : new WindowsInput();
+    using var inputLifetime = input as IDisposable;
     var server = new ReceiverServer(options, credentials, input);
     await using var app = server.Build();
     try { await NativeDesktopBridge.RunAsync(app, server, dryRun); }

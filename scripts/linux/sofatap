@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+if [ "$(uname -s)" != "Linux" ]; then
+  echo "This Sofa Tap package runs on Linux. Download the package for your operating system." >&2
+  exit 1
+fi
+launcher_path=$(readlink -f -- "$0")
+package_dir=$(CDPATH= cd -- "$(dirname -- "$launcher_path")" && pwd)
+case "$(uname -m)" in
+  x86_64|aarch64|arm64) ;;
+  *) echo "Sofa Tap requires a 64-bit x86 or ARM Linux desktop." >&2; exit 1 ;;
+esac
+if [ ! -x /usr/bin/python3 ]; then
+  echo "Install Python 3, PyGObject and GTK 3 through your Linux package manager. See README.md." >&2
+  exit 1
+fi
+# Launching requires no root access, services, firewall edits or desktop changes.
+exec /usr/bin/python3 -E -s -B "$package_dir/lib/linux/sofatap.py" --backend "$package_dir/lib/SofaTapHost" "$@"

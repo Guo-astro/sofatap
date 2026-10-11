@@ -1,6 +1,6 @@
 # Sofa Tap
 
-**Your iPhone, your living-room remote.** Sofa Tap is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for Windows and Mac. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** [0.3.0 Mac packages are notarized](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha); real iPhone-to-Mac pairing, text and selected pointer/key actions have [passed a scoped check](docs/verification/macos-0.3.0.md). Voice, physical air-mouse behavior and other platform acceptance remain pending. Bluetooth and a hosted service are not implemented.
+**Your iPhone, your living-room remote.** Sofa Tap is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for Windows, Mac and supported Linux desktops. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** [0.3.0 Mac packages are notarized](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha); real iPhone-to-Mac pairing, text and selected pointer/key actions have [passed a scoped check](docs/verification/macos-0.3.0.md). Voice, physical air-mouse behavior and other platform acceptance remain pending. Bluetooth and a hosted service are not implemented.
 
 [Source](https://github.com/chekusu/sofatap) · [Issues](https://github.com/chekusu/sofatap/issues) · [Releases](https://github.com/chekusu/sofatap/releases) · [MIT license](LICENSE)
 
@@ -10,7 +10,7 @@
 
 ## 用 iPhone 操作客厅里的电脑
 
-Sofa Tap 把 iPhone 变成 Windows 或 Mac 的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制电脑的系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
+Sofa Tap 把 iPhone 变成 Windows、Mac 或受支持 Linux 桌面的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制电脑的系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
 
 当前是 **alpha 预览版**。2026-10-11 已在真实 iPhone 与最终公证的 Apple Silicon Mac 接收端完成相机扫码、TLS 连接、文字精确读回、部分按键和指针操作；[验收记录](docs/verification/macos-0.3.0.md) 列出了具体边界。Typeless、实际语音、实体陀螺仪、拖拽与滚动，以及本版 Windows 原生窗口和 Linux GUI 仍待实测。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
 
@@ -21,7 +21,7 @@ Sofa Tap 把 iPhone 变成 Windows 或 Mac 的触控板、空中鼠标和文字�
 - Windows 接收端通过 Win32 `SendInput` 注入鼠标、按键和完整 Unicode 文本，不自动追加回车。
 - Mac 接收端通过 Quartz 提交鼠标、拖拽、滚轮、快捷键和 Unicode 文字；在本机明确授予辅助功能权限后使用。手机“全选”自动切换为 Command+A。
 - 局域网 WSS/TLS、二维码配对、证书指纹校验；iPhone Keychain 和 Windows DPAPI 保存配对凭据；Mac 接收端使用仅当前用户可读的凭据文件。
-- 电脑端配对使用原生窗口：Mac AppKit/SwiftUI、Windows WinForms；Linux 提供 GTK3 演练窗口。二维码通过本机私有管道传递，接收端不提供网页配对界面。
+- 电脑端配对使用原生窗口：Mac AppKit/SwiftUI、Windows WinForms、Linux GTK3。二维码通过本机私有管道传递，接收端不提供网页配对界面。
 - 前后台切换保护、发送确认、草稿保留、断线禁止自动重放。
 - Windows x64 自包含可执行文件；Mac 提供 Apple Silicon 和 Intel 两份原生 `.app` 构建，均不需要另外安装 .NET。
 
@@ -34,15 +34,17 @@ Sofa Tap 把 iPhone 变成 Windows 或 Mac 的触控板、空中鼠标和文字�
 | iPhone | iOS 17+；iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 Mac 联合验收，语音与陀螺仪待测 |
 | Windows | 0.3.0 原生接收端已发布；本版 UI 和手机联合实测待完成 |
 | Mac | macOS 15+；arm64 / x64 均已公证，Apple Silicon 完成部分真机验收，Intel 实机输入待测 |
-| Linux | GTK3 原生配对窗口仅供 `--dry-run` 验证；桌面输入后端是后续计划，不能控制桌面 |
+| Linux | GTK3 原生接收器；X11 使用 XTest，Wayland 使用系统 RemoteDesktop portal 授权；真手机联合验收待完成 |
 
-Windows 和 Mac 共用配对、TLS 与输入协议，各自的系统输入后端实现 `IInputInjector`。Linux 后续将按 X11 / Wayland 的授权方式分别实现后端；目前没有把 Linux 模拟器或协议通过宣称为桌面支持。
+Windows、Mac 和 Linux 共用配对、TLS 与输入协议。Linux X11 需要 libX11、libXtst 和 libxdo；Wayland 需要支持键盘、鼠标控制的 RemoteDesktop portal，首次控制由用户在原生系统窗口授权。Linux 文字每次最多 2048 个 Unicode 字符，不读写剪贴板。不同 Wayland 合成器的能力不同；授权失败时禁用输入，不回退到 XWayland 绕过授权。见 [Linux 使用与限制](desktop/linux/README.md)。
 
 ## 开始使用
 
-当前发布版本为 **[v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`。解压并运行 `SofaTap.exe` 会显示 WinForms 原生配对窗口；历史版本 `v0.1.1-alpha` 使用浏览器。防火墙只允许接收端通过家庭的专用网络。
+Windows / Mac 发布版本为 **[v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`。解压并运行 `SofaTap.exe` 会显示 WinForms 原生配对窗口；历史版本 `v0.1.1-alpha` 使用浏览器。防火墙只允许接收端通过家庭的专用网络。
 
 Mac 从同一发布页下载 `SofaTap-macOS-arm64-notarized.zip` 或 `SofaTap-macOS-x64-notarized.zip` 及对应 `.sha256`。两份包均通过 Apple 公证；安装与授权步骤见 [Mac 启动说明](docs/MAC-START.md)，固定源码版本、SHA256 和实机范围见 [0.3.0 验收记录](docs/verification/macos-0.3.0.md)。
+
+Linux 可以运行 `bash scripts/build-linux.sh x64` 或 `arm64` 构建自包含接收端。安装系统 GTK 和输入依赖后，解压并打开包中的 `sofatap`；原生窗口提供扫码、状态和 Wayland 授权入口。`--dry-run` 仍可用于不产生桌面输入的演练。
 
 在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
 

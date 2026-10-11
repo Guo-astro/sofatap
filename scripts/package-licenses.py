@@ -12,7 +12,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--assets", required=True, type=Path)
     parser.add_argument("--destination", required=True, type=Path)
-    parser.add_argument("--runtime", required=True, choices=["osx-arm64", "osx-x64", "win-x64"])
+    parser.add_argument("--runtime", required=True, choices=["osx-arm64", "osx-x64", "win-x64", "linux-x64", "linux-arm64"])
     parser.add_argument("--host-pack", type=Path, help="MSBuild ResolvedSingleFileHostPack JSON (SDK-installed host packs)")
     args = parser.parse_args()
     root = Path(__file__).resolve().parent.parent

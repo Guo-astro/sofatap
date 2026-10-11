@@ -24,6 +24,12 @@ struct ReceiverStateTests {
         let unknown = ReceiverState.hello(["inputAvailable": true, "inputStatus": "future_state", "platform": "future_os"])!
         check("unknown state fails closed", !unknown.inputAvailable && unknown.platform == .unknown)
         check("missing availability rejected", ReceiverState.hello([:]) == nil)
+        for code in ["permission_required", "permission_pending", "permission_denied", "unsupported_session", "dependency_missing", "input_unavailable"] {
+            let linux = ReceiverState.hello(["platform": "linux", "inputAvailable": true, "dryRun": false, "inputStatus": code])!
+            check("Linux unavailable cannot enable input: \(code)", !linux.inputAvailable && linux.status.rawValue == code)
+            check("Linux permission status preserves Control shortcuts", linux.commandModifier == "ctrl")
+            check("Linux becomes ready after native authorization", linux.updating(["inputAvailable": true, "dryRun": false, "inputStatus": "ready"])!.inputAvailable)
+        }
         print("PASS \(passed) receiver state checks (no device input)")
     }
 }

@@ -1,6 +1,6 @@
 # Sofa Tap protocol v1
 
-Native iPhone controller and Windows/macOS receivers, local network, TLS with certificate pinning.
+Native iPhone controller and Windows/macOS/Linux receivers, local network, TLS with certificate pinning.
 
 The `v0.1.1-alpha` release adopts the Sofa Tap brand and the `sofatap://` pairing scheme. The wire protocol remains version 1. Its new iOS bundle ID (`com.chekusu.sofatap`) and Windows profile (`%LOCALAPPDATA%\SofaTap`) do not automatically migrate previous pairing credentials; both ends must be paired again.
 
@@ -38,10 +38,29 @@ Receiver rejects unknown fields/types, non-finite/out-of-range numbers, malforme
 
 ## Verification boundary
 
-Dry-run is allowed on Windows, macOS and Linux for protocol/TLS tests and must report inputAvailable=false. Linux non-dry-run is rejected until a native backend is implemented. Actual pointer/text injection requires physical interactive desktop tests on each supported OS. Mac requires an active, unlocked console session and Accessibility/post-event authorization; reading availability must not prompt. The native window provides an explicit permission action through inherited process pipes. The receiver has no HTTP/HTML pairing dashboard or local HTTP action endpoints. A bounded JSON line protocol accepts only refresh, requestAccess and quit; EOF stops the receiver and releases owned input. Pairing QR PNGs and URIs are provided only to this local parent process. The network endpoint still accepts only authenticated WSS control messages. macOS secure fields and applications rejecting synthetic events are outside the verified contract. iOS simulator tests do not establish Typeless, camera, physical gyroscope, or real iPhone LAN behavior.
+Dry-run is allowed on Windows, macOS and Linux for protocol/TLS tests and must report inputAvailable=false. Linux real input uses X11 XTest/libxdo or an explicitly authorized Wayland RemoteDesktop portal. Actual pointer/text injection requires physical interactive desktop tests on each supported OS. Mac requires an active, unlocked console session and Accessibility/post-event authorization; reading availability must not prompt. The native window provides an explicit permission action through inherited process pipes. The receiver has no HTTP/HTML pairing dashboard or local HTTP action endpoints. A bounded JSON line protocol accepts only refresh, requestAccess and quit; EOF stops the receiver and releases owned input. Pairing QR PNGs and URIs are provided only to this local parent process. The network endpoint still accepts only authenticated WSS control messages. macOS secure fields and applications rejecting synthetic events are outside the verified contract. iOS simulator tests do not establish Typeless, camera, physical gyroscope, or real iPhone LAN behavior.
 
 ## Native desktop window bridge
 
 The signed desktop launcher starts the bundled receiver with `--native-ui` and redirects both standard streams. The backend refuses this mode on an interactive terminal. Standard output is reserved for newline-delimited state objects: `type`, `name`, `platform`, `inputStatus`, `dryRun`, `connected`, and `pairings` (each `host`, `uri`, base64 `qrPng`). Do not log or persist state frames: they contain pairing credentials. Errors use a separate stream and frontends display fixed messages. Status refreshes every two seconds.
 
-The parent may send exactly one field: `{"type":"refresh"}`, `{"type":"requestAccess"}` or `{"type":"quit"}`. Commands are bounded to 4 KiB; unknown/duplicate fields are rejected. macOS permission requests are explicit user actions and disabled in dry-run. Pipe EOF and Quit cancel connected WebSockets before stopping the host. Native frontends must terminate their own child on unrecoverable framing errors, never an arbitrary process. Linux's GTK3 window currently requires dry-run.
+The parent may send exactly one field: `{"type":"refresh"}`, `{"type":"requestAccess"}` or `{"type":"quit"}`. Commands are bounded to 4 KiB; unknown/duplicate fields are rejected. macOS and Wayland permission requests are explicit local user actions and disabled in dry-run. Pipe EOF and Quit cancel connected WebSockets before stopping the host. Native frontends must terminate their own child on unrecoverable framing errors, never an arbitrary process. Linux's GTK3 window launches in real-input mode by default; --dry-run is an explicit preview option.
+
+## Linux receiver metadata and limits
+
+The Linux receiver uses protocol version 1 without changing action schemas. Its
+`inputStatus` is `ready`, `permission_required`, `permission_pending`,
+`permission_denied`, `desktop_unavailable`, `unsupported_session`,
+`dependency_missing` or `input_unavailable`; explicit dry-run remains `dry_run`.
+Only `ready` enables input. Permission requests are local native-window actions,
+never remote WebSocket commands. The existing iPhone client fails closed for
+unknown status codes and can use a ready Linux receiver.
+
+Linux text is limited to 2048 Unicode scalar values per action (and the common
+16000 UTF-16-unit/64 KiB frame bounds). Overlong input is rejected before sending
+its first character. A desktop method failure or deadline after attempting input
+is `input_partial`/unknown; no client should retry it automatically. An ACK means
+input was submitted, not that a target app received or saved it. Linux text uses
+X11 key events or Wayland Unicode keysyms, not clipboard replacement. Wayland
+requires a compositor portal implementing the requested methods and Unicode
+keysyms; mock portal checks do not establish compositor compatibility.
