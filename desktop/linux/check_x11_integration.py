@@ -58,8 +58,9 @@ def acceptance():
         raise RuntimeError("Refusing a server that is not the owned Xvfb")
     import gi
     gi.require_version("Gtk", "3.0")
+    gi.require_version("Gdk", "3.0")
     gi.require_version("GdkX11", "3.0")
-    from gi.repository import Gdk, GLib, Gtk
+    from gi.repository import Gdk, GdkX11, GLib, Gtk
     from x11_input import X11Native
     Gtk.init([])
     window = Gtk.Window(title="Sofa Tap isolated Xvfb acceptance")
@@ -67,11 +68,16 @@ def acceptance():
     window.move(0, 0)
     editor = Gtk.TextView()
     window.add(editor)
-    events = {"button": [], "scroll": []}
+    events = {"button": [], "scroll": [], "key": []}
     editor.add_events(Gdk.EventMask.BUTTON_PRESS_MASK | Gdk.EventMask.BUTTON_RELEASE_MASK | Gdk.EventMask.SCROLL_MASK)
     editor.connect("button-press-event", lambda _widget, event: events["button"].append((event.button, True)) or False)
     editor.connect("button-release-event", lambda _widget, event: events["button"].append((event.button, False)) or False)
     editor.connect("scroll-event", lambda _widget, event: events["scroll"].append(event.direction) or False)
+    def record_key(_widget, event):
+        if len(events["key"]) < 128:
+            events["key"].append((event.keyval, event.hardware_keycode, int(event.state)))
+        return False
+    editor.connect("key-press-event", record_key)
     window.show_all()
     editor.grab_focus()
 
@@ -93,7 +99,7 @@ def acceptance():
     native.x.XQueryPointer.argtypes = [C.c_void_p, C.c_ulong, C.POINTER(C.c_ulong), C.POINTER(C.c_ulong),
                                      C.POINTER(C.c_int), C.POINTER(C.c_int), C.POINTER(C.c_int), C.POINTER(C.c_int), C.POINTER(C.c_uint)]
     native.x.XQueryPointer.restype = C.c_int
-    xid = window.get_window().get_xid()
+    xid = GdkX11.X11Window.get_xid(window.get_window())
     native.x.XSetInputFocus(native.display, xid, 1, 0)
     native.x.XWarpPointer(native.display, 0, xid, 0, 0, 0, 0, 200, 200)
     native.sync()
@@ -137,7 +143,12 @@ def acceptance():
         mapping_before = native.mapping()
         sample = "你好 Linux，Sofa Tap 真机前测试。\nHello 日本語 👋 café $()`"
         request("apply", {"type": "text", "text": sample})
-        wait_for(lambda: contents() == sample)
+        try:
+            wait_for(lambda: contents() == sample)
+        except AssertionError as error:
+            # This is a private Xvfb containing only the fixed synthetic sample;
+            # never enable target-text logging in the shipping receiver.
+            raise AssertionError(f"Synthetic text mismatch: expected={sample!r}; actual={contents()[:256]!r}; keys={events['key']!r}") from error
         checks += 1
         assert clipboard.wait_for_text() == "clipboard must remain unchanged · 原文"
         assert native.mapping() == mapping_before

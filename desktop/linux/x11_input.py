@@ -173,7 +173,13 @@ class X11Native:
             for char in value:
                 if time.monotonic() >= deadline:
                     raise InputError("input_partial")
-                if self.xdo.xdo_enter_text_window(self.xdo_context, 0, char.encode("utf-8"), 1000) != 0:
+                symbol = ord(char) if ord(char) <= 255 else 0x01000000 | ord(char)
+                # A scratch keycode must remain bound long enough for the
+                # destination's MappingNotify / key-event loop to observe it.
+                # Use libxdo's normal 12 ms delay for unmapped Unicode instead
+                # of clearing the scratch mapping after only 0.5 ms.
+                delay = 1000 if self.x.XKeysymToKeycode(self.display, symbol) else 12000
+                if self.xdo.xdo_enter_text_window(self.xdo_context, 0, char.encode("utf-8"), delay) != 0:
                     raise InputError("input_partial")
                 self.sync()
         finally:

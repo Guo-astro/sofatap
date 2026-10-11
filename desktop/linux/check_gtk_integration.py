@@ -2,10 +2,12 @@
 """Native GTK/host lifecycle checks on an authenticated private Xvfb display.
 
 No phone, physical display, clipboard, mouse or keyboard input is used.
-SOFATAP_TEST_BACKEND must name the built Linux receiver apphost.
+SOFATAP_TEST_BACKEND must name the packaged lib/SofaTapHost apphost.
 """
 
 import argparse
+import hashlib
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -48,7 +50,15 @@ def child_check(backend, dry_run, profile, port):
     import gi
     gi.require_version("Gtk", "3.0")
     from gi.repository import GLib, Gtk
-    import sofatap
+    frontend = backend.parent / "linux" / "sofatap.py"
+    spec = importlib.util.spec_from_file_location("sofatap_packaged_frontend", frontend)
+    if spec is None or spec.loader is None:
+        raise RuntimeError("Packaged frontend could not be loaded")
+    sofatap = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = sofatap
+    spec.loader.exec_module(sofatap)
+    if Path(sofatap.__file__).resolve() != frontend.resolve():
+        raise RuntimeError("The test did not load the packaged frontend")
 
     wrapper = profile / "receiver-wrapper"
     wrapper.write_text("#!/usr/bin/python3\nimport os,sys\nos.execv(" + repr(str(backend)) + ", [" +
@@ -147,6 +157,14 @@ def main():
     if not args.backend or not args.backend.is_file():
         parser.error("Set SOFATAP_TEST_BACKEND to the built Linux receiver executable")
     backend = args.backend.resolve()
+    frontend = backend.parent / "linux" / "sofatap.py"
+    launcher = backend.parent.parent / "sofatap"
+    manifest_path = backend.parent.parent / "BUILD-MANIFEST.json"
+    if not frontend.is_file() or not launcher.is_file() or not manifest_path.is_file():
+        parser.error("SOFATAP_TEST_BACKEND must be lib/SofaTapHost inside a complete Linux package")
+    manifest = json.loads(manifest_path.read_text())
+    if hashlib.sha256(frontend.read_bytes()).hexdigest() != manifest.get("frontendSHA256"):
+        parser.error("The packaged frontend does not match its build manifest")
     if args.child:
         return child_check(backend, args.child == "dry-run", args.profile, args.port)
     for executable in ("Xvfb", "xauth"):
@@ -180,6 +198,21 @@ def main():
             environment.pop("DBUS_SESSION_BUS_ADDRESS", None)
             environment.update(DISPLAY=display, XAUTHORITY=str(authority), XDG_SESSION_TYPE="x11",
                                SOFATAP_GTK_PRIVATE_DISPLAY=display, LC_ALL="C.UTF-8", NO_AT_BRIDGE="1", GDK_BACKEND="x11")
+            # Exercise the shipped shell launcher and its symlink/path handling.
+            # --help exits before creating a GUI/backend, so no global profile or
+            # default control port can be touched by this entrypoint smoke test.
+            linked_launcher = root / "launcher link with spaces"
+            linked_launcher.symlink_to(launcher)
+            help_output = None
+            for entrypoint in (launcher, linked_launcher):
+                command = subprocess.run([str(entrypoint), "--help"], env=environment,
+                                         text=True, capture_output=True, timeout=8)
+                if command.returncode or "--dry-run" not in command.stdout or "--backend" not in command.stdout:
+                    raise RuntimeError("The packaged launcher did not reach its frontend argument parser")
+                if help_output is not None and command.stdout != help_output:
+                    raise RuntimeError("The packaged launcher changed behavior through a symlink")
+                help_output = command.stdout
+            print("PASS: packaged launcher and symlink entrypoint (--help; no input or default profile)", flush=True)
             failed = False
             for mode in ("dry-run", "x11"):
                 profile = root / mode

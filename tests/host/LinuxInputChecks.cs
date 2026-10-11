@@ -31,7 +31,7 @@ internal static class LinuxInputChecks
             foreach (var mode in new[] { "success", "partial", "secret", "wrong_id", "not_ready", "oversized", "eof", "blocked" })
             {
                 var audit = Path.Combine(root, mode + ".txt");
-                var start = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "/usr/bin/python3");
+                var start = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3");
                 start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "fake_linux_worker.py"));
                 start.ArgumentList.Add(mode); start.ArgumentList.Add(audit);
                 using var input = new LinuxInput(start, TimeSpan.FromMilliseconds(1200));
@@ -56,7 +56,7 @@ internal static class LinuxInputChecks
             foreach (var mode in new[] { "blocked_write", "closed_input" })
             {
                 var audit = Path.Combine(root, mode + ".txt");
-                var start = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "/usr/bin/python3");
+                var start = new ProcessStartInfo(OperatingSystem.IsWindows() ? "python" : "python3");
                 start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "fake_linux_worker.py"));
                 start.ArgumentList.Add(mode); start.ArgumentList.Add(audit);
                 using var input = new LinuxInput(start, TimeSpan.FromMilliseconds(1200));
