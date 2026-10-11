@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="Sofatap 的五组跨平台接收器 UI 概念方案，每组同时展示 Windows、macOS 和 Linux。">
+  <title>Sofatap · 五组跨平台 UI 方案</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif;
+      color: #22332e;
+      background: #f5f6f2;
+      font-synthesis: none;
+      line-height: 1.65;
+      --muted: #58665e;
+      --line: #d6ded5;
+      --green: #265d47;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-padding-top: 24px; }
+    body { margin: 0; }
+    a { color: var(--green); text-underline-offset: 4px; }
+    a:hover { color: #143e2b; }
+    a:focus-visible { outline: 3px solid #357b5d; outline-offset: 5px; border-radius: 3px; }
+    .skip-link { position: absolute; left: 20px; top: -100px; padding: 10px 16px; background: white; z-index: 2; }
+    .skip-link:focus { top: 16px; }
+    .page { width: min(1440px, calc(100% - 64px)); margin: 0 auto; }
+    header { padding: 48px 0 32px; }
+    .masthead { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+    .wordmark { font-size: 25px; font-weight: 720; letter-spacing: -.8px; }
+    .edition { color: var(--muted); font-size: 13px; }
+    .intro { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(240px, .7fr); gap: 64px; margin-top: 58px; }
+    .eyebrow { margin: 0 0 12px; color: var(--green); font-size: 13px; font-weight: 650; letter-spacing: .08em; }
+    h1 { margin: 0; max-width: 800px; font-size: clamp(32px, 4.2vw, 56px); line-height: 1.24; font-weight: 650; letter-spacing: -.045em; text-wrap: balance; }
+    .lede { max-width: 740px; margin: 24px 0 0; color: var(--muted); font-size: 17px; }
+    .review-note { align-self: end; padding-left: 24px; border-left: 2px solid #aec5b8; }
+    .review-note h2 { font-size: 15px; margin: 0 0 10px; }
+    .review-note p { margin: 0; color: var(--muted); font-size: 14px; }
+    nav { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; margin-top: 36px; }
+    nav a { display: flex; align-items: center; gap: 10px; padding: 15px 17px; color: #22332e; border: 1px solid var(--line); background: #fcfdf9; border-radius: 12px; text-decoration: none; font-size: 14px; }
+    nav a:hover { border-color: #8ca895; background: #fff; }
+    .swatch { width: 13px; height: 13px; flex: 0 0 13px; border-radius: 50%; border: 1px solid #0002; background: var(--accent); }
+    nav .number { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .shared { display: flex; flex-wrap: wrap; gap: 8px 24px; margin: 22px 0 0; padding: 0; color: var(--muted); list-style: none; font-size: 13px; }
+    .shared li::before { content: "✓"; color: var(--green); margin-right: 7px; }
+    main { padding-bottom: 32px; }
+    .concept { padding-top: 32px; margin: 0 0 64px; scroll-margin-top: 16px; }
+    .concept-heading { display: flex; justify-content: space-between; align-items: end; gap: 32px; margin-bottom: 20px; }
+    .title-row { display: flex; align-items: center; gap: 14px; }
+    .badge { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border: 1px solid var(--line); border-radius: 50%; font-size: 14px; font-variant-numeric: tabular-nums; }
+    .concept h2 { font-size: clamp(25px, 3vw, 34px); margin: 0; line-height: 1.3; font-weight: 650; letter-spacing: -.03em; }
+    .description { color: var(--muted); margin: 12px 0 0; font-size: 15px; }
+    .image-link { display: block; background: #e8ebe5; border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+    .image-link img { display: block; width: 100%; height: auto; }
+    .open-original { font-size: 13px; white-space: nowrap; }
+    figure { margin: 0; }
+    figcaption { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px 24px; margin-top: 14px; color: var(--muted); font-size: 13px; }
+    figcaption strong { color: #344d40; font-weight: 650; }
+    .concept-label { white-space: nowrap; }
+    .decision { padding: 32px; border: 1px solid var(--line); border-radius: 18px; background: #ebf0e8; }
+    .decision h2 { margin: 0 0 12px; font-size: 22px; font-weight: 650; }
+    .decision p { margin: 0; max-width: 950px; color: #415248; }
+    .decision p + p { margin-top: 12px; }
+    footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 16px 28px; padding: 32px 0 40px; color: var(--muted); border-top: 1px solid var(--line); font-size: 13px; }
+    footer p { margin: 0; }
+    footer a + a { margin-left: 18px; }
+    @media (min-width: 1600px) { .page { width: min(1680px, calc(100% - 96px)); } }
+    @media (max-width: 1000px) {
+      .intro { grid-template-columns: 1fr; gap: 28px; margin-top: 40px; }
+      .review-note { max-width: 740px; }
+      nav { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .page { width: calc(100% - 32px); }
+      header { padding-top: 25px; }
+      .edition { max-width: 150px; text-align: right; }
+      .intro { margin-top: 32px; }
+      .lede { font-size: 15px; }
+      nav { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+      nav a { padding: 12px; font-size: 13px; gap: 8px; }
+      .concept-heading { flex-direction: column; align-items: start; gap: 12px; }
+      .concept { margin-bottom: 36px; padding-top: 20px; }
+      .image-link { border-radius: 10px; }
+      .decision { padding: 22px; }
+    }
+    @media print {
+      body { background: white; }
+      .page { width: 100%; }
+      header { padding-top: 0; }
+      .intro { margin-top: 24px; }
+      nav, .open-original, .skip-link { display: none; }
+      .concept { break-inside: avoid; margin-bottom: 20px; }
+      .concept-heading { margin-bottom: 10px; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip-link" href="#concepts">跳到五组方案</a>
+  <div class="page">
+    <header id="top">
+      <div class="masthead">
+        <span class="wordmark">Sofatap</span>
+        <span class="edition">跨平台接收器 · 视觉方案<br>2026.10.11</span>
+      </div>
+      <div class="intro">
+        <div>
+          <p class="eyebrow">5 个方向 · Windows / macOS / Linux</p>
+          <h1>让三台不同的电脑，<br>拥有同一种 Sofatap 表情。</h1>
+          <p class="lede">每张图同时展示三端接收器。比较色彩、信息层级与窗口气质，选定方向之后，再统一产品里的真实界面。</p>
+        </div>
+        <aside class="review-note" aria-labelledby="note-title">
+          <h2 id="note-title">这是设计提案</h2>
+          <p>全部为 AI 生成的 UI 概念图，不是现有产品截图。图内二维码和设备信息仅为演示占位。当前尚未选定或实施任何方案。</p>
+        </aside>
+      </div>
+      <nav aria-label="选择方案">
+        <a href="#mint-calm" style="--accent:#80d6b8"><span class="swatch" aria-hidden="true"></span><span class="number">01</span> 暮色薄荷</a>
+        <a href="#warm-linen" style="--accent:#dfc6a6"><span class="swatch" aria-hidden="true"></span><span class="number">02</span> 奶油客厅</a>
+        <a href="#native-light" style="--accent:#b9d8e2"><span class="swatch" aria-hidden="true"></span><span class="number">03</span> 清透原生</a>
+        <a href="#ink-lime" style="--accent:#c5e569"><span class="swatch" aria-hidden="true"></span><span class="number">04</span> 墨色青柠</a>
+        <a href="#dusk-glow" style="--accent:#a99dce"><span class="swatch" aria-hidden="true"></span><span class="number">05</span> 暮光客厅</a>
+      </nav>
+      <ul class="shared" aria-label="所有方案的共同要求">
+        <li>三端原生窗口</li>
+        <li>窗口内展示配对二维码</li>
+        <li>手机扫码连接</li>
+        <li>同一品牌与操作层级</li>
+      </ul>
+    </header>
+    <main id="concepts">
+      <section class="concept" id="mint-calm" aria-labelledby="mint-title">
+        <div class="concept-heading">
+          <div>
+            <div class="title-row"><span class="badge" aria-hidden="true">01</span><h2 id="mint-title">暮色薄荷</h2></div>
+            <p class="description">柔和深色底，薄荷色只用于关键动作与状态。安静、克制，适合夜间客厅。</p>
+          </div>
+          <a class="open-original" href="01-mint-calm.png" target="_blank" rel="noopener">查看 01 原图 ↗</a>
+        </div>
+        <figure>
+          <a class="image-link" href="01-mint-calm.png" target="_blank" rel="noopener" aria-label="放大方案 01：暮色薄荷，Windows、macOS 和 Linux 三端概念图">
+            <img src="01-mint-calm.png" alt="方案 01 暮色薄荷：以柔和深色和薄荷色设计 Sofatap 的 Windows、macOS 与 Linux 原生接收器窗口。" fetchpriority="high" decoding="async">
+          </a>
+          <figcaption><span><strong>重点比较：</strong>深色界面是否舒适，配对二维码是否足够醒目。</span><span class="concept-label">AI 概念图 · 演示占位二维码</span></figcaption>
+        </figure>
+      </section>
+      <section class="concept" id="warm-linen" aria-labelledby="linen-title">
+        <div class="concept-heading">
+          <div>
+            <div class="title-row"><span class="badge" aria-hidden="true">02</span><h2 id="linen-title">奶油客厅</h2></div>
+            <p class="description">奶油白、亚麻与暖沙色，圆润而轻松。让工具更像家里熟悉的一件小物。</p>
+          </div>
+          <a class="open-original" href="02-warm-linen.png" target="_blank" rel="noopener">查看 02 原图 ↗</a>
+        </div>
+        <figure>
+          <a class="image-link" href="02-warm-linen.png" target="_blank" rel="noopener" aria-label="放大方案 02：奶油客厅，Windows、macOS 和 Linux 三端概念图">
+            <img src="02-warm-linen.png" alt="方案 02 奶油客厅：以温暖浅色和柔和轮廓设计 Sofatap 的 Windows、macOS 与 Linux 原生接收器窗口。" loading="lazy" decoding="async">
+          </a>
+          <figcaption><span><strong>重点比较：</strong>生活感是否贴合品牌，浅色文字与状态是否清晰。</span><span class="concept-label">AI 概念图 · 演示占位二维码</span></figcaption>
+        </figure>
+      </section>
+      <section class="concept" id="native-light" aria-labelledby="native-title">
+        <div class="concept-heading">
+          <div>
+            <div class="title-row"><span class="badge" aria-hidden="true">03</span><h2 id="native-title">清透原生</h2></div>
+            <p class="description">明亮背景、清楚的留白与轻量边界。保留各系统窗口习惯，用一致的内容结构连接三端。</p>
+          </div>
+          <a class="open-original" href="03-native-light.png" target="_blank" rel="noopener">查看 03 原图 ↗</a>
+        </div>
+        <figure>
+          <a class="image-link" href="03-native-light.png" target="_blank" rel="noopener" aria-label="放大方案 03：清透原生，Windows、macOS 和 Linux 三端概念图">
+            <img src="03-native-light.png" alt="方案 03 清透原生：以明亮留白和统一信息层级设计 Sofatap 的 Windows、macOS 与 Linux 原生接收器窗口。" loading="lazy" decoding="async">
+          </a>
+          <figcaption><span><strong>重点比较：</strong>是否一眼就会用，以及三端各自的原生感。</span><span class="concept-label">AI 概念图 · 演示占位二维码</span></figcaption>
+        </figure>
+      </section>
+      <section class="concept" id="ink-lime" aria-labelledby="lime-title">
+        <div class="concept-heading">
+          <div>
+            <div class="title-row"><span class="badge" aria-hidden="true">04</span><h2 id="lime-title">墨色青柠</h2></div>
+            <p class="description">墨黑与青柠绿形成鲜明对比，轮廓更利落。适合希望保留一点游戏设备气质的客厅。</p>
+          </div>
+          <a class="open-original" href="04-ink-lime.png" target="_blank" rel="noopener">查看 04 原图 ↗</a>
+        </div>
+        <figure>
+          <a class="image-link" href="04-ink-lime.png" target="_blank" rel="noopener" aria-label="放大方案 04：墨色青柠，Windows、macOS 和 Linux 三端概念图">
+            <img src="04-ink-lime.png" alt="方案 04 墨色青柠：以墨黑与青柠色对比设计 Sofatap 的 Windows、macOS 与 Linux 原生接收器窗口。" loading="lazy" decoding="async">
+          </a>
+          <figcaption><span><strong>重点比较：</strong>操作焦点是否明确，较强的视觉个性是否合适。</span><span class="concept-label">AI 概念图 · 演示占位二维码</span></figcaption>
+        </figure>
+      </section>
+      <section class="concept" id="dusk-glow" aria-labelledby="dusk-title">
+        <div class="concept-heading">
+          <div>
+            <div class="title-row"><span class="badge" aria-hidden="true">05</span><h2 id="dusk-title">暮光客厅</h2></div>
+            <p class="description">暮蓝与淡紫营造夜晚的柔和光感。少量氛围色衬托主要操作，让界面更有情绪。</p>
+          </div>
+          <a class="open-original" href="05-dusk-glow.png" target="_blank" rel="noopener">查看 05 原图 ↗</a>
+        </div>
+        <figure>
+          <a class="image-link" href="05-dusk-glow.png" target="_blank" rel="noopener" aria-label="放大方案 05：暮光客厅，Windows、macOS 和 Linux 三端概念图">
+            <img src="05-dusk-glow.png" alt="方案 05 暮光客厅：以暮蓝、淡紫和柔和光感设计 Sofatap 的 Windows、macOS 与 Linux 原生接收器窗口。" loading="lazy" decoding="async">
+          </a>
+          <figcaption><span><strong>重点比较：</strong>氛围效果是否加分，小字和配对操作是否依然清楚。</span><span class="concept-label">AI 概念图 · 演示占位二维码</span></figcaption>
+        </figure>
+      </section>
+      <section class="decision" aria-labelledby="decision-title">
+        <h2 id="decision-title">选一个方向，也可以组合优点</h2>
+        <p>可以直接说方案编号，或指定“用 01 的配色，加上 03 的布局”。确认后，统一三端的字体层级、间距、图标、按钮与连接状态，同时保留 Windows、macOS 和 Linux 各自的原生窗口操作习惯。</p>
+        <p>所有方向都遵守同一原则：接收器在原生窗口里显示二维码，手机扫码连接；配对过程不跳转浏览器。最终文字、权限提示、状态与可访问性需在真实实现中校准。</p>
+      </section>
+    </main>
+    <footer>
+      <p>Sofatap · 三端视觉统一提案 · 等待选择</p>
+      <p><a href="prompts.json">生成提示词</a><a href="manifest.json">图片记录</a><a href="#top">回到顶部 ↑</a></p>
+    </footer>
+  </div>
+</body>
+</html>

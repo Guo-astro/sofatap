@@ -1,0 +1,99 @@
+{
+  "brand": "Sofatap",
+  "generatedWith": "Built-in imagegen tool",
+  "date": "2026-10-11",
+  "kind": "ui-mockup",
+  "selection": null,
+  "status": "Awaiting user choice; production UI unchanged",
+  "promptSet": "prompts.json",
+  "authenticPairingDataProvided": false,
+  "qrCodes": "Generated DEMO placeholders; not for pairing",
+  "notes": [
+    "One generated board per concept; three native desktop windows per board.",
+    "All five boards show a ready-to-pair state for fair comparison.",
+    "Native titlebar details and text rendering are illustrative; implementation must use actual OS controls.",
+    "No image post-processing; originals copied byte-for-byte."
+  ],
+  "assets": [
+    {
+      "id": "01",
+      "name": "暮色薄荷",
+      "file": "01-mint-calm.png",
+      "originalGenerationFile": "exec-9718fcdb-9310-4d14-b2d2-a0b02f3c4c85.png",
+      "width": 1586,
+      "height": 992,
+      "sha256": "13f1e9d1fbc38d83eba142fc2413ba056b91582edf2ada432ae32ec252f08fba",
+      "promptSHA256": "670a62754c778f5c97f007f222e2640fb1ce846661a658967d930c0d45a7b54f",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "visuallyReviewed": true
+    },
+    {
+      "id": "02",
+      "name": "奶油客厅",
+      "file": "02-warm-linen.png",
+      "originalGenerationFile": "exec-5dfe232f-7653-463b-9094-326c4c9ef37f.png",
+      "width": 1586,
+      "height": 992,
+      "sha256": "89a32ab57df65d5cf56ab22867dcf9a035fe6483caa8cddefd004d6822a4d527",
+      "promptSHA256": "476bac89a49bb0ae0aaf41afcc019c555c6084ecd8a063af1a316cc7898bec60",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "visuallyReviewed": true
+    },
+    {
+      "id": "03",
+      "name": "清透原生",
+      "file": "03-native-light.png",
+      "originalGenerationFile": "exec-e373c6ae-3350-4136-a3a2-ca99b723c3db.png",
+      "width": 1586,
+      "height": 992,
+      "sha256": "ae152ecff3c69bd5d5d5c2e02352bdeada06eed150c9b64d65e4a6bbeb541b67",
+      "promptSHA256": "1c7b98ef9fb5becb9987c2d8f1ef4c1d11ad00f4f54052a47eb743a80402a7c2",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "visuallyReviewed": true
+    },
+    {
+      "id": "04",
+      "name": "墨色青柠",
+      "file": "04-ink-lime.png",
+      "originalGenerationFile": "exec-a6ae6e9a-3bc8-48b2-9046-c9320bc9f86b.png",
+      "width": 1586,
+      "height": 992,
+      "sha256": "5df1ac47fabc410bd3d193d61ea9ba3b806e05b7dde90e26357c5c47cb35b88b",
+      "promptSHA256": "e667d4167ae487e5a884a28eafcccc5f6336c984583c46746de06f2860b4814d",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "visuallyReviewed": true
+    },
+    {
+      "id": "05",
+      "name": "暮光客厅",
+      "file": "05-dusk-glow.png",
+      "originalGenerationFile": "exec-dfed12c1-35e5-43ef-ae48-644f912a84c8.png",
+      "width": 1586,
+      "height": 992,
+      "sha256": "844a9cd2d8dce2c8d6167e718245969598f3962853979ddd2926b4c5f4a27f74",
+      "promptSHA256": "aeb6ccbf2b57817be1a43fe578106d9d908646b498e0ba2e0dc52d412ae572ac",
+      "platforms": [
+        "Windows",
+        "macOS",
+        "Linux"
+      ],
+      "visuallyReviewed": true
+    }
+  ]
+}
