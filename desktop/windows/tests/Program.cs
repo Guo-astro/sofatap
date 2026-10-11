@@ -3,10 +3,16 @@ using System.Text.Json;
 using SofaTap.Desktop;
 
 const string png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
-string Snapshot(string image = png, string type = "state", int count = 1) => JsonSerializer.Serialize(new
+string Snapshot(string image = png, string type = "state", int count = 1, object? uri = null, bool includeUri = true,
+    string host = "192.0.2.1") => JsonSerializer.Serialize(new
 {
     type, name = "Test computer", platform = "windows", inputStatus = "dry_run", dryRun = true, connected = false,
-    pairings = Enumerable.Range(0, count).Select(_ => new { host = "192.0.2.1", uri = "sofatap://test-only", qrPng = image })
+    pairings = Enumerable.Range(0, count).Select(_ =>
+    {
+        var pairing = new Dictionary<string, object?> { ["host"] = host, ["qrPng"] = image };
+        if (includeUri) pairing["uri"] = uri;
+        return pairing;
+    })
 });
 var count = 0;
 void Check(bool condition, string name) { if (!condition) throw new Exception(name); count++; }
@@ -17,10 +23,42 @@ void Reject(Action action, string name)
     { count++; return; }
     throw new Exception(name);
 }
-var state = NativeProtocol.Parse(Snapshot());
+var state = NativeProtocol.Parse(Snapshot(uri: "sofatap://test-only"));
 Check(state.DryRun && !state.Connected && state.Pairings.Length == 1 && state.Pairings[0].Host == "192.0.2.1", "valid private pipe snapshot");
 Check(state.Pairings[0].Png.SequenceEqual(Convert.FromBase64String(png)), "PNG bytes preserved in memory");
-Check(!JsonSerializer.Serialize(state).Contains("sofatap://"), "URI not retained by UI model");
+Check(state.Pairings[0].Uri is null, "malformed optional link does not disable the QR snapshot");
+var token = new string('D', 43); // Synthetic fixture only; no listener uses this credential.
+var fingerprint = new string('a', 64);
+string Link(string host = "192.0.2.1") => $"sofatap://pair?host={Uri.EscapeDataString(host)}&port=53319&token={token}&fingerprint={fingerprint}";
+var link = Link();
+var linked = NativeProtocol.Parse(Snapshot(uri: link));
+Check(linked.Pairings[0].Uri == link, "complete matching link retained in memory for explicit Copy");
+Check(!JsonSerializer.Serialize(linked).Contains(token) && !JsonSerializer.Serialize(linked).Contains("sofatap://"), "serializing UI state does not expose the pairing link");
+Check(!linked.Pairings[0].ToString().Contains(token) && !linked.ToString().Contains(token), "record diagnostic strings redact the link");
+Check(NativeProtocol.Parse(Snapshot(includeUri: false)).Pairings[0].Uri is null, "old QR-only snapshots remain compatible");
+Check(NativeProtocol.Parse(Snapshot(uri: null)).Pairings[0].Uri is null, "null optional link disables Copy only");
+Check(NativeProtocol.Parse(Snapshot(uri: 42)).Pairings[0].Uri is null, "non-string optional link disables Copy only");
+Check(NativeProtocol.ValidPairingUri(link.Replace("sofatap:", "SOFATAP:"), "192.0.2.1") is not null, "scheme is case insensitive");
+Check(NativeProtocol.ValidPairingUri(Link("Living-Room.local"), "living-room.local") is not null, "hostname comparison is case insensitive");
+Check(NativeProtocol.ValidPairingUri(Link("2001:db8::17"), "2001:db8::17") is not null, "encoded IPv6 host supported");
+Check(NativeProtocol.ValidPairingUri(link.Replace("host=192.0.2.1", "host=%31%39%32.0.2.1"), "192.0.2.1") is not null, "percent escapes decoded once for field validation");
+Check(NativeProtocol.ValidPairingUri($"sofatap://pair?fingerprint={fingerprint}&token={token}&port=53319&host=192.0.2.1", "192.0.2.1") is not null, "query order does not matter");
+foreach (var malformed in new[]
+{
+    link.Replace("sofatap:", "https:"), link.Replace("//pair?", "//user@pair?"), link.Replace("//pair?", "//pair:80?"),
+    link.Replace("//pair?", "//pair/?"), link + "#fragment", link + "&extra=1", link.Replace("&port=53319", "&host=192.0.2.1"),
+    link.Replace("&port=53319", ""), link.Replace("host=192.0.2.1", "host=192.0.2.2"), link.Replace("host=192.0.2.1", "host=bad%2Fhost"),
+    link.Replace("host=192.0.2.1", "host=%ZZ"), link.Replace("host=192.0.2.1", "host=%2531%2539%2532.0.2.1"),
+    link.Replace("host=192.0.2.1", "host=%0A192.0.2.1"), link.Replace("port=53319", "port=0"), link.Replace("port=53319", "port=65536"),
+    link.Replace("port=53319", "port=-1"), link.Replace("port=53319", "port=%2B53319"), link.Replace("port=53319", "port=999999999999999999999"),
+    link.Replace(token, new string('D', 31)), link.Replace(token, new string('D', 257)), link.Replace(token, token + "+"),
+    link.Replace(fingerprint, new string('a', 63)), link.Replace(fingerprint, new string('g', 64)), link + "\n", " " + link,
+    new string('x', NativeProtocol.MaximumPairingUriLength + 1)
+})
+{
+    var invalidLink = NativeProtocol.Parse(Snapshot(uri: malformed));
+    Check(invalidLink.Pairings[0].Uri is null && invalidLink.Pairings[0].Png.Length > 0, "invalid optional link disables Copy without rejecting QR");
+}
 Reject(() => NativeProtocol.Parse("not json"), "invalid JSON rejected");
 Reject(() => NativeProtocol.Parse(Snapshot(type: "other")), "unexpected message rejected");
 Reject(() => NativeProtocol.Parse(Snapshot(count: 33)), "pairing count capped");

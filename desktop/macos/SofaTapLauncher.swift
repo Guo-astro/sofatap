@@ -1,6 +1,7 @@
 import AppKit
 import SwiftUI
 
+#if !SOFATAP_UI_FIXTURE
 @main
 enum SofaTapLauncher {
     @MainActor static func main() {
@@ -11,6 +12,8 @@ enum SofaTapLauncher {
         withExtendedLifetime(delegate) { application.run() }
     }
 }
+
+#endif
 
 @MainActor
 final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
@@ -29,13 +32,13 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         mainMenu.addItem(appItem)
         NSApp.mainMenu = mainMenu
 
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 760),
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 700),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "Sofatap"
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = true
-        window.backgroundColor = NSColor(red: 0.039, green: 0.051, blue: 0.067, alpha: 1)
-        window.minSize = NSSize(width: 440, height: 500)
+        window.backgroundColor = NSColor(red: 17 / 255, green: 25 / 255, blue: 27 / 255, alpha: 1)
+        window.contentMinSize = NSSize(width: 380, height: 440)
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(rootView: ReceiverView(receiver: receiver))
@@ -71,141 +74,342 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
 }
 
 private enum Palette {
-    static let background = Color(red: 0.039, green: 0.051, blue: 0.067)
-    static let panel = Color(red: 0.078, green: 0.098, blue: 0.122)
-    static let mint = Color(red: 0.722, green: 0.953, blue: 0.816)
-    static let muted = Color(red: 0.65, green: 0.70, blue: 0.72)
+    static let background = Color(red: 17 / 255, green: 25 / 255, blue: 27 / 255)
+    static let panel = Color(red: 30 / 255, green: 42 / 255, blue: 44 / 255)
+    static let border = Color(red: 51 / 255, green: 67 / 255, blue: 70 / 255)
+    static let mint = Color(red: 152 / 255, green: 233 / 255, blue: 196 / 255)
+    static let text = Color(red: 240 / 255, green: 245 / 255, blue: 243 / 255)
+    static let muted = Color(red: 168 / 255, green: 186 / 255, blue: 183 / 255)
+    static let warning = Color(red: 232 / 255, green: 192 / 255, blue: 138 / 255)
 }
 
+/// The live adapter owns no input or connection behavior. The same content can be
+/// rendered offscreen with explicit, non-sensitive fixture values for layout QA.
 struct ReceiverView: View {
     @ObservedObject var receiver: ReceiverController
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                header
-                if receiver.isStopping {
-                    statusCard(icon: "hourglass", title: "正在退出", message: "正在断开手机并停止接收组件。", color: Palette.mint)
-                } else if let failure = receiver.failure {
-                    statusCard(icon: "exclamationmark.triangle", title: "暂时无法连接", message: failure, color: .orange)
-                } else if receiver.isStarting {
-                    HStack(spacing: 12) {
-                        ProgressView().controlSize(.small)
-                        Text("正在准备 Mac 接收器…").foregroundStyle(Palette.muted)
-                    }.padding(22).frame(maxWidth: .infinity, alignment: .leading).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
-                }
-                if let state = receiver.state {
-                    connectionStatus(state)
-                    pairingCard(state)
-                }
-                actions
-                Text("保持此窗口打开。手机与 Mac 需要连接同一网络。\n二维码和配对链接可以控制这台 Mac，请勿分享。")
-                    .font(.system(size: 12)).foregroundStyle(Palette.muted).lineSpacing(5)
-            }
-            .padding(28)
-            .frame(maxWidth: 640, alignment: .leading)
-            .frame(maxWidth: .infinity)
+            ReceiverContent(
+                state: receiver.state,
+                selectedPairing: receiver.selectedPairing,
+                selectedHost: $receiver.selectedHost,
+                failure: receiver.failure,
+                isStarting: receiver.isStarting,
+                isStopping: receiver.isStopping,
+                copied: receiver.copied,
+                accessRequested: receiver.accessRequested,
+                accessNotice: receiver.accessNotice,
+                refresh: receiver.refresh,
+                requestAccess: receiver.requestAccess,
+                openAccessibilitySettings: receiver.openAccessibilitySettings,
+                copyPairing: receiver.copyPairing,
+                quit: { NSApp.terminate(nil) }
+            )
         }
         .background(Palette.background)
-        .foregroundStyle(.white)
+    }
+}
+
+struct ReceiverContent: View {
+    let state: ReceiverState?
+    let selectedPairing: ReceiverPairing?
+    @Binding var selectedHost: String?
+    let failure: String?
+    let isStarting: Bool
+    let isStopping: Bool
+    let copied: Bool
+    let accessRequested: Bool
+    let accessNotice: String?
+    let refresh: () -> Void
+    let requestAccess: () -> Void
+    let openAccessibilitySettings: () -> Void
+    let copyPairing: () -> Void
+    let quit: () -> Void
+    @FocusState private var focusedAction: Action?
+
+    private enum Action: Hashable { case copy, requestAccess, settings, refresh, quit }
+
+    var body: some View {
+        VStack(spacing: 18) {
+            statusPill
+            heading
+            notices
+            if let state, failure == nil, !isStarting, !isStopping {
+                pairingCard(state)
+            }
+            footer
+            actions
+        }
+        .padding(.horizontal, 28)
+        .padding(.top, 22)
+        .padding(.bottom, 20)
+        .frame(maxWidth: 530)
+        .frame(maxWidth: .infinity)
+        .background(Palette.background)
+        .foregroundStyle(Palette.text)
         .tint(Palette.mint)
         .preferredColorScheme(.dark)
     }
 
-    private var header: some View {
-        HStack(alignment: .top, spacing: 16) {
-            Image(systemName: "cursorarrow.motionlines")
-                .font(.system(size: 29, weight: .semibold)).foregroundStyle(Palette.background)
-                .frame(width: 60, height: 60).background(Palette.mint, in: RoundedRectangle(cornerRadius: 19))
-                .accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 6) {
-                Text("Sofatap").font(.system(size: 29, weight: .bold, design: .rounded))
-                Text("把 iPhone 变成你的 Mac 遥控器")
-                    .font(.system(size: 14)).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
-            }
-            Spacer(minLength: 0)
+    private var heading: some View {
+        VStack(spacing: 8) {
+            Text("扫码，坐回沙发")
+                .font(.system(size: 30, weight: .semibold))
+                .tracking(0.2)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+            Text("在 iPhone 上打开 Sofatap，扫描二维码")
+                .font(.system(size: 14))
+                .foregroundStyle(Palette.muted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 
-    @ViewBuilder private func connectionStatus(_ state: ReceiverState) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 8) {
-                Circle().fill(state.connected ? Palette.mint : Palette.muted).frame(width: 8, height: 8)
-                Text(state.connected ? "手机已连接" : "等待手机连接").font(.system(size: 14, weight: .semibold))
-                Spacer()
-            }
-            if state.dryRun || state.inputStatus == "dry_run" {
-                statusCard(icon: "testtube.2", title: "演练模式", message: "连接可用，但不会向 Mac 提交鼠标或键盘操作。", color: .orange)
-            } else if state.inputStatus == "accessibility_required" {
-                VStack(alignment: .leading, spacing: 14) {
-                    Label("允许 Sofatap 操作 Mac", systemImage: "hand.raised").font(.system(size: 15, weight: .semibold))
-                    Text(receiver.accessNotice ?? "点下方按钮请求辅助功能授权。允许 Sofatap Receiver 后，接收器会自动重新检查。")
-                        .font(.system(size: 13)).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 10) {
-                        Button(receiver.accessRequested ? "再次请求授权" : "请求辅助功能授权", action: receiver.requestAccess)
-                            .buttonStyle(.borderedProminent).foregroundStyle(Palette.background)
-                        Button("打开系统设置", action: receiver.openAccessibilitySettings).buttonStyle(.bordered)
-                    }.controlSize(.large)
-                }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
-            } else if state.inputStatus != "ready" {
-                statusCard(icon: "lock.display", title: "Mac 桌面暂时不可用", message: "请登录并解锁这台 Mac，再重新检查。", color: .orange)
+    private var statusTitle: String {
+        if isStopping { return "正在退出" }
+        if failure != nil { return "接收器暂不可用" }
+        if isStarting { return "正在准备接收器" }
+        guard let state else { return "等待接收器状态" }
+        let connection = state.connected ? "手机已连接" : "等待 iPhone"
+        if state.dryRun || state.inputStatus == "dry_run" { return "演练模式 · \(connection)" }
+        if state.inputStatus == "accessibility_required" {
+            return state.connected ? "手机已连接 · 需要授权" : "需要辅助功能授权"
+        }
+        guard state.inputStatus == "ready" else {
+            return state.connected ? "手机已连接 · 桌面不可用" : "Mac 桌面暂不可用"
+        }
+        if !state.connected && state.pairings.isEmpty { return "没有可配对地址" }
+        return state.connected ? "手机已连接 · 桌面已就绪" : "已就绪 · 等待 iPhone"
+    }
+
+    private var statusColor: Color {
+        if isStarting || isStopping { return Palette.muted }
+        guard failure == nil, let state else { return Palette.warning }
+        return !state.dryRun && state.inputStatus == "ready" && (state.connected || !state.pairings.isEmpty) ? Palette.mint : Palette.warning
+    }
+
+    private var statusPill: some View {
+        HStack(spacing: 8) {
+            if isStarting || isStopping {
+                Image(systemName: "hourglass").font(.system(size: 11)).foregroundStyle(Palette.muted).accessibilityHidden(true)
             } else {
-                Label("桌面已就绪", systemImage: "checkmark.shield")
-                    .font(.system(size: 13)).foregroundStyle(Palette.muted)
+                Circle().fill(statusColor).frame(width: 7, height: 7).accessibilityHidden(true)
+            }
+            Text(statusTitle)
+                .font(.system(size: 12, weight: .medium))
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 13)
+        .padding(.vertical, 8)
+        .background(Palette.panel, in: Capsule())
+        .overlay(Capsule().stroke(Palette.border, lineWidth: 1))
+        .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder private var notices: some View {
+        if isStopping {
+            notice(icon: "hourglass", title: "正在断开连接", message: "正在断开手机并停止接收组件。", color: Palette.muted)
+        } else if let failure {
+            notice(icon: "exclamationmark.triangle", title: "暂时无法连接", message: failure, color: Palette.warning)
+        } else if isStarting {
+            notice(icon: "desktopcomputer", title: "正在准备 Mac 接收器", message: "接收组件就绪后，二维码会显示在这里。", color: Palette.muted)
+        } else if let state {
+            if state.dryRun || state.inputStatus == "dry_run" {
+                notice(icon: "testtube.2", title: "演练模式", message: "可测试连接，但不会向 Mac 提交鼠标或键盘操作。", color: Palette.warning)
+            } else if state.inputStatus == "accessibility_required" {
+                permissionNotice
+            } else if state.inputStatus != "ready" {
+                notice(icon: "lock.display", title: "Mac 桌面暂时不可用", message: "请登录并解锁这台 Mac，再重新检查。", color: Palette.warning)
             }
         }
+    }
+
+    private var permissionNotice: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label("允许 Sofatap 操作 Mac", systemImage: "hand.raised")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Palette.text)
+            Text(accessNotice ?? "需要辅助功能权限才能控制鼠标和输入文字。请在系统提示中允许 Sofatap Receiver。")
+                .font(.system(size: 12))
+                .foregroundStyle(Palette.muted)
+                .lineSpacing(3)
+                .fixedSize(horizontal: false, vertical: true)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 10) { permissionButtons }
+                VStack(alignment: .leading, spacing: 8) { permissionButtons }
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.border, lineWidth: 1))
+    }
+
+    @ViewBuilder private var permissionButtons: some View {
+        Button(accessRequested ? "再次请求授权" : "请求辅助功能授权", action: requestAccess)
+            .buttonStyle(MintButtonStyle(focused: focusedAction == .requestAccess))
+            .focused($focusedAction, equals: .requestAccess)
+        Button("打开系统设置", action: openAccessibilitySettings)
+            .buttonStyle(QuietButtonStyle(focused: focusedAction == .settings))
+            .focused($focusedAction, equals: .settings)
     }
 
     private func pairingCard(_ state: ReceiverState) -> some View {
-        VStack(alignment: .center, spacing: 16) {
-            Text("扫码，坐回沙发").font(.system(size: 22, weight: .semibold, design: .rounded))
-            Text("在 iPhone 打开 Sofatap → 配对电脑 → 扫码")
-                .font(.system(size: 13)).foregroundStyle(Palette.muted).multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-            if let pairing = receiver.selectedPairing, let data = pairing.pngData, let image = NSImage(data: data) {
+        VStack(spacing: 16) {
+            if let pairing = selectedPairing, let data = pairing.pngData, let image = NSImage(data: data) {
+                // Preserve every module and the complete QR quiet zone. No brand mark,
+                // caption or decorative element is painted over the pairing code.
                 Image(nsImage: image).resizable().interpolation(.none).scaledToFit()
-                    .frame(width: 224, height: 224).padding(12).background(.white, in: RoundedRectangle(cornerRadius: 18))
+                    .frame(width: 224, height: 224)
+                    .padding(10)
+                    .background(.white, in: RoundedRectangle(cornerRadius: 12))
                     .accessibilityLabel("用 iPhone 的 Sofatap 扫描此二维码以配对 Mac")
-                Text(state.name).font(.system(size: 14, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
-                if state.pairings.count > 1 {
-                    Picker("连接地址", selection: $receiver.selectedHost) {
-                        ForEach(state.pairings) { address in Text(address.host).tag(Optional(address.host)) }
-                    }.pickerStyle(.menu).frame(maxWidth: 300)
-                    Text("有多个网络时，请选择手机能访问的地址。")
-                        .font(.system(size: 12)).foregroundStyle(Palette.muted)
-                } else {
-                    Text(pairing.host).font(.system(size: 13, design: .monospaced)).foregroundStyle(Palette.muted)
+                deviceAndNetwork(state, pairing: pairing)
+                Button(action: copyPairing) {
+                    Label(copied ? "已复制配对链接" : "复制配对链接", systemImage: copied ? "checkmark" : "doc.on.doc")
+                        .frame(maxWidth: .infinity)
                 }
-                Button(action: receiver.copyPairing) {
-                    Label(receiver.copied ? "已复制配对链接" : "复制配对链接", systemImage: receiver.copied ? "checkmark" : "doc.on.doc")
-                }.buttonStyle(.bordered)
+                .buttonStyle(MintButtonStyle(focused: focusedAction == .copy))
+                .focused($focusedAction, equals: .copy)
+                .disabled(isStopping || failure != nil)
             } else {
-                Image(systemName: "wifi.slash").font(.system(size: 32)).foregroundStyle(Palette.muted).padding(.top, 12)
-                Text(state.pairings.isEmpty ? "没有可配对的网络地址。连接 Wi-Fi 或网线后重新检查。" : "无法显示二维码，请重新检查。")
-                    .font(.system(size: 14)).foregroundStyle(Palette.muted).multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true).padding(.bottom, 12)
+                Image(systemName: "wifi.slash")
+                    .font(.system(size: 28)).foregroundStyle(Palette.muted)
+                    .padding(.top, 16).accessibilityHidden(true)
+                Text(state.pairings.isEmpty ? "没有可配对的网络地址" : "无法显示二维码")
+                    .font(.system(size: 16, weight: .semibold))
+                Text(state.pairings.isEmpty ? "连接 Wi-Fi 或网线后，点下方刷新重新检查。" : "点下方刷新，重新获取配对二维码。")
+                    .font(.system(size: 13)).foregroundStyle(Palette.muted)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.bottom, 16)
             }
         }
-        .padding(24).frame(maxWidth: .infinity).background(Palette.panel, in: RoundedRectangle(cornerRadius: 24))
+        .padding(20)
+        .frame(maxWidth: .infinity)
+        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Palette.border, lineWidth: 1))
     }
 
-    private func statusCard(icon: String, title: String, message: String, color: Color) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: icon).font(.system(size: 19)).foregroundStyle(color).accessibilityHidden(true)
-            VStack(alignment: .leading, spacing: 7) {
-                Text(title).font(.system(size: 15, weight: .semibold))
-                Text(message).font(.system(size: 13)).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
+    private func deviceAndNetwork(_ state: ReceiverState, pairing: ReceiverPairing) -> some View {
+        HStack(alignment: .center, spacing: 12) {
+            Label {
+                Text(state.name).lineLimit(2).truncationMode(.middle)
+            } icon: {
+                Image(systemName: "laptopcomputer").font(.system(size: 18))
             }
-        }.padding(20).frame(maxWidth: .infinity, alignment: .leading).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
+            .font(.system(size: 13, weight: .medium))
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help(state.name)
+            Rectangle().fill(Palette.border).frame(width: 1, height: 30)
+            VStack(alignment: .leading, spacing: 3) {
+                if state.pairings.count > 1 {
+                    Picker("连接地址", selection: $selectedHost) {
+                        ForEach(state.pairings) { address in
+                            Text(address.host).tag(Optional(address.host))
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .controlSize(.small)
+                    .help("有多个网络时，请选择 iPhone 能访问的地址。")
+                    .accessibilityLabel("连接地址：选择 iPhone 能访问的网络地址")
+                } else {
+                    Label("连接地址", systemImage: "network")
+                        .font(.system(size: 11)).foregroundStyle(Palette.muted)
+                    Text(pairing.host)
+                        .font(.system(size: 12, design: .monospaced))
+                        .lineLimit(2).truncationMode(.middle)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .help(pairing.host)
+        }
+        .frame(minHeight: 34)
+    }
+
+    private func notice(icon: String, title: String, message: String, color: Color) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon).font(.system(size: 17)).foregroundStyle(color).accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 6) {
+                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(message).font(.system(size: 12)).foregroundStyle(Palette.muted)
+                    .lineSpacing(3).fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+        .overlay(RoundedRectangle(cornerRadius: 16).stroke(Palette.border, lineWidth: 1))
+    }
+
+    private var footer: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 14) {
+                Label("iPhone 与电脑连接同一网络", systemImage: "info.circle")
+                Label("配对码请勿分享", systemImage: "lock.shield")
+            }
+            VStack(spacing: 7) {
+                Label("iPhone 与电脑连接同一网络", systemImage: "info.circle")
+                Label("配对码请勿分享", systemImage: "lock.shield")
+            }
+        }
+        .font(.system(size: 11))
+        .foregroundStyle(Palette.muted)
+        .multilineTextAlignment(.center)
+        .fixedSize(horizontal: false, vertical: true)
+        .help("二维码和配对链接可以控制这台 Mac，请勿分享。")
+        .accessibilityLabel("iPhone 与电脑连接同一网络。二维码和配对链接可以控制这台 Mac，请勿分享。")
     }
 
     private var actions: some View {
-        HStack(spacing: 12) {
-            Button(action: receiver.refresh) { Label("重新检查", systemImage: "arrow.clockwise") }
-                .disabled(receiver.isStarting || receiver.isStopping)
-            Spacer(minLength: 0)
-            Button("退出 Sofatap") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
-                .disabled(receiver.isStopping)
-        }.buttonStyle(.bordered).controlSize(.large)
+        HStack(spacing: 24) {
+            Button(action: refresh) { Label("刷新", systemImage: "arrow.clockwise") }
+                .buttonStyle(QuietButtonStyle(focused: focusedAction == .refresh))
+                .focused($focusedAction, equals: .refresh)
+                .disabled(isStarting || isStopping)
+            Rectangle().fill(Palette.border).frame(width: 1, height: 22)
+            Button(action: quit) { Label("退出", systemImage: "power") }
+                .buttonStyle(QuietButtonStyle(focused: focusedAction == .quit))
+                .focused($focusedAction, equals: .quit)
+                .keyboardShortcut("q", modifiers: .command)
+                .disabled(isStopping)
+        }
+    }
+}
+
+private struct MintButtonStyle: ButtonStyle {
+    var focused = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(Palette.background)
+            .padding(.horizontal, 14)
+            .frame(minHeight: 42)
+            .background(Palette.mint.opacity(isEnabled ? (configuration.isPressed ? 0.82 : 1) : 0.42), in: RoundedRectangle(cornerRadius: 12))
+            .overlay(RoundedRectangle(cornerRadius: 14).stroke(focused && isEnabled ? Palette.text : .clear, lineWidth: 2).padding(-3))
+            .contentShape(RoundedRectangle(cornerRadius: 12))
+    }
+}
+
+private struct QuietButtonStyle: ButtonStyle {
+    var focused = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 13, weight: .medium))
+            .foregroundStyle(Palette.text.opacity(isEnabled ? 1 : 0.4))
+            .padding(.horizontal, 8)
+            .frame(minHeight: 32)
+            .background(configuration.isPressed ? Palette.border.opacity(0.5) : .clear, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 10).stroke(focused && isEnabled ? Palette.mint : .clear, lineWidth: 2).padding(-2))
+            .contentShape(RoundedRectangle(cornerRadius: 8))
     }
 }

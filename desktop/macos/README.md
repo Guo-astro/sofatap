@@ -2,6 +2,21 @@
 
 The launcher is an AppKit application with a SwiftUI view. It embeds no web view and opens no browser. The bundle contains the launcher at `Contents/MacOS/SofaTap` and the .NET receiver at the fixed path `Contents/Helpers/SofaTapHost`.
 
+Its native window follows the selected [Mint Calm receiver design](../../docs/RECEIVER-DESIGN.md), shared with Windows and Linux. Permission, disconnected, dry-run and failure states remain distinct from a ready desktop.
+
+## Offline appearance fixtures
+
+Render the production content without opening a window, launching the receiver, requesting permission or connecting a phone:
+
+```sh
+xcrun swiftc -parse-as-library -swift-version 5 -D SOFATAP_UI_FIXTURE \
+  -target "$(uname -m)-apple-macosx15.0" desktop/macos/*.swift \
+  desktop/macos/tests/ReceiverAppearanceFixtures.swift -o /tmp/sofatap-appearance-fixtures
+/tmp/sofatap-appearance-fixtures artifacts/mint-calm
+```
+
+The PNGs use reserved example addresses and an unusable pairing fixture. They check the content layout, including long labels and permission/error states; they do not exercise the native title bar, scrolling, keyboard focus, camera pairing or actual desktop input. The fixture entry point is excluded from the production build.
+
 The launcher starts that helper with `--native-ui`. Passing `--dry-run` explicitly to the launcher also passes this fixed flag to the helper; it is for transport/UI development and is clearly labelled in the window. The production app does not accept a helper executable override.
 
 ## Build

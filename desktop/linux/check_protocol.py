@@ -10,10 +10,18 @@ import tempfile
 import threading
 import time
 import unittest
+from urllib.parse import urlencode
 
-from sofatap import ACCESS_STATUSES, Backend, INPUT_STATUSES, MAXIMUM_LINE, STATUS_LABELS, parse_state
+from sofatap import ACCESS_STATUSES, Backend, INPUT_STATUSES, MAXIMUM_LINE, STATUS_LABELS, pairing_uri, parse_state
 
 PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII="
+
+
+def copy_uri(**changes):
+    # Synthetic format fixture only; no receiver credentials or live QR.
+    fields = dict(host="192.0.2.1", port="53319", token="test-only-not-a-secret-" * 2, fingerprint="0" * 64)
+    fields.update(changes)
+    return "sofatap://pair?" + urlencode(fields)
 
 
 def snapshot(**changes):
@@ -24,11 +32,50 @@ def snapshot(**changes):
 
 
 class ProtocolChecks(unittest.TestCase):
-    def test_valid_snapshot_keeps_only_native_image(self):
+    def test_invalid_or_missing_optional_uri_preserves_older_qr_snapshots(self):
         state = parse_state(snapshot())
         self.assertEqual(state.pairings[0].host, "192.0.2.1")
         self.assertEqual(state.pairings[0].png, base64.b64decode(PNG))
-        self.assertFalse(hasattr(state.pairings[0], "uri"))
+        self.assertIsNone(state.pairings[0].uri)
+        for uri in (None, 12, [], "not-a-link", "x" * 2049):
+            with self.subTest(uri_type=type(uri).__name__):
+                pairing = dict(host="192.0.2.1", qrPng=PNG)
+                if uri is not None:
+                    pairing["uri"] = uri
+                state = parse_state(snapshot(pairings=[pairing]))
+                self.assertIsNone(state.pairings[0].uri)
+                self.assertEqual(state.pairings[0].png, base64.b64decode(PNG))
+
+    def test_copy_payload_matches_the_selected_host_and_phone_contract(self):
+        for host, selected in (("192.0.2.1", "192.0.2.1"), ("receiver.local", "RECEIVER.LOCAL"),
+                               ("2001:db8::17", "2001:0db8:0:0:0:0:0:17")):
+            with self.subTest(host=host):
+                uri = copy_uri(host=host)
+                state = parse_state(snapshot(pairings=[dict(host=selected, qrPng=PNG, uri=uri)]))
+                self.assertEqual(state.pairings[0].uri, uri)
+                self.assertNotIn(uri, repr(state))
+                self.assertNotIn("test-only-not-a-secret", repr(state))
+
+    def test_copy_payload_rejects_ambiguous_and_unsafe_links(self):
+        valid = copy_uri()
+        invalid = [
+            copy_uri(host="192.0.2.2"), copy_uri(host="bad_name"), copy_uri(host="fe80::1%eth0"),
+            copy_uri(port="0"), copy_uri(port="65536"), copy_uri(port="+80"), copy_uri(port="80.0"),
+            copy_uri(token="short"), copy_uri(token="a" * 257), copy_uri(token="a" * 31 + "+"),
+            copy_uri(fingerprint="0" * 63), copy_uri(fingerprint="x" * 64),
+            valid + "&host=192.0.2.1", valid.replace("token=", "extra="),
+            valid.replace("sofatap:", "https:"), valid.replace("//pair?", "//pair/path?"),
+            valid.replace("//pair?", "//user@pair?"), valid.replace("//pair?", "//pair:80?"),
+            valid + "#fragment", valid + "#", valid + "\n", valid.replace("192.0.2.1", "%GG"),
+            valid.replace("192.0.2.1", "192.0.2.1%00"), valid.replace("192.0.2.1", "%FF"),
+            valid.replace("192.0.2.1", "测试"),
+        ]
+        for index, uri in enumerate(invalid):
+            with self.subTest(case=index):
+                self.assertIsNone(pairing_uri(uri, "192.0.2.1"))
+                state = parse_state(snapshot(pairings=[dict(host="192.0.2.1", qrPng=PNG, uri=uri)]))
+                self.assertIsNone(state.pairings[0].uri)
+                self.assertEqual(state.pairings[0].png, base64.b64decode(PNG))
 
     def test_accepts_live_input_statuses(self):
         for status in INPUT_STATUSES - {"dry_run"}:

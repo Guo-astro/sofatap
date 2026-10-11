@@ -12,6 +12,6 @@
     <AssemblyTitle>Sofatap Receiver</AssemblyTitle>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>
+    <DefaultItemExcludes>$(DefaultItemExcludes);tests/**;preview/**</DefaultItemExcludes>
   </PropertyGroup>
 </Project>

@@ -49,6 +49,8 @@ Dry-run is allowed on Windows, macOS and Linux for protocol/TLS tests and must r
 
 The signed desktop launcher starts the bundled receiver with `--native-ui` and redirects both standard streams. The backend refuses this mode on an interactive terminal. Standard output is reserved for newline-delimited state objects: `type`, `name`, `platform`, `inputStatus`, `dryRun`, `connected`, and `pairings` (each `host`, `uri`, base64 `qrPng`). Do not log or persist state frames: they contain pairing credentials. Errors use a separate stream and frontends display fixed messages. Status refreshes every two seconds.
 
+The Mint Calm native windows offer an explicit Copy pairing link action. Frontends retain the selected validated URI in memory for that action; they never automatically copy it or display its secret text. Windows and Linux accept older QR-only snapshots with Copy disabled. Missing, malformed or oversized optional URIs likewise disable Copy. This UI action is separate from remote text injection, which keeps its existing clipboard behavior. Appearance fixtures must use synthetic, non-pairing QR content and no real credentials.
+
 The parent may send exactly one field: `{"type":"refresh"}`, `{"type":"requestAccess"}` or `{"type":"quit"}`. Commands are bounded to 4 KiB; unknown/duplicate fields are rejected. macOS and Wayland permission requests are explicit local user actions and disabled in dry-run. Pipe EOF and Quit cancel connected WebSockets before stopping the host. Native frontends must terminate their own child on unrecoverable framing errors, never an arbitrary process. Linux's GTK3 window launches in real-input mode by default; --dry-run is an explicit preview option.
 
 ## Linux receiver metadata and limits

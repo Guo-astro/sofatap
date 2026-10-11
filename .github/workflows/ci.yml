@@ -83,6 +83,19 @@ jobs:
             -o "$RUNNER_TEMP/sofatap-desktop-pipe-tests" desktop/macos/ReceiverProtocol.swift \
             desktop/macos/ReceiverPipeReader.swift desktop/macos/tests/ReceiverPipeTests.swift
           "$RUNNER_TEMP/sofatap-desktop-pipe-tests"
+      - name: Render Mac receiver design fixtures without a window or backend
+        shell: bash
+        run: |
+          xcrun swiftc -parse-as-library -swift-version 5 -D SOFATAP_UI_FIXTURE \
+            -target "$(uname -m)-apple-macosx15.0" desktop/macos/*.swift \
+            desktop/macos/tests/ReceiverAppearanceFixtures.swift -o "$RUNNER_TEMP/sofatap-appearance-fixtures"
+          "$RUNNER_TEMP/sofatap-appearance-fixtures" artifacts/mint-calm
+      - name: Save synthetic Mac UI fixtures
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mint-calm-macos
+          path: artifacts/mint-calm/macos-*.png
+          if-no-files-found: error
       - name: Windows native-window protocol and owned-process checks without launching a UI
         run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
       - name: Compile unprovisioned iPhone app without installation
@@ -134,6 +147,14 @@ jobs:
         run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
       - name: Compile self-contained WinForms frontend without launching it
         run: dotnet publish desktop/windows/SofaTap.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ui-ci
+      - name: Render synthetic WinForms fixtures without a receiver backend
+        run: dotnet run --project desktop/windows/preview/MintCalmPreview.csproj -c Release -- artifacts/mint-calm
+      - name: Save synthetic Windows UI fixtures
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mint-calm-windows
+          path: artifacts/mint-calm/windows-*.png
+          if-no-files-found: error
 
   linux-native-protocol:
     name: Linux · native GTK, X11 input and isolated portal protocol
@@ -147,7 +168,7 @@ jobs:
       - name: Install isolated graphical test dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 gir1.2-atspi-2.0 at-spi2-core libatk-bridge2.0-0 xvfb xauth dbus libx11-6 libxtst6 libxdo3
+          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 gir1.2-atspi-2.0 at-spi2-core libatk-bridge2.0-0 xvfb xauth dbus libx11-6 libxtst6 libxdo3 fonts-noto-cjk
       - name: Host checks and worker failure lifecycle
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
       - name: Linux worker and native window checks without input
@@ -168,3 +189,11 @@ jobs:
           SOFATAP_DOTNET="$(command -v dotnet)" bash scripts/build-linux.sh arm64
       - name: Native GTK window rendering and child lifetime on private Xvfb
         run: SOFATAP_TEST_BACKEND="$PWD/artifacts/SofaTap-Linux-x64/lib/SofaTapHost" /usr/bin/python3 -B desktop/linux/check_gtk_integration.py
+      - name: Render synthetic GTK fixtures on a private Xvfb display
+        run: /usr/bin/python3 -B desktop/linux/preview_mint_calm.py --output artifacts/mint-calm
+      - name: Save synthetic Linux UI fixtures
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: mint-calm-linux
+          path: artifacts/mint-calm/linux-*.png
+          if-no-files-found: error

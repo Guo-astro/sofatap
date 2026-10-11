@@ -1,6 +1,6 @@
 # Sofatap receiver for Linux
 
-Use your iPhone as a touchpad, mouse and keyboard for a Linux computer. Pairing happens in a native GTK window. Sofatap does not open a browser or serve a local pairing website.
+Use your iPhone as a touchpad, mouse and keyboard for a Linux computer. Pairing happens in a native GTK window. The Mint Calm design uses the same charcoal canvas, pairing card and mint action as the macOS and Windows receivers, while preserving native window controls. Sofatap does not open a browser or serve a local pairing website.
 
 The receiver needs a logged-in graphical Linux desktop. It is not a headless remote-login service. Builds are available for x86-64 (`x64`) and 64-bit ARM (`arm64`). The self-contained backend includes .NET; Python, GTK and the desktop input libraries remain system dependencies.
 
@@ -12,9 +12,9 @@ The receiver needs a logged-in graphical Linux desktop. It is not a headless rem
 4. On Wayland, click **允许控制桌面** and approve the desktop's native permission prompt. If you decline, the receiver cannot control the desktop; the same button lets you try again.
 5. Connect the iPhone and computer to the same trusted home network. Choose the reachable address in Sofatap's window, then scan its QR code in the iPhone app.
 
-The status must read **桌面已就绪** before mouse or keyboard input is available. A successful network connection alone does not grant desktop control. Never share the QR code or screenshots containing it.
+The status must read **桌面已就绪** before mouse or keyboard input is available. A successful network connection alone does not grant desktop control. **复制配对链接** copies the selected address's pairing link only when you click it; older receivers or invalid optional links leave this action disabled while QR pairing stays available. The link and QR code grant control: never share them or screenshots containing a live QR.
 
-Close the window or click **退出接收器** to stop receiving control. Closing a Wayland permission session also ends its input access. Sofatap does not install a background service, modify firewall rules, add startup items or require root access. If your distribution's firewall blocks the connection, allow TCP 53319 only on your trusted home network through the distribution's normal firewall settings.
+Close the window or click **退出** to stop receiving control. Closing a Wayland permission session also ends its input access. Sofatap does not install a background service, modify firewall rules, add startup items or require root access. If your distribution's firewall blocks the connection, allow TCP 53319 only on your trusted home network through the distribution's normal firewall settings.
 
 ## Desktop support and dependencies
 
@@ -31,7 +31,7 @@ sudo apt install python3 python3-gi gir1.2-gtk-3.0 libx11-6 libxtst6 libxdo3
 
 PyGObject also provides the Gio/GLib bindings used to communicate with the native portal. A normal GNOME or KDE Wayland installation also provides `xdg-desktop-portal` and its matching GNOME/KDE backend. Install or repair them using your desktop's own package documentation; do not install an unrelated backend merely to suppress an unavailable status. Sofatap never launches an installer automatically.
 
-Sofatap sends Wayland text as XKB keysyms. Unicode support depends on the compositor and destination application; verify your text in the target application. Both Linux backends accept at most 2,048 Unicode characters per text action (after normalizing CRLF); split longer text before sending. X11 may reject a shorter selection before typing if its distinct characters exceed the available temporary key slots, or its estimated input time exceeds the action budget. A slow portal may report partial input: check the computer before resending, because retrying can duplicate text. The receiver never requests clipboard or screen-capture access and does not persist a portal restore token.
+Sofatap sends Wayland text as XKB keysyms. Unicode support depends on the compositor and destination application; verify your text in the target application. Both Linux backends accept at most 2,048 Unicode characters per text action (after normalizing CRLF); split longer text before sending. X11 may reject a shorter selection before typing if its distinct characters exceed the available temporary key slots, or its estimated input time exceeds the action budget. A slow portal may report partial input: check the computer before resending, because retrying can duplicate text. Ordinary remote text input does not read or overwrite the clipboard. The native Copy pairing link action writes the selected link to the clipboard explicitly; it never reads its previous contents. The receiver does not request screen-capture access or persist a portal restore token.
 
 Dictation and third-party iPhone keyboards work through Sofatap's text field: finish composing, review the text, then send it to the computer's focused application. This Linux implementation still needs physical iPhone acceptance testing; automated protocol checks and virtual desktop tests do not prove microphone, voice keyboard or real-device behavior.
 
@@ -71,10 +71,12 @@ python3 desktop/linux/sofatap.py --backend /absolute/path/to/SofaTap
 
 ## Lifecycle and checks
 
-Pairing snapshots arrive as JSON lines over the owned child's private pipe. PNG bytes remain in memory; pairing URIs are never retained by the frontend, shown as text or copied to disk. Backend diagnostics are drained without being copied into the interface or logs.
+Pairing snapshots arrive as JSON lines over the owned child's private pipe. PNG bytes and optional validated pairing URIs remain in memory. A URI must use the phone's four-field `sofatap://pair` format and match the selected endpoint. Missing or invalid URIs disable Copy without rejecting a usable QR snapshot. Links are never shown as text, logged, saved to disk or automatically copied; only an explicit Copy action writes the selected link to the clipboard. Backend diagnostics are drained without being copied into the interface or logs.
 
 The frontend rejects unknown platforms, unknown input states, mismatched real/dry-run modes, malformed snapshots and oversized frames. A broken state pipe, or twelve seconds without a valid snapshot, clears the QR and stops the owned child. Commands have bounded nonblocking writes. Graceful shutdown has eight seconds in total, then only the owned child is terminated (two seconds) or killed (two seconds) if necessary. If shutdown still fails, the native window keeps Quit available for a retry.
 
 Run `python3 desktop/linux/check_protocol.py` for portable frontend protocol and process-lifecycle checks. These checks start no GTK window, generate no real mouse/keyboard events and require no paired phone. Actual rendering, supported desktop sessions and physical input have separate acceptance requirements.
 
 On Linux, `SOFATAP_TEST_BACKEND=/absolute/path/to/SofaTap /usr/bin/python3 desktop/linux/check_gtk_integration.py` starts its own authenticated Xvfb server and temporary receiver profiles. It checks native GTK QR rendering, dry-run and X11 readiness, the Quit and window-close paths, owned worker cleanup and listener shutdown. It requires `xvfb` and `xauth` in addition to the runtime dependencies, never uses the current display and sends no mouse or keyboard events.
+
+For offline visual review, run `/usr/bin/python3 -B desktop/linux/preview_mint_calm.py --output artifacts/mint-calm` on Linux with `xvfb`, `xauth` and CJK fonts (for example `fonts-noto-cjk`). It renders the production GTK window on its own authenticated private display and saves ready, permission-required and narrow-window PNGs. Ready and permission use the real 470 × 700 default; a second narrow PNG scrolls its native content to verify that footer actions remain reachable. The synthetic computer names, documentation IP addresses and DEMO pixel illustration contain no receiver credentials or usable QR. No backend, portal, clipboard action or real input starts. PNGs show the native client area without window-manager decorations; these previews do not establish real-device acceptance.

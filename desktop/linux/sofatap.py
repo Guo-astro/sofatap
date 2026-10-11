@@ -4,16 +4,19 @@
 import argparse
 import base64
 import binascii
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+import ipaddress
 import json
 import os
 from pathlib import Path
+import re
 import select
 import struct
 import subprocess
 import sys
 import threading
 import time
+from urllib.parse import parse_qsl, urlsplit
 
 MAXIMUM_LINE = 4 * 1024 * 1024
 STATE_DEADLINE_SECONDS = 12
@@ -39,6 +42,7 @@ ACCESS_STATUSES = frozenset({"permission_required", "permission_denied", "input_
 class Pairing:
     host: str
     png: bytes
+    uri: str | None = field(default=None, repr=False)
 
 
 @dataclass(frozen=True)
@@ -48,6 +52,47 @@ class State:
     dry_run: bool
     input_status: str
     pairings: tuple[Pairing, ...]
+
+
+def pairing_uri(value, selected_host):
+    """Optional, memory-only copy payload; invalid links never invalidate a QR.
+
+    Match the phone's pairing parser and the visible selected endpoint. Errors
+    deliberately return no details that could expose credentials in diagnostics.
+    """
+    if (not isinstance(value, str) or not value.isascii() or not 1 <= len(value) <= 2048
+            or any(ord(character) <= 32 or ord(character) == 127 for character in value)
+            or "#" in value or re.search(r"%(?![0-9a-fA-F]{2})", value)):
+        return None
+    try:
+        parts = urlsplit(value)
+        if parts.scheme != "sofatap" or parts.netloc != "pair" or parts.path or parts.fragment:
+            return None
+        items = parse_qsl(parts.query, keep_blank_values=True, strict_parsing=True,
+                          encoding="utf-8", errors="strict", max_num_fields=4)
+        fields = dict(items)
+        if len(items) != 4 or len(fields) != 4 or set(fields) != {"host", "port", "token", "fingerprint"}:
+            return None
+        host = fields["host"]
+        if not host.isascii() or not 1 <= len(host) <= 253:
+            return None
+        if ":" in host:
+            if "%" in host or ipaddress.IPv6Address(host) != ipaddress.IPv6Address(selected_host):
+                return None
+        elif (host.lower() != selected_host.lower()
+                or any(not re.fullmatch(r"[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?", label)
+                       for label in host.split("."))):
+            return None
+        port = fields["port"]
+        if not re.fullmatch(r"[0-9]{1,5}", port) or not 1 <= int(port) <= 65535:
+            return None
+        if not re.fullmatch(r"[A-Za-z0-9_-]{32,256}", fields["token"]):
+            return None
+        if not re.fullmatch(r"[A-Fa-f0-9]{64}", fields["fingerprint"]):
+            return None
+        return value
+    except (ValueError, UnicodeError, AttributeError):
+        return None
 
 
 def parse_state(line, expected_dry_run=None):
@@ -86,8 +131,9 @@ def parse_state(line, expected_dry_run=None):
         width, height = struct.unpack(">II", png[16:24])
         if not 1 <= width <= 2048 or not 1 <= height <= 2048:
             raise ValueError("Invalid QR dimensions")
-        pairings.append(Pairing(host, png))
-    # The pairing URI is never retained, displayed as text, or written to disk.
+        pairings.append(Pairing(host, png, pairing_uri(item.get("uri"), host)))
+    # The validated URI stays in memory only for an explicit Copy button click.
+    # It is never displayed, logged, persisted or automatically copied.
     return State(name, value["connected"], dry_run, input_status, tuple(pairings))
 
 
@@ -203,32 +249,69 @@ class Backend:
             stream.close()
 
 
-def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backend", required=True, type=Path, help="self-contained Sofatap receiver executable")
-    parser.add_argument("--dry-run", action="store_true", help="preview pairing without sending mouse or keyboard events")
-    args = parser.parse_args(argv)
-    if sys.platform != "linux":
-        parser.error("the Linux receiver requires Linux; protocol checks can run on other systems")
-    executable = args.backend.expanduser().resolve()
-    if not executable.is_file() or not os.access(executable, os.X_OK):
-        parser.error("--backend must point to an executable Sofatap receiver")
-    try:
-        import gi
-        gi.require_version("Gtk", "3.0")
-        from gi.repository import GdkPixbuf, GLib, Gtk
-    except (ImportError, ValueError):
-        print("Sofatap requires Python 3, PyGObject and GTK 3. See the included README.md.", file=sys.stderr)
-        return 2
-    if not Gtk.init_check()[0]:
-        print("Sofatap requires a logged-in graphical Linux desktop.", file=sys.stderr)
-        return 2
+def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
+    """Build the real native UI with an injectable owned backend for isolated previews."""
+    from gi.repository import Pango
+    provider = Gtk.CssProvider()
+    provider.load_from_data(b"""
+        #sofatap-receiver { background-color: #11191B; color: #F0F5F3; }
+        #sofatap-receiver label { color: #F0F5F3; }
+        #sofatap-receiver .headline { font-size: 28px; font-weight: 700; }
+        #sofatap-receiver .muted { color: #A8BAB7; font-size: 13px; }
+        #sofatap-receiver .status-pill { background: #1E2A2C; border: 1px solid #334346;
+            border-radius: 18px; padding: 7px 13px; }
+        #sofatap-receiver .status-label { font-size: 12px; }
+        #sofatap-receiver .status-dot { color: #A8BAB7; font-size: 13px; }
+        #sofatap-receiver .status-dot.ready { color: #98E9C4; }
+        #sofatap-receiver .status-dot.attention { color: #E6C78A; }
+        #sofatap-receiver .pairing-card { background: #1E2A2C; border: 1px solid #334346;
+            border-radius: 18px; padding: 20px; }
+        #sofatap-receiver .qr-surface { background: #FFFFFF; padding: 12px; border-radius: 10px; }
+        #sofatap-receiver .qr-surface label { color: #334346; font-size: 12px; }
+        #sofatap-receiver .machine { font-weight: 600; font-size: 14px; }
+        #sofatap-receiver .endpoint button { background: #172124; color: #F0F5F3;
+            border: 1px solid #334346; border-radius: 9px; box-shadow: none; padding: 8px 10px; }
+        #sofatap-receiver .endpoint button:hover { background: #293A3D; }
+        #sofatap-receiver .endpoint button:focus { outline: 2px solid #98E9C4; outline-offset: 2px; }
+        #sofatap-receiver button { text-shadow: none; box-shadow: none; }
+        #sofatap-receiver button.copy { background: #98E9C4; color: #11191B;
+            border: 1px solid #98E9C4; border-radius: 11px; font-size: 15px; font-weight: 700;
+            padding: 13px 16px; }
+        #sofatap-receiver button.copy label { color: #11191B; }
+        #sofatap-receiver button.copy:hover { background: #B5F3D8; }
+        #sofatap-receiver button.copy:active { background: #7CD8AF; }
+        #sofatap-receiver button.copy:disabled { background: #334346; border-color: #334346; }
+        #sofatap-receiver button.copy:disabled label { color: #A8BAB7; }
+        #sofatap-receiver button.copy:focus, #sofatap-receiver button.quiet:focus,
+        #sofatap-receiver button.access:focus { outline: 2px solid #F0F5F3; outline-offset: 3px; }
+        #sofatap-receiver button.quiet { background: transparent; border: 1px solid transparent;
+            color: #A8BAB7; padding: 8px 14px; border-radius: 9px; }
+        #sofatap-receiver button.quiet label { color: #A8BAB7; }
+        #sofatap-receiver button.quiet:hover { background: #1E2A2C; border-color: #334346; }
+        #sofatap-receiver button.quiet:disabled label { color: #70817F; }
+        #sofatap-receiver button.access { background: #243734; border: 1px solid #98E9C4;
+            border-radius: 10px; padding: 10px 14px; }
+        #sofatap-receiver button.access label { color: #98E9C4; }
+        #sofatap-receiver button.access:disabled { border-color: #334346; }
+    """)
+
+    def styled(widget, name):
+        widget.get_style_context().add_class(name)
+        return widget
+
+    def text(label, style=None, align=.5):
+        widget = Gtk.Label(label=label, xalign=align)
+        widget.set_line_wrap(True)
+        if style:
+            styled(widget, style)
+        return widget
 
     class Window(Gtk.Window):
         def __init__(self):
             super().__init__(title="Sofatap")
-            self.set_default_size(450, 640)
-            self.set_border_width(24)
+            self.set_name("sofatap-receiver")
+            Gtk.StyleContext.add_provider_for_screen(self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+            self.set_default_size(470, 700)
             self.set_position(Gtk.WindowPosition.CENTER)
             self.pairings = ()
             self.rendered_png = None
@@ -236,45 +319,93 @@ def main(argv=None):
             self.stopping = False
             self.failed = False
             self.last_state_at = time.monotonic()
+            self.copy_reset_source = None
+            scroll = Gtk.ScrolledWindow()
+            scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+            self.add(scroll)
             layout = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
-            self.add(layout)
-            title = Gtk.Label()
-            title.set_markup('<span size="xx-large" weight="bold">手机，坐下来控制。</span>')
-            title.set_xalign(0)
+            layout.set_border_width(24)
+            scroll.add(layout)
+            status_box = styled(Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=7), "status-pill")
+            status_box.set_halign(Gtk.Align.CENTER)
+            self.status_dot = styled(Gtk.Label(label="●"), "status-dot")
+            self.status = text("正在检查桌面…", "status-label")
+            self.status.set_max_width_chars(28)
+            status_box.pack_start(self.status_dot, False, False, 0)
+            status_box.pack_start(self.status, False, False, 0)
+            layout.pack_start(status_box, False, False, 0)
+            title = text("扫码，坐回沙发", "headline")
             layout.pack_start(title, False, False, 0)
-            self.name = Gtk.Label(label="正在启动接收端…", xalign=0)
-            self.status = Gtk.Label(label="正在检查桌面控制状态…", xalign=0)
-            self.status.set_line_wrap(True)
-            layout.pack_start(self.name, False, False, 0)
-            layout.pack_start(self.status, False, False, 0)
-            self.addresses = Gtk.ComboBoxText()
-            self.addresses.connect("changed", self.render_qr)
-            layout.pack_start(self.addresses, False, False, 0)
+            helper = text("在 iPhone 上打开 Sofatap，扫描二维码", "muted")
+            layout.pack_start(helper, False, False, 0)
+            card = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=18), "pairing-card")
+            layout.pack_start(card, False, False, 0)
+            qr_surface = styled(Gtk.Box(orientation=Gtk.Orientation.VERTICAL), "qr-surface")
+            qr_surface.set_halign(Gtk.Align.CENTER)
+            self.qr_stack = Gtk.Stack()
             self.image = Gtk.Image()
-            self.image.set_size_request(300, 300)
-            layout.pack_start(self.image, True, True, 0)
-            help_text = Gtk.Label(label="iPhone 与电脑连接同一个家庭网络后扫码。\nWayland 桌面首次使用时，请点击允许控制并确认系统提示。\n二维码包含控制凭据，请勿分享。", xalign=0)
-            help_text.set_line_wrap(True)
-            layout.pack_start(help_text, False, False, 0)
-            self.access_button = Gtk.Button(label="允许控制桌面")
+            self.image.set_size_request(224, 224)
+            self.qr_placeholder = text("正在准备二维码…")
+            self.qr_placeholder.set_size_request(224, 224)
+            self.qr_stack.add_named(self.image, "qr")
+            self.qr_stack.add_named(self.qr_placeholder, "placeholder")
+            self.qr_stack.set_visible_child_name("placeholder")
+            qr_surface.pack_start(self.qr_stack, False, False, 0)
+            card.pack_start(qr_surface, False, False, 0)
+            identity = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            machine_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            machine_row.pack_start(Gtk.Image.new_from_icon_name("computer-symbolic", Gtk.IconSize.MENU), False, False, 0)
+            self.name = text("正在启动接收器…", "machine", align=0)
+            self.name.set_line_wrap(False)
+            self.name.set_ellipsize(Pango.EllipsizeMode.END)
+            self.name.set_max_width_chars(16)
+            machine_row.pack_start(self.name, True, True, 0)
+            identity.pack_start(machine_row, True, True, 0)
+            self.addresses = Gtk.ComboBoxText()
+            for renderer in self.addresses.get_cells():
+                renderer.set_property("ellipsize", Pango.EllipsizeMode.END)
+                renderer.set_property("max-width-chars", 16)
+            styled(self.addresses, "endpoint")
+            self.addresses.set_tooltip_text("选择这台电脑可供 iPhone 连接的实际地址")
+            self.addresses.get_accessible().set_name("电脑连接地址")
+            self.addresses.connect("changed", self.render_qr)
+            identity.pack_end(self.addresses, False, False, 0)
+            card.pack_start(identity, False, False, 0)
+            self.copy_button = styled(Gtk.Button(label="复制配对链接"), "copy")
+            self.copy_button.set_sensitive(False)
+            self.copy_button.set_tooltip_text("仅复制当前地址的配对链接。链接包含控制凭据，请勿分享。")
+            self.copy_button.connect("clicked", self.copy_pairing)
+            card.pack_start(self.copy_button, False, False, 0)
+            self.status_detail = text("", "muted")
+            self.status_detail.set_no_show_all(True)
+            layout.pack_start(self.status_detail, False, False, 0)
+            self.access_button = styled(Gtk.Button(label="允许控制桌面"), "access")
             self.access_button.set_sensitive(False)
             self.access_button.set_no_show_all(True)
             self.access_button.connect("clicked", self.request_access)
             layout.pack_start(self.access_button, False, False, 0)
-            buttons = Gtk.ButtonBox(orientation=Gtk.Orientation.HORIZONTAL)
-            buttons.set_layout(Gtk.ButtonBoxStyle.END)
-            self.refresh = Gtk.Button(label="刷新")
+            footer = text("iPhone 与电脑连接同一网络\n配对码和链接包含控制凭据，请勿分享", "muted")
+            footer.set_justify(Gtk.Justification.CENTER)
+            layout.pack_start(footer, False, False, 0)
+            buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
+            buttons.set_halign(Gtk.Align.CENTER)
+            self.refresh = styled(Gtk.Button(label="刷新"), "quiet")
+            self.refresh.set_image(Gtk.Image.new_from_icon_name("view-refresh-symbolic", Gtk.IconSize.MENU))
+            self.refresh.set_always_show_image(True)
             self.refresh.set_sensitive(False)
             self.refresh.connect("clicked", self.refresh_state)
-            self.quit_button = Gtk.Button(label="退出接收器")
+            self.quit_button = styled(Gtk.Button(label="退出"), "quiet")
+            self.quit_button.set_image(Gtk.Image.new_from_icon_name("system-shutdown-symbolic", Gtk.IconSize.MENU))
+            self.quit_button.set_always_show_image(True)
+            self.quit_button.get_accessible().set_name("退出 Sofatap 接收器")
             self.quit_button.connect("clicked", self.close_receiver)
-            buttons.add(self.refresh)
-            buttons.add(self.quit_button)
+            buttons.pack_start(self.refresh, False, False, 0)
+            buttons.pack_start(self.quit_button, False, False, 0)
             layout.pack_start(buttons, False, False, 0)
             self.connect("delete-event", self.close_receiver)
-            self.backend = Backend(executable,
+            self.backend = backend_factory(
                 lambda state: GLib.idle_add(self.apply_state, state),
-                lambda: GLib.idle_add(self.show_failure), dry_run=args.dry_run)
+                lambda: GLib.idle_add(self.show_failure))
             self.show_all()
             GLib.timeout_add_seconds(1, self.check_state_deadline)
             try:
@@ -287,8 +418,23 @@ def main(argv=None):
                 return False
             self.last_state_at = time.monotonic()
             self.name.set_text(state.name)
-            connection = "iPhone 已连接" if state.connected else "等待 iPhone 扫码"
-            self.status.set_text(connection + " · " + STATUS_LABELS[state.input_status])
+            self.name.set_tooltip_text(state.name)
+            self.name.get_accessible().set_name(state.name)
+            if state.input_status == "ready" and not state.pairings:
+                self.set_status("暂无可用网络地址", "attention", "连接 Wi-Fi 或网线后刷新，重新获取配对地址。")
+            elif state.input_status == "ready":
+                self.set_status("桌面已就绪 · " + ("iPhone 已连接" if state.connected else "等待 iPhone"), "ready")
+            elif state.dry_run:
+                self.set_status(STATUS_LABELS["dry_run"])
+            else:
+                summary = {"permission_required": "需要桌面控制权限", "permission_pending": "等待系统授权",
+                           "permission_denied": "桌面控制尚未授权", "desktop_unavailable": "桌面暂不可用",
+                           "unsupported_session": "当前桌面暂不支持", "dependency_missing": "需要安装桌面组件",
+                           "input_unavailable": "桌面控制已中断"}[state.input_status]
+                detail = STATUS_LABELS[state.input_status]
+                if state.connected:
+                    detail = "iPhone 已连接 · " + detail
+                self.set_status(summary, "attention", detail)
             can_request = not state.dry_run and state.input_status in ACCESS_STATUSES
             self.access_button.set_visible(can_request or state.input_status == "permission_pending")
             self.access_button.set_sensitive(can_request)
@@ -308,11 +454,18 @@ def main(argv=None):
         def render_qr(self, *_):
             if self.updating:
                 return
+            self.reset_copy_label()
             index = self.addresses.get_active()
             if index < 0 or index >= len(self.pairings):
                 self.image.clear()
                 self.rendered_png = None
+                self.copy_button.set_sensitive(False)
+                self.qr_placeholder.set_text("暂无可用连接地址")
+                self.qr_stack.set_visible_child_name("placeholder")
+                self.addresses.set_tooltip_text("暂无可用连接地址")
                 return
+            self.addresses.set_tooltip_text(self.pairings[index].host + "\n选择这台电脑可供 iPhone 连接的实际地址")
+            self.copy_button.set_sensitive(bool(self.pairings[index].uri) and not self.failed and not self.stopping)
             png = self.pairings[index].png
             if png == self.rendered_png:
                 return
@@ -321,13 +474,54 @@ def main(argv=None):
                 loader.write(png)
                 loader.close()
                 pixbuf = loader.get_pixbuf()
-                scale = min(360 / pixbuf.get_width(), 360 / pixbuf.get_height())
+                scale = min(224 / pixbuf.get_width(), 224 / pixbuf.get_height())
                 pixbuf = pixbuf.scale_simple(max(1, int(pixbuf.get_width() * scale)), max(1, int(pixbuf.get_height() * scale)), GdkPixbuf.InterpType.NEAREST)
                 self.image.set_from_pixbuf(pixbuf)
                 self.rendered_png = png
+                self.qr_stack.set_visible_child_name("qr")
             except GLib.Error:
                 self.image.clear()
-                self.status.set_text("二维码暂时不可用，请刷新")
+                self.rendered_png = None
+                self.copy_button.set_sensitive(False)
+                self.qr_placeholder.set_text("二维码暂时不可用")
+                self.qr_stack.set_visible_child_name("placeholder")
+                self.set_status("二维码暂时不可用", "attention", "请刷新；若仍不可用，请重新打开接收器。")
+
+        def set_status(self, message, kind=None, detail=""):
+            self.status.set_text(message)
+            context = self.status_dot.get_style_context()
+            for name in ("ready", "attention"):
+                context.remove_class(name)
+            if kind:
+                context.add_class(kind)
+            self.status_detail.set_text(detail)
+            self.status_detail.set_visible(bool(detail))
+
+        def reset_copy_label(self):
+            if self.copy_reset_source is not None:
+                GLib.source_remove(self.copy_reset_source)
+                self.copy_reset_source = None
+            self.copy_button.set_label("复制配对链接")
+            return False
+
+        def copy_pairing(self, *_):
+            # The only clipboard access in this UI: an explicit user action.
+            # No clipboard read, auto-copy, persistence request or secret logging.
+            index = self.addresses.get_active()
+            if self.failed or self.stopping or not 0 <= index < len(self.pairings):
+                return
+            uri = self.pairings[index].uri
+            if uri is None:
+                return
+            clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
+            clipboard.set_text(uri, -1)
+            self.reset_copy_label()
+            self.copy_button.set_label("已复制")
+            def reset():
+                self.copy_reset_source = None
+                self.copy_button.set_label("复制配对链接")
+                return False
+            self.copy_reset_source = GLib.timeout_add_seconds(2, reset)
 
         def check_state_deadline(self):
             if self.stopping or self.failed:
@@ -360,9 +554,13 @@ def main(argv=None):
                 self.rendered_png = None
                 self.pairings = ()
                 self.addresses.remove_all()
+                self.addresses.set_sensitive(False)
+                self.copy_button.set_sensitive(False)
+                self.qr_placeholder.set_text("连接已中断")
+                self.qr_stack.set_visible_child_name("placeholder")
                 self.refresh.set_sensitive(False)
                 self.access_button.set_sensitive(False)
-                self.status.set_text("接收端连接已中断。请检查后端版本，退出后重试。")
+                self.set_status("接收器连接已中断", "attention", "请检查后端版本，退出后重试。")
                 if not self.backend.stopping:
                     def stop_failed_backend():
                         try:
@@ -377,7 +575,14 @@ def main(argv=None):
                 return True
             self.stopping = True
             self.image.clear()
-            self.status.set_text("正在退出接收器…")
+            self.pairings = ()
+            self.rendered_png = None
+            self.addresses.set_sensitive(False)
+            self.copy_button.set_sensitive(False)
+            self.reset_copy_label()
+            self.qr_placeholder.set_text("正在退出…")
+            self.qr_stack.set_visible_child_name("placeholder")
+            self.set_status("正在退出接收器…")
             self.refresh.set_sensitive(False)
             self.access_button.set_sensitive(False)
             self.quit_button.set_sensitive(False)
@@ -394,15 +599,41 @@ def main(argv=None):
         def show_shutdown_failure(self):
             self.stopping = False
             self.quit_button.set_sensitive(True)
-            self.status.set_text("接收进程尚未退出。请重试退出，或在系统进程管理器中关闭接收端。")
+            self.set_status("接收进程尚未退出", "attention", "请重试退出，或在系统进程管理器中关闭接收端。")
             return False
 
         def finish_close(self):
+            self.reset_copy_label()
             self.destroy()
             Gtk.main_quit()
             return False
 
-    window = Window()
+    return Window()
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--backend", required=True, type=Path, help="self-contained Sofatap receiver executable")
+    parser.add_argument("--dry-run", action="store_true", help="preview pairing without sending mouse or keyboard events")
+    args = parser.parse_args(argv)
+    if sys.platform != "linux":
+        parser.error("the Linux receiver requires Linux; protocol checks can run on other systems")
+    executable = args.backend.expanduser().resolve()
+    if not executable.is_file() or not os.access(executable, os.X_OK):
+        parser.error("--backend must point to an executable Sofatap receiver")
+    try:
+        import gi
+        gi.require_version("Gtk", "3.0")
+        from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+    except (ImportError, ValueError):
+        print("Sofatap requires Python 3, PyGObject and GTK 3. See the included README.md.", file=sys.stderr)
+        return 2
+    if not Gtk.init_check()[0]:
+        print("Sofatap requires a logged-in graphical Linux desktop.", file=sys.stderr)
+        return 2
+
+    window = create_window(Gtk, Gdk, GdkPixbuf, GLib,
+        lambda on_state, on_failure: Backend(executable, on_state, on_failure, dry_run=args.dry_run))
     try:
         Gtk.main()
     finally:

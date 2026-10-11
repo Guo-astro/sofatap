@@ -1,64 +1,194 @@
+using System.Runtime.InteropServices;
+
 namespace SofaTap.Desktop;
 
 internal sealed class PairingWindow : Form
 {
     private readonly BackendProcess _backend = new();
+    private readonly System.Windows.Forms.Timer _copyFeedback = new() { Interval = 2000 };
     private readonly string[] _arguments;
-    private readonly Label _machine = new() { AutoSize = true, Dock = DockStyle.Fill, Text = "正在启动电脑接收端…" };
-    private readonly Label _status = new() { AutoSize = true, Dock = DockStyle.Fill, Text = "正在准备配对", ForeColor = Color.FromArgb(25, 105, 72) };
-    private readonly ComboBox _addresses = new() { Dock = DockStyle.Fill, DropDownStyle = ComboBoxStyle.DropDownList, AccessibleName = "电脑局域网地址" };
-    private readonly PictureBox _qr = new() { Dock = DockStyle.Fill, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Color.White, AccessibleName = "iPhone 私密配对二维码" };
-    private readonly Label _placeholder = new() { Dock = DockStyle.Fill, TextAlign = ContentAlignment.MiddleCenter, Text = "正在生成二维码…", BackColor = Color.White };
-    private readonly Button _refresh = new() { Text = "刷新", AutoSize = true, Enabled = false };
-    private readonly Button _quit = new() { Text = "退出接收器", AutoSize = true };
+    private readonly bool _preview;
+    private readonly Panel _scroll = new() { Dock = DockStyle.Fill, AutoScroll = true, BackColor = MintCalm.Canvas };
+    private readonly Panel _content = new() { BackColor = MintCalm.Canvas };
+    private readonly StatusBadge _status = new() { Text = "正在准备配对" };
+    private readonly Label _headline = TextLabel("扫码，坐回沙发", MintCalm.Text);
+    private readonly Label _helper = TextLabel("在 iPhone 上打开 Sofatap，扫描二维码", MintCalm.Muted);
+    private readonly RoundedSurface _card = new();
+    private readonly Label _machine = TextLabel("正在启动电脑接收端…", MintCalm.Text);
+    private readonly ComboBox _addresses = new()
+    {
+        DropDownStyle = ComboBoxStyle.DropDownList, FlatStyle = FlatStyle.Flat,
+        BackColor = MintCalm.Surface, ForeColor = MintCalm.Text,
+        AccessibleName = "电脑局域网地址", AccessibleDescription = "选择 iPhone 可以访问的电脑网络地址。", TabIndex = 0,
+        Enabled = false, IntegralHeight = true
+    };
+    private readonly QrView _qr = new() { AccessibleName = "iPhone 私密配对二维码", Text = "正在生成二维码…" };
+    private readonly CalmButton _copy = new(true)
+    {
+        Text = "复制配对链接", Enabled = false, TabIndex = 1,
+        AccessibleName = "复制配对链接", AccessibleDescription = "将当前配对链接复制到剪贴板。链接可授权控制这台电脑，请勿分享。"
+    };
+    private readonly Label _networkHint = TextLabel("iPhone 与电脑请连接同一家庭网络", MintCalm.Muted);
+    private readonly Label _privacyHint = TextLabel("配对码和链接可控制这台电脑，请勿分享", MintCalm.Muted);
+    private readonly CalmButton _refresh = new(false) { Text = "刷新", Enabled = false, TabIndex = 2, AccessibleName = "刷新配对二维码" };
+    private readonly CalmButton _quit = new(false) { Text = "退出", TabIndex = 3, AccessibleName = "退出接收器", AccessibleDescription = "停止此窗口启动的接收进程并退出。" };
     private PairingImage[] _pairings = [];
     private byte[]? _renderedPng;
+    private string? _copyUri;
     private bool _updating;
+    private bool _layingOut;
     private bool _stopping;
     private bool _allowClose;
 
-    internal PairingWindow(string[] arguments)
+    internal PairingWindow(string[] arguments) : this(arguments, preview: false) { }
+
+    // Offline rendering only: this constructor never attaches the backend-start event.
+    internal PairingWindow(ReceiverState fixture) : this([], preview: true) { ApplyState(fixture); }
+
+    private PairingWindow(string[] arguments, bool preview)
     {
         _arguments = arguments;
+        _preview = preview;
         Text = "Sofatap";
+        ShowIcon = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(470, 700);
-        MinimumSize = new Size(410, 640);
-        Font = new Font("Segoe UI", 11);
+        ClientSize = new Size(472, 730);
+        MinimumSize = new Size(350, 440);
+        Font = new Font("Segoe UI", 10.5f);
+        BackColor = MintCalm.Canvas;
+        ForeColor = MintCalm.Text;
         AutoScaleMode = AutoScaleMode.Dpi;
-        var layout = new TableLayoutPanel { Dock = DockStyle.Fill, Padding = new Padding(24), ColumnCount = 1, RowCount = 8 };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        foreach (var row in new[] { 0, 1, 2, 3, 5, 6, 7 }) layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.RowStyles.Insert(4, new RowStyle(SizeType.Percent, 100));
-        var title = new Label { Text = "手机，坐下来控制。", Font = new Font(Font.FontFamily, 23, FontStyle.Bold), AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 12) };
-        _machine.Margin = new Padding(0, 0, 0, 8);
-        _status.Margin = new Padding(0, 0, 0, 14);
-        _addresses.Margin = new Padding(0, 0, 0, 12);
-        var imageArea = new Panel { Dock = DockStyle.Fill, MinimumSize = new Size(280, 280), Margin = new Padding(0, 0, 0, 14) };
-        imageArea.Controls.Add(_qr);
-        imageArea.Controls.Add(_placeholder);
-        var help = new Label { Text = "让 iPhone 和电脑连接同一个家庭网络，\n在手机 Sofatap 中扫描这里的二维码。", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
-        var privacy = new Label { Text = "二维码可授权控制这台电脑，请勿分享。\n关闭此窗口会退出接收器。", AutoSize = true, Dock = DockStyle.Fill, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 0, 0, 16) };
-        var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
-        buttons.Controls.Add(_quit);
-        buttons.Controls.Add(_refresh);
-        layout.Controls.Add(title, 0, 0);
-        layout.Controls.Add(_machine, 0, 1);
-        layout.Controls.Add(_status, 0, 2);
-        layout.Controls.Add(_addresses, 0, 3);
-        layout.Controls.Add(imageArea, 0, 4);
-        layout.Controls.Add(help, 0, 5);
-        layout.Controls.Add(privacy, 0, 6);
-        layout.Controls.Add(buttons, 0, 7);
-        Controls.Add(layout);
+        DoubleBuffered = true;
+        _headline.Font = new Font(Font.FontFamily, 23, FontStyle.Bold);
+        _helper.Font = Font;
+        _machine.Font = new Font(Font.FontFamily, 10.5f, FontStyle.Bold);
+        _machine.TextAlign = ContentAlignment.MiddleLeft;
+        _machine.AccessibleName = "电脑名称";
+        _copy.Font = new Font(Font.FontFamily, 11, FontStyle.Bold);
+        _status.Font = new Font(Font.FontFamily, 9.5f);
+        _networkHint.Font = _privacyHint.Font = new Font(Font.FontFamily, 9.5f);
+        _card.Controls.AddRange([_qr, _machine, _addresses, _copy]);
+        _content.Controls.AddRange([_status, _headline, _helper, _card, _networkHint, _privacyHint, _refresh, _quit]);
+        _scroll.Controls.Add(_content);
+        Controls.Add(_scroll);
+        _scroll.ClientSizeChanged += (_, _) => LayoutContents();
+        _copyFeedback.Tick += (_, _) => { _copyFeedback.Stop(); _copy.Text = "复制配对链接"; };
         _addresses.SelectedIndexChanged += (_, _) => { if (!_updating) RenderQr(); };
+        _copy.Click += (_, _) => CopyPairingLink();
         _refresh.Click += async (_, _) => await RefreshAsync();
         _quit.Click += (_, _) => Close();
-        _backend.StateReceived += state => OnUi(() => ApplyState(state));
-        _backend.Failed += () => OnUi(ShowBackendFailure);
-        Shown += (_, _) => StartBackend();
+        if (!preview)
+        {
+            _backend.StateReceived += state => OnUi(() => ApplyState(state));
+            _backend.Failed += () => OnUi(ShowBackendFailure);
+            Shown += (_, _) => StartBackend();
+        }
         FormClosing += ClosingAsync;
+        LayoutContents();
     }
+
+    private static Label TextLabel(string text, Color color) => new()
+    {
+        Text = text, ForeColor = color, BackColor = Color.Transparent,
+        AutoSize = false, TextAlign = ContentAlignment.MiddleCenter, UseMnemonic = false,
+        TabStop = false
+    };
+
+    private int S(int logicalPixels) => (int)Math.Round(logicalPixels * DeviceDpi / 96d);
+
+    private int LabelHeight(Label label, int width, int minimum)
+    {
+        var measured = TextRenderer.MeasureText(label.Text, label.Font, new Size(width, int.MaxValue),
+            TextFormatFlags.WordBreak | TextFormatFlags.NoPrefix | TextFormatFlags.TextBoxControl);
+        return Math.Max(S(minimum), measured.Height + S(4));
+    }
+
+    private void LayoutContents()
+    {
+        if (_layingOut || IsDisposed || _scroll.ClientSize.Width == 0) return;
+        _layingOut = true;
+        try
+        {
+            var outer = S(24);
+            // 264 points fits the 224-point QR and both card insets, including a vertical scrollbar at minimum width.
+            var width = Math.Max(S(264), Math.Min(S(424), _scroll.ClientSize.Width - outer * 2));
+            var y = S(24);
+            var statusWidth = Math.Min(width, _status.GetPreferredSize(new Size(width, 0)).Width);
+            var statusHeight = _status.GetPreferredSize(new Size(statusWidth, 0)).Height;
+            _status.SetBounds((width - statusWidth) / 2, y, statusWidth, statusHeight);
+            y += statusHeight + S(12);
+            var headlineHeight = LabelHeight(_headline, width, 40);
+            _headline.SetBounds(0, y, width, headlineHeight);
+            y += headlineHeight + S(2);
+            var helperHeight = LabelHeight(_helper, width, 24);
+            _helper.SetBounds(0, y, width, helperHeight);
+            y += helperHeight + S(18);
+            var inset = S(20);
+            var innerWidth = width - inset * 2;
+            var qrSize = S(224);
+            var cardY = S(20);
+            _qr.SetBounds((width - qrSize) / 2, cardY, qrSize, qrSize);
+            cardY += qrSize + S(16);
+            if (width >= S(390))
+            {
+                var machineWidth = (int)(innerWidth * .45);
+                var addressWidth = innerWidth - machineWidth - S(14);
+                var rowHeight = LabelHeight(_machine, machineWidth, 32);
+                _machine.SetBounds(inset, cardY, machineWidth, rowHeight);
+                _addresses.SetBounds(inset + machineWidth + S(14), cardY + (rowHeight - _addresses.PreferredHeight) / 2,
+                    addressWidth, _addresses.PreferredHeight);
+                cardY += rowHeight;
+            }
+            else
+            {
+                var machineHeight = LabelHeight(_machine, innerWidth, 24);
+                _machine.SetBounds(inset, cardY, innerWidth, machineHeight);
+                cardY += machineHeight + S(8);
+                _addresses.SetBounds(inset, cardY, innerWidth, _addresses.PreferredHeight);
+                cardY += _addresses.PreferredHeight;
+            }
+            cardY += S(16);
+            _copy.SetBounds(inset, cardY, innerWidth, S(44));
+            cardY += S(44) + S(20);
+            _card.SetBounds(0, y, width, cardY);
+            y += cardY + S(17);
+            var networkHeight = LabelHeight(_networkHint, width, 20);
+            _networkHint.SetBounds(0, y, width, networkHeight);
+            y += networkHeight + S(2);
+            var privacyHeight = LabelHeight(_privacyHint, width, 20);
+            _privacyHint.SetBounds(0, y, width, privacyHeight);
+            y += privacyHeight + S(18);
+            var buttonWidth = S(100);
+            var buttonGap = S(20);
+            _refresh.SetBounds((width - buttonWidth * 2 - buttonGap) / 2, y, buttonWidth, S(36));
+            _quit.SetBounds(_refresh.Right + buttonGap, y, buttonWidth, S(36));
+            y += S(36) + S(24);
+            _content.Size = new Size(width, y);
+            // The content's own bounds provide its width. Reserving a full viewport width here
+            // would cause an unnecessary horizontal scrollbar when the vertical one appears.
+            _scroll.AutoScrollMinSize = new Size(0, y);
+            _content.Location = new Point(Math.Max(outer, (_scroll.ClientSize.Width - width) / 2) + _scroll.AutoScrollPosition.X,
+                _scroll.AutoScrollPosition.Y);
+        }
+        finally { _layingOut = false; }
+        var availableWidth = Math.Max(S(264), Math.Min(S(424), _scroll.ClientSize.Width - S(48)));
+        if (_content.Width != availableWidth) LayoutContents();
+    }
+
+    protected override void OnHandleCreated(EventArgs e)
+    {
+        base.OnHandleCreated(e);
+        // Keep the real Windows frame and its standard controls. This only requests its dark appearance.
+        try { var enabled = 1; _ = DwmSetWindowAttribute(Handle, 20, ref enabled, sizeof(int)); }
+        catch (Exception error) when (error is DllNotFoundException or EntryPointNotFoundException) { }
+        LayoutContents();
+    }
+
+    protected override void OnDpiChanged(DpiChangedEventArgs e) { base.OnDpiChanged(e); LayoutContents(); }
+    protected override bool ShowWithoutActivation => _preview || base.ShowWithoutActivation;
+
+    [DllImport("dwmapi.dll")]
+    private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
 
     private void StartBackend()
     {
@@ -83,12 +213,14 @@ internal sealed class PairingWindow : Form
     {
         if (_stopping) return;
         _machine.Text = state.Name;
-        _status.Text = state.DryRun ? "演练模式 · 不会向电脑输入操作" : state.InputStatus switch
+        _machine.AccessibleDescription = state.Name;
+        _status.Text = state.Pairings.Length == 0 ? "暂无可用网络地址" : state.DryRun ? "演练模式 · 输入已停用" : state.InputStatus switch
         {
-            "ready" => state.Connected ? "iPhone 已连接 · 可以控制电脑" : "已就绪 · 等待 iPhone 扫码",
-            "accessibility_required" => "需要在电脑上允许接收器控制桌面",
+            "ready" => state.Connected ? "iPhone 已连接 · 可以控制电脑" : "已就绪 · 等待 iPhone",
+            "accessibility_required" => "需要允许接收器控制电脑",
             _ => "请登录并解锁电脑桌面"
         };
+        _status.IndicatorColor = state.Pairings.Length > 0 && !state.DryRun && state.InputStatus == "ready" ? MintCalm.Mint : MintCalm.Attention;
         var selected = _addresses.SelectedItem as string;
         _updating = true;
         _pairings = state.Pairings;
@@ -96,40 +228,62 @@ internal sealed class PairingWindow : Form
         _addresses.Items.AddRange(_pairings.Select(pairing => (object)pairing.Host).ToArray());
         var previous = Array.FindIndex(_pairings, pairing => pairing.Host == selected);
         _addresses.SelectedIndex = _pairings.Length == 0 ? -1 : Math.Max(0, previous);
+        _addresses.Enabled = _pairings.Length > 0;
+        _addresses.DropDownWidth = Math.Max(_addresses.Width,
+            Math.Min(S(520), _pairings.Select(pairing => TextRenderer.MeasureText(pairing.Host, _addresses.Font).Width + S(36)).DefaultIfEmpty(0).Max()));
         _updating = false;
         _refresh.Enabled = true;
         RenderQr();
+        LayoutContents();
     }
 
     private void RenderQr()
     {
         var index = _addresses.SelectedIndex;
-        if (index < 0 || index >= _pairings.Length) { ClearQr("暂无可用网络地址"); return; }
-        var png = _pairings[index].Png;
-        if (_renderedPng is not null && png.AsSpan().SequenceEqual(_renderedPng)) return;
+        if (index < 0 || index >= _pairings.Length) { ClearQr("暂无可用网络地址\n连接家庭网络后刷新"); return; }
+        var pairing = _pairings[index];
+        if (_renderedPng is null || !pairing.Png.AsSpan().SequenceEqual(_renderedPng))
+        {
+            try
+            {
+                using var stream = new MemoryStream(pairing.Png, writable: false);
+                using var decoded = Image.FromStream(stream);
+                _qr.SetImage(new Bitmap(decoded));
+                _renderedPng = pairing.Png;
+            }
+            catch (Exception error) when (error is ArgumentException or OutOfMemoryException)
+            { ClearQr("二维码暂时不可用\n请刷新后重试"); return; }
+        }
+        var uri = NativeProtocol.ValidPairingUri(pairing.Uri, pairing.Host);
+        if (_copyUri != uri) { _copyFeedback.Stop(); _copy.Text = "复制配对链接"; }
+        _copyUri = uri;
+        _copy.Enabled = uri is not null && _qr.HasImage;
+    }
+
+    private void CopyPairingLink()
+    {
+        if (_copyUri is null || !_copy.Enabled || _stopping || _preview) return;
         try
         {
-            using var stream = new MemoryStream(png, writable: false);
-            using var decoded = Image.FromStream(stream);
-            var image = new Bitmap(decoded);
-            var previous = _qr.Image;
-            _qr.Image = image;
-            previous?.Dispose();
-            _renderedPng = png;
-            _placeholder.Hide();
+            // The only clipboard write in this frontend; never invoked by status refresh or input delivery.
+            Clipboard.SetText(_copyUri);
+            _copy.Text = "已复制配对链接";
         }
-        catch (Exception error) when (error is ArgumentException or OutOfMemoryException)
-        { ClearQr("二维码暂时不可用，请刷新"); }
+        catch (Exception error) when (error is ExternalException or System.Threading.ThreadStateException)
+        { _copy.Text = "暂时无法复制，请重试"; }
+        _copyFeedback.Stop();
+        _copyFeedback.Start();
     }
 
     private void ClearQr(string text)
     {
-        var image = _qr.Image;
-        _qr.Image = null;
-        image?.Dispose();
+        _qr.SetImage(null);
         _renderedPng = null;
-        _placeholder.Text = text;
-        _placeholder.Show();
+        _qr.Text = text;
+        _copyUri = null;
+        _copyFeedback.Stop();
+        _copy.Enabled = false;
+        _copy.Text = "复制配对链接";
     }
 
     private void ShowBackendFailure()
@@ -137,40 +291,69 @@ internal sealed class PairingWindow : Form
         if (_stopping) return;
         _refresh.Enabled = false;
         _pairings = [];
-        _status.Text = "接收端连接已中断。请退出并重新打开。";
-        ClearQr("请确认完整解压了 Sofatap 安装包");
+        _updating = true;
+        _addresses.Items.Clear();
+        _addresses.Enabled = false;
+        _updating = false;
+        _status.Text = "接收端连接已中断";
+        _status.IndicatorColor = MintCalm.Attention;
+        ClearQr("请退出并重新打开接收器\n确认完整解压了 Sofatap 安装包");
+        LayoutContents();
     }
 
     private async Task RefreshAsync()
     {
+        if (_preview) return;
         try { await _backend.SendAsync("refresh"); }
         catch (Exception error) when (error is IOException or InvalidOperationException or ObjectDisposedException) { ShowBackendFailure(); }
     }
 
     private async void ClosingAsync(object? sender, FormClosingEventArgs args)
     {
-        if (_allowClose) return;
+        if (_preview || _allowClose) return;
         args.Cancel = true;
         if (_stopping) return;
         _stopping = true;
         _refresh.Enabled = false;
         _quit.Enabled = false;
-        ClearQr("正在退出接收器…");
+        _addresses.Enabled = false;
+        _status.Text = "正在退出接收器";
+        ClearQr("正在停止接收器…");
+        LayoutContents();
         try { await _backend.StopAsync(); }
         catch (Exception error) when (error is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
         {
-            _status.Text = "接收进程尚未退出。请重试，或在任务管理器关闭 SofaTapHost。";
+            _status.Text = "接收进程尚未退出";
+            _qr.Text = "请重试退出，或在任务管理器\n关闭 SofaTapHost";
+            _status.IndicatorColor = MintCalm.Attention;
             _stopping = false;
             _quit.Enabled = true;
+            LayoutContents();
             return;
         }
         _allowClose = true;
         Close();
     }
 
+    internal void ShowPreviewFailure()
+    {
+        if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");
+        ShowBackendFailure();
+    }
+
+    internal bool PreviewHasQr => _preview && _qr.HasImage;
+    internal bool PreviewCopyEnabled => _preview && _copy.Enabled;
+    internal bool PreviewCanScroll => _preview && _scroll.VerticalScroll.Visible;
+    internal bool PreviewHasHorizontalScroll => _preview && _scroll.HorizontalScroll.Visible;
+    internal void ScrollPreviewToBottom()
+    {
+        if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");
+        _scroll.AutoScrollPosition = new Point(0, _scroll.AutoScrollMinSize.Height);
+    }
+
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _backend.Dispose(); _qr.Image?.Dispose(); }
+        if (disposing) { _copyFeedback.Dispose(); _backend.Dispose(); }
         base.Dispose(disposing);
     }
 }
