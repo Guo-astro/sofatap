@@ -12,6 +12,7 @@ import queue
 import secrets
 import select
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -67,8 +68,15 @@ def child_check():
     x.XSetInputFocus(display, GdkX11.X11Window.get_xid(window.get_window()), 1, 0)
     x.XSync(display, 0)
     responses = queue.Queue()
-    worker = subprocess.Popen([sys.executable, "-B", "-u", str(Path(__file__).with_name("text_focus_worker.py"))],
-                              stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+    worker_errors = tempfile.TemporaryFile()
+    # Stack dumps are test-only: the shipped helper has no signal/debug endpoint.
+    # Faulthandler prints code locations without local variables or UI contents.
+    worker_wrapper = ("import faulthandler,runpy,signal,sys; "
+                      "faulthandler.register(signal.SIGUSR1, all_threads=True); "
+                      "runpy.run_path(sys.argv[1],run_name='__main__')")
+    worker = subprocess.Popen([sys.executable, "-B", "-u", "-c", worker_wrapper,
+                               str(Path(__file__).with_name("text_focus_worker.py"))],
+                              stdout=subprocess.PIPE, stderr=worker_errors, text=True)
 
     def read_responses():
         for line in worker.stdout:
@@ -95,11 +103,20 @@ def child_check():
 
     def diagnostics():
         # These flags concern our own blank widgets, never text or native identifiers.
-        return json.dumps({"receivedStates": observed, "windowActive": window.is_active(),
-                           "windowHasFocus": window.has_toplevel_focus(),
-                           "entryHasFocus": writable.has_focus(), "buttonHasFocus": button.has_focus(),
-                           "entryAtkFocus": writable.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED),
-                           "buttonAtkFocus": button.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED)}, sort_keys=True)
+        summary = json.dumps({"receivedStates": observed, "windowActive": window.is_active(),
+                              "windowHasFocus": window.has_toplevel_focus(),
+                              "entryHasFocus": writable.has_focus(), "buttonHasFocus": button.has_focus(),
+                              "entryAtkFocus": writable.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED),
+                              "buttonAtkFocus": button.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED)}, sort_keys=True)
+        if worker.poll() is None:
+            worker.send_signal(signal.SIGUSR1)
+            time.sleep(.1)
+        worker_errors.seek(0)
+        # Include only bounded stack-location lines; arbitrary provider diagnostics
+        # are never echoed into CI. All targets in this fixture are owned and blank.
+        lines = worker_errors.read(8192).decode("utf-8", errors="replace").splitlines()
+        stack = [line for line in lines if line.startswith(("Current thread", "Thread", "  File "))][-30:]
+        return summary + "\nOwned helper stack:\n" + "\n".join(stack)
 
     def focus(widget):
         widget.grab_focus()
@@ -136,7 +153,7 @@ def child_check():
             if time.monotonic() >= next_transition:
                 entry_selected = not entry_selected
                 focus(writable if entry_selected else button)
-                next_transition = time.monotonic() + .25
+                next_transition = time.monotonic() + .5
             value = take_response()
             if entry_selected and value is not None and value["kind"] == "editable":
                 return value
@@ -173,6 +190,7 @@ def child_check():
             worker.wait(timeout=3)
         reader.join(timeout=2)
         worker.stdout.close()
+        worker_errors.close()
         window.destroy()
         pump()
         x.XCloseDisplay(display)

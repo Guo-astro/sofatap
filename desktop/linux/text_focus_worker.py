@@ -3,7 +3,8 @@
 
 No tree traversal: startup remains unknown until an accessibility focus event.
 No permission prompts or desktop input. Absence of AT-SPI is a supported fallback.
-The AT-SPI library may receive incidental platform event metadata; none is emitted.
+Depending on its version, the AT-SPI library may populate an internal cache with
+incidental names/descriptions; Sofatap does not inspect, log or emit those fields.
 """
 import json
 import os
@@ -20,10 +21,11 @@ def classify_focus(*, focused, enabled, editable, read_only, password, defunct):
 
 
 def main():
-    # Cache.NONE controls which cached properties API calls use, but does not
-    # disable libatspi's automatic Cache.GetItems request. Set its no-cache switch
-    # before loading GI/AT-SPI so names/descriptions are not requested in bulk.
-    # This changes only this helper process, never the user's desktop settings.
+    # Request fresh role/state metadata instead of trusting cached properties.
+    # In libatspi 2.52 this flag does not stop its automatic Cache.GetItems call;
+    # the library may still populate incidental names/descriptions internally.
+    # Sofatap does not inspect those fields. This changes only this helper's
+    # environment, never the user's desktop settings.
     os.environ["ATSPI_NO_CACHE"] = "1"
     try:
         import gi
@@ -76,7 +78,7 @@ def main():
             return
         Atspi.set_timeout(150, 300)
         # Do not use cached states; subsequent explicit queries request role/state
-        # metadata only. Libatspi may still receive unsolicited platform events.
+        # metadata only. Libatspi can still populate its internal object cache.
         Atspi.get_desktop(0).set_cache_mask(Atspi.Cache.NONE)
         listener = Atspi.EventListener.new(focus_changed)
         listener.register("object:state-changed:focused")
