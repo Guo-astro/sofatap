@@ -23,7 +23,17 @@ Keep implementation and verification claims distinct. Concept illustrations are 
 
 - [English README](../README.md) is the default; [简体中文](../README.zh-CN.md) and [日本語](../README.ja.md) provide equivalent versions.
 - [Living-room hero](images/sofatap-living-room.png): generated with the built-in imagegen tool, visually reviewed, and shared by all three READMEs. [Exact generation prompt](brand/living-room-image-prompt.txt).
-- The app icon and icon concepts contain no text, so this spelling update does not change their artwork.
+- The main iPhone surface and app icon use [the phone-on-sofa mark](../output/imagegen/sofatap-icons-2026-10-11/06-phone-sofa.png), created by combining the first sofa and second phone/cursor concepts at the user's request. `BrandMark.imageset/BrandMark.png` is an unchanged copy of the 1254-pixel source; `AppIcon.appiconset/AppIcon.png` is the same full composition resized to an opaque 1024-pixel square with `sips`. Its cursor belongs inside the logo; the touch surface does not display a separate pointer graphic. macOS and Linux icon packaging also derives from AppIcon. Previously signed/published binaries retain their original icon.
 - No promotional video is currently tracked in this repository. Future video work must follow the spelling above.
 
 Keep stable code and compatibility identifiers such as existing `SofaTap` project/executable names, archive filenames, bundle IDs and credential paths. Literal filenames in immutable published archives and verbatim historical generation prompts retain their original spelling and must be labeled as historical. They are evidence and compatibility references, not reusable marketing copy. Never alter a signed release archive to change branding in place.
+
+### Reproduce the current icon assets
+
+Copy `output/imagegen/sofatap-icons-2026-10-11/06-phone-sofa.png` unchanged to `ios/SofaTap/Assets.xcassets/BrandMark.imageset/BrandMark.png`. Resize only the complete square for the App Store icon:
+
+```sh
+sips -z 1024 1024 output/imagegen/sofatap-icons-2026-10-11/06-phone-sofa.png --out ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png
+```
+
+The source and BrandMark share SHA-256 `bab56f458fe7b76832788c4926b04a3574b3c09249372282a86922c8cfa9df05`. The historical `ios/tools/GenerateIcon.swift` generates the superseded sofa-only symbol and requires an explicit legacy flag plus output path; it is not the source for current branding.

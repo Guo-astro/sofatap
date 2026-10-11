@@ -14,15 +14,15 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 ## 可以做什么
 
-- 一个大圆角触控区域，容纳 logo、扫码、麦克风和键盘入口。默认仅显示图标，粒子反馈跟随手指；开启「减弱动态效果」后使用简化反馈。
+- 一个大圆角触控区域，容纳 logo、扫码、麦克风和键盘入口。背景铺满缓慢流动的点阵，触摸会使附近点阵弯曲、偏移，点击产生涟漪。触控面不放说明文字；开启「减弱动态效果」后点阵保持静止，触摸反馈简化。
 - 滑动移动鼠标、单击左键、连续双击右键、停留 300 ms 后拖动、双指滑动滚动。
 - 点击底部麦克风使用设备支持的本机语音识别，也可使用 iPhone 键盘／Typeless。检查手机上的草稿后点**发送**，输入电脑当前聚焦的输入框；不会额外追加回车或提交操作，文字本身可包含换行。
 - 扫描**电脑原生窗口**里的二维码配对：Mac 使用 AppKit/SwiftUI，Windows 使用 WinForms，Linux 使用 GTK3，无需打开浏览器。
 - 通过家庭局域网连接，使用 WSS/TLS、证书指纹校验和本地配对凭据。保留草稿、发送确认和断线后不自动重放，帮助避免重复输入。
 
-**当前是 alpha 预览版。** 单屏手势、麦克风和输入框焦点提示位于 `main` 的 0.5.0 开发源码（iPhone build 7）中；下方下载仍是先前 alpha 版本，不含这些更新。真实 iPhone 手势／听写、Typeless 和不同应用的焦点行为仍需验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
+**当前是 alpha 预览版。** 单屏手势、麦克风和输入框焦点提示位于 `main` 的 0.5.0 开发源码（iPhone build 8）中；下方下载仍是先前 alpha 版本，不含这些更新。真实 iPhone 手势／听写、Typeless 和不同应用的焦点行为仍需验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
-点击 logo 查看连接详情和手势帮助。需要输入时，草稿区才出现在触控区域下方，保留文字检查与明确发送操作。[查看离线模拟器界面](docs/images/sofatap-single-screen.png)与[粒子特效预览](docs/images/sofatap-touch-effects.mp4)。这些仅展示本地渲染，不代表真实 iPhone 输入或性能已验证。
+点击 logo 查看连接详情和手势帮助。需要输入时，草稿区才出现在触控区域下方，保留文字检查与明确发送操作。[查看离线模拟器界面](docs/images/sofatap-single-screen.png)与[点阵动效预览](docs/images/sofatap-touch-effects.mp4)。这些仅展示本地渲染，不代表真实 iPhone 输入或性能已验证。
 
 兼容接收端识别到提供辅助功能元数据的原生或网页可编辑输入框时，手机会自动弹出键盘。检测不读取框内内容；不支持检测、只读或安全输入框不会自动唤起输入界面。Linux 检测需要可选的 AT-SPI 桥接，仍可手动打开键盘。参见[焦点检测及平台限制](docs/TEXT-FOCUS.md)。
 
@@ -30,7 +30,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 iPhone 到 Mac 的联合验收；0.5.0 (7) 的单屏手势、麦克风和自动键盘仍需真机验收。 |
+| iPhone | iOS 17+。iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 iPhone 到 Mac 的联合验收；0.5.0 (8) 的单屏手势、麦克风和自动键盘仍需真机验收。 |
 | Windows | 0.3.0 原生接收端已发布；本版桌面 UI 和手机联合实测待完成。 |
 | Mac | macOS 15+。Apple Silicon 和 Intel 包均已公证；Apple Silicon 完成部分真机验收，Intel 输入待实测。 |
 | Linux | 0.4.0 GTK3 原生接收端已发布；X11 输入通过隔离桌面检查。Wayland portal 为实验支持；真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |

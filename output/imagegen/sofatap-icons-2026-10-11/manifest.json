@@ -81,7 +81,16 @@
     ],
     "visual_review": "passed",
     "visual_review_notes": "Unified sofa with portrait phone central backrest; one dark negative-space cursor fully inside the phone; no outside cursor, text or OS logos.",
-    "used_in_app": false,
-    "status": "latest user-requested concept"
+    "used_in_app": true,
+    "app_usage": "main iPhone surface BrandMark copied unchanged; AppIcon full composition resized to 1024x1024 with sips",
+    "derived_app_icon": {
+      "file": "../../../ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
+      "width": 1024,
+      "height": 1024,
+      "has_alpha": false,
+      "sha256": "9c8e238a9494526dd50db521ed39ded63ca4872b9c081ae48f4143fb2ae8444e",
+      "operation": "sips -z 1024 1024; entire composition preserved"
+    },
+    "status": "current user-requested combined mark"
   }
 ]

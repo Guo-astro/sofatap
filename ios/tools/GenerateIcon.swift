@@ -1,5 +1,11 @@
-// Original vector icon, generated with the macOS SDK. No external asset dependencies.
+// Historical sofa-only icon generator. The current phone-on-sofa artwork lives in
+// output/imagegen/sofatap-icons-2026-10-11/06-phone-sofa.png; see docs/BRAND.md.
+// Explicit opt-in and an output path prevent replacing today's app icon by accident.
 import AppKit
+guard CommandLine.arguments.count == 3, CommandLine.arguments[1] == "--legacy-sofa-only" else {
+    fputs("Historical generator only. Usage: swift ios/tools/GenerateIcon.swift --legacy-sofa-only /tmp/legacy-sofa.png\nCurrent AppIcon and BrandMark use 06-phone-sofa.png; see docs/BRAND.md.\n", stderr)
+    exit(2)
+}
 let size = 1024
 let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size,
                              bitsPerSample: 8, samplesPerPixel: 4, hasAlpha: true,
@@ -21,5 +27,5 @@ let seam = NSBezierPath()
 seam.move(to: NSPoint(x: 512, y: 450)); seam.line(to: NSPoint(x: 512, y: 683))
 seam.lineWidth = 12; seam.lineCapStyle = .round; seam.stroke()
 NSGraphicsContext.restoreGraphicsState()
-let output = CommandLine.arguments.count > 1 ? CommandLine.arguments[1] : "SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+let output = CommandLine.arguments[2]
 try bitmap.representation(using: .png, properties: [:])!.write(to: URL(fileURLWithPath: output))

@@ -2,7 +2,7 @@
 
 ## The phone is the touchpad
 
-The main iPhone screen is one large rounded touch surface. The logo and QR-scanning control sit inside its top edge; the microphone and left-hand keyboard control sit inside its bottom edge. The resting surface has no instructional text or mouse-arrow graphic. Connection and recording states use icons with accessible labels. Tapping the logo opens connection details and gesture help; the QR control opens the pairing sheet. The five desktop visual proposals remain unselected; this phone interaction change does not select a receiver theme.
+The main iPhone screen is one large rounded touch surface. The logo and QR-scanning control sit inside its top edge; the microphone and left-hand keyboard control sit inside its bottom edge. The resting surface has no instructional text or separate mouse-arrow graphic. Connection and recording states use icons with accessible labels. Tapping the logo opens connection details and gesture help; the QR control opens the pairing sheet. The five desktop visual proposals remain unselected; this phone interaction change does not select a receiver theme.
 
 - Slide one finger to move the computer pointer.
 - Tap once for a left click. Delivery waits briefly for the double-tap decision so a right click never includes an accidental left click.
@@ -14,9 +14,9 @@ Pairing remains an occasional sheet, rather than a second everyday control mode.
 
 ## Touch feedback
 
-Movement leaves a short particle trail at the finger's position. A single tap, double tap and the start of a 300 ms hold produce distinct local particle feedback; dragging keeps feedback with the finger until release. These effects visualize the phone gesture, not the computer pointer's position or confirmation that a desktop application acted on it. Tapping the logo, QR, microphone or keyboard control must not also send a mouse gesture.
+A gently moving dot matrix fills the touch surface, including its resting state. Touch locally displaces and bends nearby dots; dragging strengthens the deformation, and release lets the field settle back. Single and double taps keep distinct expanding ripples that also perturb the field. These effects visualize the phone gesture, not the computer pointer's position or confirmation that a desktop application acted on it. Tapping the logo, QR, microphone or keyboard control must not also send a mouse gesture.
 
-Effects remain inside the touch surface. Reduce Motion replaces particle travel with simpler feedback. App inactivity, touch cancellation and disconnect clear active touch feedback and release any held mouse button. Screen-reader labels describe the icon controls without adding visible instruction text to the surface. The text composer and pairing sheet retain the wording needed to review drafts, errors and connection details.
+Effects remain inside the touch surface. Reduce Motion keeps the matrix static and uses simpler touch feedback. App inactivity, detachment and disconnect pause ambient animation. Touch cancellation clears the local deformation and releases any held mouse button while the active field can keep drifting. Screen-reader labels describe the icon controls without adding visible instruction text to the surface. The text composer and pairing sheet retain the wording needed to review drafts, errors and connection details.
 
 ## Voice and keyboard input
 

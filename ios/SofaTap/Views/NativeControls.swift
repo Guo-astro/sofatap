@@ -136,13 +136,20 @@ struct TouchSurface: UIViewRepresentable {
         deinit { deadlineTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
 
         func configure(_ parent: TouchSurface) {
-            if !parent.enabled && self.parent?.enabled == true { cancelInput() }
+            if !parent.enabled && self.parent?.enabled == true {
+                effects.setActive(false)
+                cancelInput()
+            }
             if self.parent?.control !== parent.control {
                 if self.parent?.control?.view === self { self.parent?.control?.view = nil }
             }
             self.parent = parent
             parent.control?.view = self
             isUserInteractionEnabled = parent.enabled && active
+            effects.setActive(parent.enabled && active && window != nil)
+#if targetEnvironment(simulator)
+            effects.startPreviewIfRequested()
+#endif
         }
         override func layoutSubviews() {
             super.layoutSubviews()
@@ -153,20 +160,30 @@ struct TouchSurface: UIViewRepresentable {
         }
         override func didMoveToWindow() {
             super.didMoveToWindow()
+            effects.setActive(window != nil && active && parent?.enabled == true)
             if window == nil { cancelInput() }
+#if targetEnvironment(simulator)
+            if window != nil { effects.startPreviewIfRequested() }
+#endif
         }
         func detach() {
+            effects.setActive(false)
             cancelInput()
             if parent?.control?.view === self { parent?.control?.view = nil }
         }
         @objc private func inactive() {
             active = false
+            effects.setActive(false)
             cancelInput()
             isUserInteractionEnabled = false
         }
         @objc private func becameActive() {
             active = true
             isUserInteractionEnabled = parent?.enabled == true
+            effects.setActive(parent?.enabled == true && window != nil)
+#if targetEnvironment(simulator)
+            effects.startPreviewIfRequested()
+#endif
         }
         func cancelInput() {
             deadlineTimer?.invalidate()
