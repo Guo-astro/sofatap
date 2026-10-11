@@ -100,7 +100,9 @@ jobs:
       - name: Compile optional native Credential Provider without registering it
         run: |
           cmake -S desktop/windows-login/Provider -B artifacts/windows-login/provider-build -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           cmake --build artifacts/windows-login/provider-build --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           ctest --test-dir artifacts/windows-login/provider-build -C Release --output-on-failure
       - name: Compile self-contained Windows receiver without launching it
         run: dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci

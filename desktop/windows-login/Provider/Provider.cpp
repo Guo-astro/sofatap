@@ -1,4 +1,6 @@
 #include <windows.h>
+// WIN32_LEAN_AND_MEAN omits these COM GUID declarations; both targets link Uuid.lib.
+#include <cguid.h>
 #include <initguid.h>
 #include <credentialprovider.h>
 #include <ntsecapi.h>
