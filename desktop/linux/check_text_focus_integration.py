@@ -32,7 +32,8 @@ def child_check():
     import gi
     gi.require_version("Gtk", "3.0")
     gi.require_version("GdkX11", "3.0")
-    from gi.repository import GLib, Gtk, GdkX11
+    gi.require_version("Atk", "1.0")
+    from gi.repository import GLib, Gtk, GdkX11, Atk
     Gtk.init([])
     window = Gtk.Window(title="Sofatap isolated focus metadata test")
     content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL)
@@ -76,39 +77,86 @@ def child_check():
     reader = threading.Thread(target=read_responses, daemon=True)
     reader.start()
 
+    observed = {kind: 0 for kind in ("unknown", "other", "editable", "protected")}
+
+    def take_response():
+        try:
+            value = responses.get_nowait()
+        except queue.Empty:
+            return None
+        if set(value) != {"kind", "identity"} or value["kind"] not in observed:
+            raise AssertionError("Unexpected focus metadata fields")
+        observed[value["kind"]] += 1
+        if value["kind"] != "unknown":
+            identity = value["identity"]
+            if not isinstance(identity, str) or len(identity) != 32 or any(c not in "0123456789abcdef" for c in identity):
+                raise AssertionError("Focus identity is not opaque")
+        return value
+
+    def diagnostics():
+        # These flags concern our own blank widgets, never text or native identifiers.
+        return json.dumps({"receivedStates": observed, "windowActive": window.is_active(),
+                           "windowHasFocus": window.has_toplevel_focus(),
+                           "entryHasFocus": writable.has_focus(), "buttonHasFocus": button.has_focus(),
+                           "entryAtkFocus": writable.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED),
+                           "buttonAtkFocus": button.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED)}, sort_keys=True)
+
+    def focus(widget):
+        widget.grab_focus()
+        pump()
+        if (not widget.has_focus() or window.get_focus() != widget
+                or not widget.get_accessible().ref_state_set().contains_state(Atk.StateType.FOCUSED)):
+            raise AssertionError("Owned GTK widget did not gain actual focus: " + diagnostics())
+
     def wait_state(expected=None, previous=None):
         deadline = time.monotonic() + 8
         while time.monotonic() < deadline:
             pump()
             if worker.poll() is not None:
                 raise AssertionError("AT-SPI worker exited before metadata verification")
-            try:
-                value = responses.get_nowait()
-                if set(value) != {"kind", "identity"}:
-                    raise AssertionError("Unexpected focus metadata fields")
-                if expected is None or (value["kind"] == expected and (previous is None or value["identity"] != previous)):
-                    if value["kind"] != "unknown":
-                        if not isinstance(value["identity"], str) or len(value["identity"]) != 32:
-                            raise AssertionError("Focus identity is not opaque")
-                    return value
-            except queue.Empty:
-                pass
+            value = take_response()
+            if value is not None and (expected is None or (value["kind"] == expected and (previous is None or value["identity"] != previous))):
+                return value
             time.sleep(.01)
-        raise AssertionError(f"AT-SPI did not report {expected or 'startup'} in the isolated session")
+        raise AssertionError(f"AT-SPI did not report {expected or 'startup'} in the isolated session: " + diagnostics())
+
+    def synchronize_focus_events():
+        # Registry.RegisterEvent returns before the GTK bridge necessarily consumes
+        # its asynchronous EventListenerRegistered notification. A worker heartbeat
+        # proves process liveness, not delivery of this test app's focus events.
+        # Exercise bounded, real owned-widget transitions until the full bridge
+        # reports an editable entry. Never fabricate metadata or relax assertions.
+        deadline = time.monotonic() + 8
+        next_transition = 0
+        entry_selected = False
+        while time.monotonic() < deadline:
+            pump()
+            if worker.poll() is not None:
+                raise AssertionError("AT-SPI worker exited during focus readiness")
+            if time.monotonic() >= next_transition:
+                entry_selected = not entry_selected
+                focus(writable if entry_selected else button)
+                next_transition = time.monotonic() + .25
+            value = take_response()
+            if entry_selected and value is not None and value["kind"] == "editable":
+                return value
+            time.sleep(.01)
+        raise AssertionError("AT-SPI focus event readiness handshake timed out: " + diagnostics())
 
     try:
-        wait_state()  # Listener initialized before changing any test focus.
-        button.grab_focus()
-        state = wait_state("other")
-        writable.grab_focus()
+        wait_state()  # Worker liveness; real event readiness is verified separately.
+        state = synchronize_focus_events()
+        focus(button)
+        state = wait_state("other", state["identity"])
+        focus(writable)
         state = wait_state("editable", state["identity"])
-        readonly.grab_focus()
+        focus(readonly)
         state = wait_state("other", state["identity"])
-        password.grab_focus()
+        focus(password)
         state = wait_state("protected", state["identity"])
-        button.grab_focus()
+        focus(button)
         state = wait_state("other", state["identity"])
-        writable.grab_focus()
+        focus(writable)
         state = wait_state("editable", state["identity"])
         writable.set_editable(False)
         wait_state("other")  # State refresh without changing the focused element.
