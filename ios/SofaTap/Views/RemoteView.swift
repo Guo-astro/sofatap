@@ -1,60 +1,49 @@
 import SwiftUI
 
-enum RemoteMode: String, CaseIterable { case touch = "触控板", air = "空中鼠标", text = "文字" }
-
 struct RemoteView: View {
     @ObservedObject var model: ControllerModel
-    @State private var mode: RemoteMode = .touch
+    @Environment(\.scenePhase) private var scenePhase
+    @StateObject private var dictation = SpeechDictationController()
     @State private var pairingSheet = false
     @State private var resendAlert = false
     @State private var clearAlert = false
-    @State private var scrollOffset = 0.0
+    @State private var composerVisible = false
+    @State private var keyboardFocused = false
+    @State private var handledFocusRevision: Int?
+    @State private var speechBaseDraft = ""
+    @State private var speechOwnsDraft = false
+    @State private var dictationStartTask: Task<Void, Never>?
+
+    private var speechBusy: Bool { dictation.state != .idle }
+    private var inputEnabled: Bool { model.canControl && scenePhase == .active && !pairingSheet }
 
     var body: some View {
         GeometryReader { geometry in
-            ScrollView {
-                VStack(alignment: .leading, spacing: 20) {
-                    header
-                    connection
-                    if let error = model.pairingError {
-                        VStack(alignment: .leading, spacing: 8) {
-                            Label("配对未保存", systemImage: "exclamationmark.triangle")
-                                .font(.system(size: 14, weight: .semibold))
-                            Text(error).font(.system(size: 12))
-                                .fixedSize(horizontal: false, vertical: true)
-                            Button("查看配对设置") { pairingSheet = true }
-                                .font(.system(size: 12, weight: .semibold))
-                        }
-                        .foregroundStyle(.orange)
-                        .padding(15).frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 16))
-                        .accessibilityIdentifier("pairingErrorBanner")
+            VStack(spacing: 12) {
+                header
+                if let error = model.pairingError {
+                    Button { pairingSheet = true } label: {
+                        Label(error, systemImage: "exclamationmark.triangle")
+                            .font(.footnote).multilineTextAlignment(.leading)
+                            .foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                    Picker("控制方式", selection: $mode) {
-                        ForEach(RemoteMode.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("remoteMode")
-                    if mode == .text { textPanel }
-                    else {
-                        if mode == .touch { touchpad(height: max(220, min(330, geometry.size.height * 0.39))) }
-                        else { airMouse(height: max(220, min(330, geometry.size.height * 0.39))) }
-                        mouseButtons
-                        shortcuts
-                        sensitivity
-                    }
-                    Text(model.notice)
-                        .font(.footnote)
-                        .foregroundStyle(Palette.muted)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityIdentifier("connectionNotice")
+                    .accessibilityIdentifier("pairingErrorBanner")
                 }
-                .padding(.horizontal, 22)
-                .padding(.top, 20)
-                .padding(.bottom, 30)
+                touchpad
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .layoutPriority(1)
+                if composerVisible { composer(height: min(108, max(68, geometry.size.height * 0.18))) }
+                bottomBar
+                if let error = dictation.errorMessage {
+                    Text(error).font(.caption).foregroundStyle(.orange)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityIdentifier("dictationError")
+                }
             }
-            .scrollDismissesKeyboard(.interactively)
+            .padding(.horizontal, 18)
+            .padding(.top, 12)
+            .padding(.bottom, 8)
         }
         .background(Palette.background)
         .sheet(isPresented: $pairingSheet) { PairingView(model: model) }
@@ -68,266 +57,262 @@ struct RemoteView: View {
             Button("取消", role: .cancel) {}
             Button("清空草稿", role: .destructive) { model.clearDraft() }
         } message: { Text("不会删除电脑里已经输入的文字。") }
-        .onChange(of: mode) { _, _ in model.stopAirMouse(); model.setDragging(false) }
-        .onAppear { model.becameActive() }
+        .onAppear {
+            model.becameActive()
+            if model.textDelivery == .uncertain { composerVisible = true }
+            applyRemoteFocus()
+        }
+        .onDisappear { stopInteraction() }
+        .onChange(of: model.focusRevision) { _, _ in applyRemoteFocus() }
+        .onChange(of: model.canControl) { _, enabled in
+            if enabled { applyRemoteFocus() }
+            else { handledFocusRevision = nil; stopInteraction() }
+        }
+        .onChange(of: pairingSheet) { _, shown in
+            if shown { stopInteraction() }
+            else { applyRemoteFocus() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .background { stopInteraction() }
+            else if phase == .inactive {
+                model.setDragging(false)
+                keyboardFocused = false
+                if dictation.state != .requestingPermission { dictation.cancel() }
+            } else { applyRemoteFocus() }
+        }
+        .onReceive(dictation.$transcript) { transcript in
+            guard speechOwnsDraft else { return }
+            let separator = speechBaseDraft.isEmpty || speechBaseDraft.last?.isWhitespace == true || transcript.isEmpty ? "" : "\n"
+            model.draft = speechBaseDraft + separator + transcript
+        }
+        .onChange(of: dictation.state) { _, state in
+            if state == .idle { speechOwnsDraft = false }
+        }
     }
 
     private var header: some View {
-        HStack(alignment: .center) {
-            VStack(alignment: .leading, spacing: 5) {
+        HStack(spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text("Sofatap")
-                    .font(.system(size: 30, weight: .semibold, design: .rounded))
-                    .tracking(-0.7)
-                Text("坐下来，电脑在手上。")
-                    .font(.subheadline)
-                    .foregroundStyle(Palette.muted)
+                    .font(.system(size: 24, weight: .semibold, design: .rounded))
+                    .tracking(-0.4)
+                HStack(spacing: 6) {
+                    Circle().fill(model.demo ? Color.orange : model.connected ? Palette.mint : Palette.muted)
+                        .frame(width: 6, height: 6)
+                    Text(model.statusTitle)
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(Palette.muted).lineLimit(1)
+                        .accessibilityIdentifier("connectionStatus")
+                    if model.connecting { ProgressView().controlSize(.mini).tint(Palette.mint) }
+                }
             }
-            Spacer()
-            Button { pairingSheet = true } label: {
+            Spacer(minLength: 8)
+            Button {
+                pairingSheet = true
+            } label: {
                 Image(systemName: "qrcode.viewfinder")
-                    .font(.system(size: 24, weight: .medium))
-                    .frame(width: 50, height: 50)
+                    .font(.system(size: 21, weight: .medium))
+                    .frame(width: 44, height: 44)
                     .foregroundStyle(Palette.mint)
-                    .background(Palette.panel, in: RoundedRectangle(cornerRadius: 17))
+                    .background(Palette.panel, in: RoundedRectangle(cornerRadius: 14))
             }
             .accessibilityLabel("配对电脑与连接设置")
         }
     }
 
-    private var connection: some View {
-        HStack(spacing: 11) {
-            Circle()
-                .fill(model.demo ? Color.orange : model.connected ? Palette.mint : Palette.muted)
-                .frame(width: 8, height: 8)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(model.statusTitle).font(.system(size: 14, weight: .semibold))
-                    .accessibilityIdentifier("connectionStatus")
-                Text(model.statusSubtitle).font(.system(size: 10, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Palette.muted)
-                    .lineLimit(2)
-            }
-            Spacer(minLength: 6)
-            if !model.demo {
-                if model.connecting { ProgressView().tint(Palette.mint) }
-                else if model.connected {
-                    Button("断开") { model.disconnect() }.font(.footnote.weight(.medium))
-                } else {
-                    Button(model.pairing == nil ? "配对" : "连接") {
-                        if model.pairing == nil { pairingSheet = true } else { model.connect() }
-                    }.font(.footnote.weight(.semibold))
-                }
-            } else {
-                Image(systemName: "eye").foregroundStyle(.orange)
-            }
-        }
-        .padding(14)
-        .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
-    }
-
-    private func touchpad(height: Double) -> some View {
+    private var touchpad: some View {
         ZStack {
-            RoundedRectangle(cornerRadius: 28)
-                .fill(Palette.panel.gradient)
-            RoundedRectangle(cornerRadius: 28)
-                .strokeBorder(Palette.mint.opacity(model.dragging ? 0.65 : 0.10), lineWidth: 1)
-            VStack(spacing: 16) {
-                Image(systemName: "cursorarrow.motionlines")
-                    .font(.system(size: 38, weight: .ultraLight))
+            RoundedRectangle(cornerRadius: 27).fill(Palette.panel.gradient)
+            RoundedRectangle(cornerRadius: 27)
+                .strokeBorder(Palette.mint.opacity(model.dragging ? 0.65 : 0.12), lineWidth: 1)
+            VStack(spacing: 13) {
+                Spacer(minLength: 8)
+                Image(systemName: model.dragging ? "hand.draw" : "cursorarrow")
+                    .font(.system(size: 34, weight: .ultraLight))
                     .foregroundStyle(Palette.mint.opacity(0.8))
-                VStack(spacing: 7) {
-                    Text(model.dragging ? "拖动中" : "在这里滑动")
-                        .font(.system(size: 22, weight: .medium))
-                    Text("移动光标  ·  轻点单击")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Palette.muted)
+                Text(model.dragging ? "拖动中 · 松手结束" : "滑动，移动光标")
+                    .font(.system(size: 19, weight: .medium))
+                if !model.canControl {
+                    Text(model.notice)
+                        .font(.caption).foregroundStyle(Palette.muted)
+                        .multilineTextAlignment(.center).lineLimit(3)
+                        .padding(.horizontal, 25)
+                        .accessibilityIdentifier("connectionNotice")
                 }
+                Spacer(minLength: 8)
+                Text("轻点左键 · 连点两下右键\n按住 0.3 秒拖动 · 双指滑动滚动")
+                    .font(.system(size: 11)).lineSpacing(5)
+                    .foregroundStyle(Palette.muted)
+                    .multilineTextAlignment(.center)
+                    .padding(.bottom, 20)
             }
             .allowsHitTesting(false)
-            TouchSurface(enabled: model.canControl,
-                         onMove: { model.move(dx: $0, dy: $1) }, onTap: { model.click("left") })
-            HStack {
-                Spacer()
-                VStack(spacing: 8) {
-                    Image(systemName: "chevron.up").font(.system(size: 9, weight: .bold))
-                    Text("滚\n动").font(.system(size: 11, weight: .medium)).lineSpacing(4)
-                    Image(systemName: "chevron.down").font(.system(size: 9, weight: .bold))
-                }
-                .foregroundStyle(Palette.muted)
-                .frame(width: 40)
-                .frame(maxHeight: .infinity)
-                .background(Palette.elevated.opacity(0.6), in: RoundedRectangle(cornerRadius: 20))
-                .contentShape(Rectangle())
-                .gesture(DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let current = value.translation.height
-                        model.scroll(dy: -(current - scrollOffset))
-                        scrollOffset = current
-                    }
-                    .onEnded { _ in scrollOffset = 0 })
-                .accessibilityLabel("上下滑动滚动电脑页面")
-            }
-            .padding(12)
+            TouchSurface(enabled: inputEnabled,
+                         onMove: { model.move(dx: $0, dy: $1) },
+                         onLeftTap: { model.click("left") },
+                         onRightTap: { model.click("right") },
+                         onDraggingChanged: { model.setDragging($0) },
+                         onScroll: { model.scroll(dy: $0) })
+                .clipShape(RoundedRectangle(cornerRadius: 27))
         }
-        .frame(height: height)
         .opacity(model.canControl ? 1 : 0.55)
     }
 
-    private func airMouse(height: Double) -> some View {
-        HoldControl(enabled: model.canControl, onPress: model.startAirMouse, onRelease: model.stopAirMouse) {
-            VStack(spacing: 20) {
-                Image(systemName: "iphone.radiowaves.left.and.right")
-                    .font(.system(size: 52, weight: .ultraLight))
-                    .symbolEffect(.pulse, isActive: model.airMoving)
-                VStack(spacing: 8) {
-                    Text(model.airMoving ? "转动手机，移动光标" : "按住，轻轻转动")
-                        .font(.system(size: 21, weight: .medium))
-                    Text("松手暂停  ·  手回到舒服的位置再按住")
-                        .font(.system(size: 11))
-                        .foregroundStyle(model.airMoving ? Palette.background.opacity(0.7) : Palette.muted)
-                }
-            }
-            .foregroundStyle(model.airMoving ? Palette.background : Palette.mint)
-            .frame(maxWidth: .infinity)
-            .frame(height: height)
-            .background(model.airMoving ? Palette.mint : Palette.panel, in: RoundedRectangle(cornerRadius: 28))
-            .overlay(RoundedRectangle(cornerRadius: 28).strokeBorder(Palette.mint.opacity(0.18)))
-        }
-        .accessibilityLabel("按住启用空中鼠标，松开归位")
-        .opacity(model.canControl ? 1 : 0.55)
-    }
-
-    private var mouseButtons: some View {
-        HStack(spacing: 10) {
-            mouseButton("左键", icon: "cursorarrow", action: { model.click("left") })
-            HoldControl(enabled: model.canControl, onPress: { model.setDragging(true) }, onRelease: { model.setDragging(false) }) {
-                VStack(spacing: 8) {
-                    Image(systemName: "hand.point.up.left").font(.system(size: 21, weight: .regular))
-                    Text(model.dragging ? "松开结束" : "按住拖拽").font(.system(size: 12, weight: .medium))
-                }
-                .foregroundStyle(model.dragging ? Palette.background : .white)
-                .frame(maxWidth: .infinity).frame(height: 78)
-                .background(model.dragging ? Palette.mint : Palette.elevated, in: RoundedRectangle(cornerRadius: 20))
-            }
-            .opacity(model.canControl ? 1 : 0.45)
-            mouseButton("右键", icon: "computermouse", action: { model.click("right") })
-        }
-    }
-
-    private func mouseButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            VStack(spacing: 8) {
-                Image(systemName: icon).font(.system(size: 21, weight: .regular))
-                Text(title).font(.system(size: 12, weight: .medium))
-            }
-            .frame(maxWidth: .infinity).frame(height: 78)
-            .foregroundStyle(.white)
-            .background(Palette.elevated, in: RoundedRectangle(cornerRadius: 20))
-        }
-        .disabled(!model.canControl)
-        .opacity(model.canControl ? 1 : 0.45)
-    }
-
-    private var shortcuts: some View {
-        HStack(spacing: 9) {
-            keyButton("Esc", key: "escape")
-            keyButton("Tab", key: "tab")
-            keyButton("退格", key: "backspace")
-            keyButton("Enter", key: "enter")
-        }
-    }
-
-    private func keyButton(_ label: String, key: String) -> some View {
-        Button { model.key(key) } label: {
-            Text(label).font(.system(size: 12, weight: .medium, design: .monospaced))
-                .frame(maxWidth: .infinity).frame(height: 43)
-                .foregroundStyle(Palette.muted)
-                .background(Palette.panel, in: RoundedRectangle(cornerRadius: 13))
-        }
-        .disabled(!model.canControl)
-    }
-
-    private var sensitivity: some View {
+    private var bottomBar: some View {
         HStack(spacing: 13) {
-            Image(systemName: "speedometer").foregroundStyle(Palette.muted)
-            Slider(value: $model.sensitivity, in: 0.3...2.5)
-                .accessibilityLabel("鼠标灵敏度")
-            Text(String(format: "%.1f×", model.sensitivity))
-                .font(.system(size: 11, design: .monospaced)).foregroundStyle(Palette.muted)
-                .frame(width: 35)
+            Button { toggleKeyboard() } label: {
+                Image(systemName: keyboardFocused ? "keyboard.chevron.compact.down" : "keyboard")
+                    .font(.system(size: 21)).frame(width: 46, height: 48)
+                    .foregroundStyle(Palette.muted)
+            }
+            .accessibilityLabel(keyboardFocused ? "收起键盘" : "打开键盘输入")
+            .accessibilityIdentifier("keyboardButton")
+            Spacer(minLength: 0)
+            Button { toggleDictation() } label: {
+                HStack(spacing: 9) {
+                    if dictation.state == .requestingPermission || dictation.state == .finishing {
+                        ProgressView().tint(Palette.background)
+                    } else {
+                        Image(systemName: dictation.isRecording ? "stop.fill" : "mic.fill")
+                            .font(.system(size: 20, weight: .medium))
+                    }
+                    Text(dictation.isRecording ? "结束听写" : dictation.state == .finishing ? "正在整理…" : "语音输入")
+                        .font(.system(size: 15, weight: .semibold))
+                }
+                .frame(minWidth: 144).frame(height: 50)
+                .foregroundStyle(Palette.background)
+                .background(Palette.mint, in: Capsule())
+            }
+            .disabled(!model.canControl || model.sendingText || model.composing || model.remoteTextFocus == .protected)
+            .opacity(model.canControl ? 1 : 0.45)
+            .accessibilityIdentifier("dictationButton")
+            Spacer(minLength: 0)
+            Color.clear.frame(width: 46, height: 48).allowsHitTesting(false)
         }
-        .padding(.horizontal, 3)
     }
 
-    private var textPanel: some View {
-        VStack(alignment: .leading, spacing: 15) {
-            VStack(alignment: .leading, spacing: 7) {
-                Text("说完，再发到电脑")
-                    .font(.system(size: 23, weight: .medium))
-                Text("使用 iPhone 原生键盘、系统听写或 Typeless。")
-                    .font(.system(size: 12)).foregroundStyle(Palette.muted)
-            }
+    private func composer(height: Double) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topLeading) {
                 if model.draft.isEmpty {
-                    Text("点这里，开始输入或语音听写…")
-                        .font(.system(size: 20)).foregroundStyle(Palette.muted.opacity(0.65))
-                        .padding(.horizontal, 17).padding(.vertical, 17)
-                        .allowsHitTesting(false)
+                    Text(dictation.isRecording ? "正在听…" : "输入或听写，确认后发送到电脑")
+                        .font(.system(size: 16)).foregroundStyle(Palette.muted.opacity(0.7))
+                        .padding(14).allowsHitTesting(false)
                 }
-                NativeDraftEditor(text: $model.draft, composing: $model.composing, disabled: model.sendingText)
+                NativeDraftEditor(text: $model.draft, composing: $model.composing,
+                                  isFocused: $keyboardFocused,
+                                  disabled: model.sendingText || speechBusy || model.textDelivery == .sent)
             }
-            .frame(minHeight: 220, maxHeight: 280)
-            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 22))
-            .overlay(RoundedRectangle(cornerRadius: 22).strokeBorder(Palette.mint.opacity(0.15)))
+            .frame(height: height)
+            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
+            HStack(spacing: 12) {
+                Text(composerStatus)
+                    .font(.system(size: 11))
+                    .foregroundStyle(model.textDelivery == .uncertain ? Color.orange : Palette.muted)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityIdentifier("textDeliveryStatus")
+                Spacer(minLength: 0)
+                Button(action: model.sendText) {
+                    HStack(spacing: 6) {
+                        if model.sendingText { ProgressView().tint(Palette.background) }
+                        else { Image(systemName: model.textDelivery == .sent ? "checkmark" : "arrow.up") }
+                        Text(model.sendingText ? "等待确认" : "发送")
+                    }
+                    .font(.system(size: 13, weight: .semibold))
+                    .padding(.horizontal, 15).frame(height: 44)
+                    .foregroundStyle(Palette.background)
+                    .background(Palette.mint, in: Capsule())
+                }
+                .disabled(!model.canSendText || speechBusy)
+                .opacity(model.canSendText && !speechBusy || model.sendingText ? 1 : 0.45)
+                .accessibilityIdentifier("sendText")
+            }
+            if model.textDelivery == .uncertain || model.textDelivery == .sent {
+                Button("检查电脑后允许重发") { resendAlert = true }
+                    .font(.system(size: 11, weight: .medium))
+                    .frame(minHeight: 44)
+            }
             HStack {
-                Label("仅保存在这台手机", systemImage: "lock")
+                Button("清空草稿") { clearAlert = true }
+                    .disabled(model.draft.isEmpty || model.sendingText || speechBusy)
+                    .frame(minHeight: 44)
                 Spacer()
                 Text("\(model.draftLength) / 16,000")
                     .foregroundStyle(model.draftWithinLimit ? Palette.muted : .orange)
+                Button("收起") {
+                    keyboardFocused = false
+                    dictationStartTask?.cancel()
+                    dictation.cancel()
+                    composerVisible = false
+                }
+                .frame(minWidth: 44, minHeight: 44)
             }
             .font(.system(size: 10)).foregroundStyle(Palette.muted)
-            Button(action: model.sendText) {
-                HStack(spacing: 10) {
-                    if model.sendingText { ProgressView().tint(Palette.background) }
-                    else { Image(systemName: model.textDelivery == .sent ? "checkmark" : "arrow.up.right") }
-                    Text(model.sendingText ? "等待电脑确认" : model.textDelivery == .sent ? "已发送" : "发送整段文字")
-                        .font(.system(size: 16, weight: .semibold))
-                }
-                .frame(maxWidth: .infinity).frame(height: 58)
-                .foregroundStyle(Palette.background)
-                .background(Palette.mint, in: RoundedRectangle(cornerRadius: 19))
-            }
-            .disabled(!model.canSendText)
-            .opacity(model.canSendText || model.sendingText || model.textDelivery == .sent ? 1 : 0.4)
-            .accessibilityIdentifier("sendText")
-            Text(model.demo && model.textDelivery == .sent ? "演示反馈：文字没有发送到电脑。" : model.textStatus)
-                .font(.system(size: 12)).foregroundStyle(model.textDelivery == .uncertain ? Color.orange : Palette.muted)
-                .fixedSize(horizontal: false, vertical: true)
-            HStack {
-                Button("清空草稿") { clearAlert = true }
-                    .disabled(model.draft.isEmpty || model.sendingText)
-                Spacer()
-                if model.textDelivery == .uncertain || model.textDelivery == .sent {
-                    Button("检查后允许重发") { resendAlert = true }
-                }
-            }
-            .font(.system(size: 12, weight: .medium))
-            HStack(spacing: 12) {
-                Button("全选电脑文字", action: model.selectAll)
-                    .disabled(!model.canControl || model.sendingText)
-                    .accessibilityHint("选中电脑当前输入框中的文字，不会修改手机草稿")
-                Spacer()
-                keyButton("退格", key: "backspace")
-                keyButton("Enter", key: "enter")
-            }
-            .font(.system(size: 12, weight: .medium))
-            HStack(alignment: .top, spacing: 9) {
-                Image(systemName: "info.circle")
-                Text("发送不会自动按 Enter。语音键盘跳转 App 时会暂停连接，返回后草稿仍在。")
-            }
-            .font(.system(size: 11)).foregroundStyle(Palette.muted)
-            .padding(13).frame(maxWidth: .infinity, alignment: .leading)
-            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 14))
         }
+    }
+
+    private var composerStatus: String {
+        if dictation.isRecording { return "正在听写，结束后确认文字再发送。" }
+        if dictation.state == .finishing { return "正在整理听写结果…" }
+        if model.remoteTextFocus == .protected { return "电脑当前为安全输入框，不会自动听写。" }
+        if model.demo && model.textDelivery == .sent { return "演示反馈：文字没有发送到电脑。" }
+        return model.textStatus
+    }
+
+    private func toggleKeyboard() {
+        dictationStartTask?.cancel()
+        dictation.cancel()
+        speechOwnsDraft = false
+        if keyboardFocused { keyboardFocused = false; composerVisible = false }
+        else {
+            prepareNewComposition()
+            composerVisible = true
+            keyboardFocused = true
+        }
+    }
+    private func toggleDictation() {
+        guard model.canControl, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
+        if dictation.isRecording { dictation.stop(); return }
+        if speechBusy { dictationStartTask?.cancel(); dictation.cancel(); return }
+        keyboardFocused = false
+        composerVisible = true
+        prepareNewComposition()
+        speechBaseDraft = model.draft
+        speechOwnsDraft = true
+        dictationStartTask?.cancel()
+        dictationStartTask = Task {
+            guard !Task.isCancelled, model.canControl, scenePhase == .active else { return }
+            await dictation.start()
+        }
+    }
+    private func applyRemoteFocus() {
+        guard model.canControl, scenePhase == .active, !pairingSheet,
+              handledFocusRevision != model.focusRevision else { return }
+        handledFocusRevision = model.focusRevision
+        switch model.remoteTextFocus {
+        case .editable:
+            guard !speechBusy else { return }
+            prepareNewComposition()
+            composerVisible = true
+            keyboardFocused = true
+        case .other, .protected:
+            keyboardFocused = false
+            if model.remoteTextFocus == .protected { dictationStartTask?.cancel(); dictation.cancel() }
+        case .unknown:
+            break // Unsupported desktop focus detection leaves manual input available.
+        }
+    }
+    private func stopInteraction() {
+        model.setDragging(false)
+        model.stopAirMouse()
+        keyboardFocused = false
+        dictationStartTask?.cancel()
+        dictation.cancel()
+    }
+    private func prepareNewComposition() {
+        // A confirmed previous delivery is a receipt, not a prefix for the next
+        // utterance. Unsent and uncertain drafts always remain available.
+        if model.textDelivery == .sent { model.clearDraft() }
     }
 }
 

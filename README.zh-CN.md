@@ -8,31 +8,33 @@
 
 *AI 生成的产品场景示意图，并非应用截图。*
 
-Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。把 iPhone 变成 Windows、Mac 或受支持 Linux 电脑的触控板、按住移动的空中鼠标和文字输入器。电脑画面留在电视上，人坐在沙发上就能操作。
+Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。把 iPhone 变成 Windows、Mac 或受支持 Linux 电脑的手势鼠标和语音／文字输入器。电脑画面留在电视上，人坐在沙发上就能操作。
 
 [下载版本](https://github.com/chekusu/sofatap/releases) · [问题反馈](https://github.com/chekusu/sofatap/issues) · [MIT 许可](LICENSE)
 
 ## 可以做什么
 
-- 用原生 iPhone App 移动指针、点击、拖拽和滚动；按住空中鼠标按钮并转动手机来移动指针。
-- 在标准 iOS 文本框里用键盘或听写完成输入，检查后点**发送**，将文字输入电脑当前聚焦的输入框。发送文字不会额外追加回车或提交操作；文字本身可以包含换行。
+- 一个触控界面：滑动移动鼠标、单击左键、连续双击右键、停留 300ms 后拖动、双指滑动滚动。
+- 点击底部麦克风使用设备支持的本机语音识别，也可使用 iPhone 键盘／Typeless。检查手机上的草稿后点**发送**，输入电脑当前聚焦的输入框；不会额外追加回车或提交操作，文字本身可包含换行。
 - 扫描**电脑原生窗口**里的二维码配对：Mac 使用 AppKit/SwiftUI，Windows 使用 WinForms，Linux 使用 GTK3，无需打开浏览器。
 - 通过家庭局域网连接，使用 WSS/TLS、证书指纹校验和本地配对凭据。保留草稿、发送确认和断线后不自动重放，帮助避免重复输入。
 
-**当前是 alpha 预览版。** 触控板、空中鼠标和文字流程已实现，但下面的检查对应不同的可用性范围。Typeless 兼容性、实际听写和实体陀螺仪仍需真机测试。蓝牙连接和云中继服务尚未实现。
+**当前是 alpha 预览版。** 单屏手势、麦克风和输入框焦点提示位于 `main` 的 0.5.0 开发源码（iPhone build 6）中；下方下载仍是先前 alpha 版本，不含这些更新。真实 iPhone 手势／听写、Typeless 和不同应用的焦点行为仍需验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
+
+兼容接收端识别到提供辅助功能元数据的原生或网页可编辑输入框时，手机会自动弹出键盘。检测不读取框内内容；不支持检测、只读或安全输入框不会自动唤起输入界面。Linux 检测需要可选的 AT-SPI 桥接，仍可手动打开键盘。参见[焦点检测及平台限制](docs/TEXT-FOCUS.md)。
 
 ## 平台进度
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 iPhone 到 Mac 的联合验收；语音和陀螺仪待测。 |
+| iPhone | iOS 17+。iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 iPhone 到 Mac 的联合验收；0.5.0 (6) 的单屏手势、麦克风和自动键盘仍需真机验收。 |
 | Windows | 0.3.0 原生接收端已发布；本版桌面 UI 和手机联合实测待完成。 |
 | Mac | macOS 15+。Apple Silicon 和 Intel 包均已公证；Apple Silicon 完成部分真机验收，Intel 输入待实测。 |
 | Linux | 0.4.0 GTK3 原生接收端已发布；X11 输入通过隔离桌面检查。Wayland portal 为实验支持；真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
 
 [Mac 验收记录](docs/verification/macos-0.3.0.md)覆盖了 2026-10-11 的真实相机扫码、TLS 连接、文字精确读回和部分按键、指针操作。[Linux 验收记录](docs/verification/linux-0.4.0.md)覆盖原生 GTK 渲染、独立 Xvfb 桌面上的 X11 输入，以及私有 D-Bus 上的模拟 Wayland portal。这些记录不代表所有应用的兼容性均已验证。
 
-Windows 通过 Win32 `SendInput` 输入；Mac 在用户明确授予辅助功能权限后使用 Quartz，手机上的“全选”会使用 Command+A。Linux X11 需要 libX11、libXtst 和 libxdo；Wayland 需要兼容的 RemoteDesktop portal，并由用户在系统原生窗口中授权。Linux 每次文字操作最多接受 2,048 个 Unicode 标量值，不读写剪贴板。不受支持的 Wayland 会话保持不可用，不回退到 XWayland。详见 [Linux 要求与限制](desktop/linux/README.md)。
+Windows 通过 Win32 `SendInput` 输入；Mac 在用户明确授予辅助功能权限后使用 Quartz。Linux X11 需要 libX11、libXtst 和 libxdo；Wayland 需要兼容的 RemoteDesktop portal，并由用户在系统原生窗口中授权。Linux 每次文字操作最多接受 2,048 个 Unicode 标量值，不读写剪贴板。不受支持的 Wayland 会话保持不可用，不回退到 XWayland。详见 [Linux 要求与限制](desktop/linux/README.md)。
 
 ## 开始使用
 
@@ -58,6 +60,8 @@ Windows 通过 Win32 `SendInput` 输入；Mac 在用户明确授予辅助功能�
 ## 隐私与权限
 
 Sofatap 通过局域网直接连接，项目没有云中继服务。配对使用固定证书校验；凭据保存在 iPhone Keychain、Windows DPAPI 或 Mac/Linux 上仅当前用户可读的接收端文件中。Mac 输入需要辅助功能权限，Wayland 输入需要用户明确授予 portal 权限。
+
+麦克风仅在明确点击并取得所需权限后启动。受支持的本机识别将音频保留在手机上；Sofatap 不上传音频，也不静默切换到云端识别。识别文字保留在本地草稿中，直到用户点**发送**。系统听写和第三方输入法有各自的数据处理方式。
 
 二维码通过本机私有管道传给原生电脑 UI，不使用网页配对。不要公开配对码、凭据或签名材料。仓库不包含开发账号、签名证书或 provisioning profile。通信与输入行为见 [PROTOCOL.md](PROTOCOL.md)，待完成的设备检查见[实机验收清单](docs/ACCEPTANCE.md)。
 
@@ -102,12 +106,15 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
+swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+/tmp/sofatap-gesture-tests
+python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device
 ```
 
 Host runner 使用模拟输入器。TLS/WebSocket 检查以 `--dry-run` 启动临时接收端，不向系统注入输入。最后一项编译未配置签名的 ARM64 iOS App，不安装到手机。CI 还执行各平台构建和隔离 Linux 桌面检查；相关命令见 [Linux 说明](desktop/linux/README.md#lifecycle-and-checks)。
 
-构建、协议、虚拟桌面和物理设备检查分别证明不同层面的行为。后续验收仍包括 Typeless、语音、实体空中鼠标、Mac 拖拽与滚动，以及各受支持桌面平台的真机覆盖。
+构建、协议、虚拟桌面和物理设备检查分别证明不同层面的行为。0.5.0 后续验收仍包括实体单／双击、300 ms 长按拖动、滚动、麦克风权限与识别、Typeless、不同应用的输入框焦点，以及各受支持桌面平台的手机联合测试。
 
 ## 源码目录
 

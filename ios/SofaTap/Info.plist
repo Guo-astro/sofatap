@@ -14,7 +14,9 @@
   <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
   <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
   <key>NSCameraUsageDescription</key><string>扫描客厅电脑显示的配对二维码，安全连接你的电脑。</string>
-  <key>NSLocalNetworkUsageDescription</key><string>在家庭网络中连接你配对的 Windows 或 Mac 电脑并发送鼠标与文字操作。</string>
+  <key>NSLocalNetworkUsageDescription</key><string>在家庭网络中连接你配对的 Windows、Mac 或 Linux 电脑并发送鼠标与文字操作。</string>
+  <key>NSMicrophoneUsageDescription</key><string>点击麦克风后，用本机语音识别把你说的话变成文字草稿；确认发送后才会输入到电脑。</string>
+  <key>NSSpeechRecognitionUsageDescription</key><string>将你主动录入的语音在 iPhone 上识别为文字草稿。不支持本机识别时，可使用键盘或 Typeless。</string>
   <key>NSMotionUsageDescription</key><string>按住空中鼠标按钮时，用 iPhone 的转动控制电脑光标。</string>
   <key>NSAppTransportSecurity</key><dict><key>NSAllowsLocalNetworking</key><true/></dict>
 </dict></plist>

@@ -15,7 +15,7 @@ This is the proposed Chinese name; the current app display name remains **Sofata
 
 ## Describe the product accurately
 
-Sofatap turns an iPhone into a touchpad, air mouse and explicit text sender for a living-room computer. The TV displays the computer; the phone controls it. Windows, macOS and supported Linux desktops use native pairing windows. Connection uses the local network, not Bluetooth. Voice composition uses iOS dictation or a third-party keyboard; Sofatap sends reviewed text when the user chooses Send.
+Sofatap turns an iPhone into a single-screen gesture mouse and voice/text input surface for a living-room computer. The TV displays the computer; the phone controls it. Windows, macOS and supported Linux desktops use native pairing windows. Connection uses the local network, not Bluetooth. Development version 0.5.0 adds an on-device speech button when supported, with keyboard/Typeless fallback and optional focused-field detection; Sofatap sends reviewed text when the user chooses Send. Earlier downloadable alpha versions retain their previous UI. See [interaction direction](INTERACTION.md).
 
 Keep implementation and verification claims distinct. Concept illustrations are labeled as illustrations. Do not present generated UI as a screenshot, a passed hardware test, or an App Store listing. Carry current platform limits forward from the README and verification records.
 

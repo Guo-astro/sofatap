@@ -45,7 +45,7 @@ if len(header) != 20 or header[:6] != b"\x7fELF\x02\x01" or struct.unpack("<H", 
 PY
 cp "$publish_dir/SofaTap" "$release_dir/lib/SofaTapHost"
 cp desktop/linux/sofatap.py desktop/linux/input_worker.py desktop/linux/input_common.py \
-  desktop/linux/wayland_input.py desktop/linux/x11_input.py "$release_dir/lib/linux/"
+  desktop/linux/wayland_input.py desktop/linux/x11_input.py desktop/linux/text_focus_worker.py "$release_dir/lib/linux/"
 cp scripts/linux/sofatap "$release_dir/sofatap"
 cp scripts/linux/sofatap.desktop "$release_dir/sofatap.desktop"
 cp ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png "$release_dir/sofatap.png"
@@ -81,6 +81,7 @@ manifest = {
     "backendSHA256": hashlib.sha256((release / "lib/SofaTapHost").read_bytes()).hexdigest(),
     "frontendSHA256": hashlib.sha256((release / "lib/linux/sofatap.py").read_bytes()).hexdigest(),
     "inputWorkerSHA256": hashlib.sha256((release / "lib/linux/input_worker.py").read_bytes()).hexdigest(),
+    "textFocusWorkerSHA256": hashlib.sha256((release / "lib/linux/text_focus_worker.py").read_bytes()).hexdigest(),
     "pairingUI": "native GTK 3",
     "inputBackends": ["X11 XTest", "Wayland RemoteDesktop portal"],
     "bundledDotnetRuntime": True,

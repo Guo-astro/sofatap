@@ -1,0 +1,29 @@
+# Focused text field detection
+
+Sofatap can offer the phone keyboard when the desktop reports a focused, writable text field. This is an accessibility hint, not proof that an application will accept input. Manual keyboard and dictation controls remain necessary for applications that do not expose useful accessibility metadata. The receiver must suppress this hint whenever its desktop is locked or unavailable.
+
+The native probes return `unknown`, `other`, `editable` or `protected`, with an ephemeral random identity for detecting a change of target inside the receiver. Only the state and a connection-local revision cross the network; the identity stays local. Sofatap does not query field values, selected text, passwords, labels, window titles or screenshots. Platform accessibility libraries can receive incidental event metadata internally; Sofatap neither logs it nor includes it in the helper output or network messages. There is no input injection, accessibility action or clipboard access in these probes. The identity carries no native element ID, process ID or persistent identifier.
+
+## Windows
+
+The receiver asks UI Automation for the focused element. It reads keyboard-focus, enabled and password flags, then Value-pattern read-only metadata. A Text-pattern `IsReadOnly` attribute provides a fallback for editable documents, including browser controls that expose that pattern. Read-only, missing and mixed metadata do not cause a keyboard to open. Password fields are reported as `protected` before text-pattern queries.
+
+All COM calls run on one dedicated MTA background thread. `Read()` returns cached metadata immediately. If an application's automation provider stalls, the cache expires after 1.5 seconds and returns `unknown`; repeated requests do not create additional threads. The stalled provider cannot block receiver shutdown, although its background thread remains until the provider returns or the process exits. Elevated or custom-rendered applications may not expose accessible controls to an ordinary receiver.
+
+## macOS
+
+The receiver uses the existing Accessibility grant. It does not request permission or open System Settings. It checks the focused element's role, secure-text subrole, enabled flag and whether its value attribute is writable; it never reads that value. Recognized text fields, text areas and editable combo boxes qualify. Secure fields report `protected`.
+
+AX calls have a 150 ms messaging timeout per call, run on the same bounded cache worker and verify that the focused element did not change during sampling. Applications whose editable controls do not expose writable-value metadata fall back to manual keyboard access. Live UI acceptance must follow this repository's Yomado virtual-display and input-isolation requirements.
+
+## Linux
+
+An optional Python/GObject Introspection helper subscribes to AT-SPI focus events and reports only role/state metadata. It needs `gi` and the Atspi 2.0 typelib (for example `gir1.2-atspi-2.0` on Debian/Ubuntu), a working accessibility bus, and applications that publish AT-SPI state. It does not modify accessibility settings. The helper sets `ATSPI_NO_CACHE=1` within its own process before loading AT-SPI to suppress the library's automatic bulk `Cache.GetItems` requests, and disables cached-property reads. The library may still receive unsolicited event metadata; Sofatap extracts only the focused target's role/state and emits a classification and random identity. The helper does not traverse application widgets; its initial state is `unknown` until the next focus event. Focused enabled editable controls qualify; password-text roles report `protected`; stale, missing or defunct targets report `unknown`.
+
+X11 or Wayland session type alone is not sufficient. RemoteDesktop portal permission is unrelated to accessibility support. When the helper/dependency is missing, its bus fails or a metadata read times out, automatic keyboard detection falls back to `unknown`; normal manual input remains independent. The helper is owned by the receiver and has no network listener or input-event capability.
+
+## Verification boundaries
+
+Pure tests cover metadata classification, protected/read-only precedence, malformed helper messages, stale-cache expiry and a deliberately stalled provider. They never query or control the user's desktop. `desktop/linux/check_text_focus_integration.py` creates its own authenticated Xvfb display and private D-Bus session, then verifies the real AT-SPI worker against owned blank GTK entry, read-only, password and button widgets. It refuses to use an existing desktop. Native provider compilation does not establish end-to-end focus detection in every application; actual Windows/macOS/browser and Wayland application coverage still require isolated acceptance testing.
+
+Primary API references: [Microsoft focused UI Automation elements](https://learn.microsoft.com/en-us/windows/win32/winauto/uiauto-obtainingelements), [Microsoft interface definitions](https://github.com/microsoft/win32metadata/blob/main/generation/WinSDK/RecompiledIdlHeaders/um/UIAutomationClient.h), [Apple AX messaging timeouts](https://developer.apple.com/documentation/applicationservices/1459345-axuielementsetmessagingtimeout), [Apple value attribute](https://developer.apple.com/documentation/applicationservices/kaxvalueattribute), [GNOME AT-SPI state types](https://gnome.pages.gitlab.gnome.org/at-spi2-core/libatspi/enum.StateType.html), and [GNOME event listener](https://gnome.pages.gitlab.gnome.org/at-spi2-core/libatspi/class.EventListener.html).

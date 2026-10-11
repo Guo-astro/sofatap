@@ -80,6 +80,8 @@ final class ControllerModel: ObservableObject {
     }
 
     var canControl: Bool { demo || (connected && inputAvailable) }
+    var remoteTextFocus: RemoteTextFocus { canControl ? receiverState.textFocus : .unknown }
+    var focusRevision: Int { receiverState.focusRevision }
     var statusTitle: String {
         if demo { return "界面演示" }
         if connecting { return "正在安全连接…" }
@@ -142,6 +144,14 @@ final class ControllerModel: ObservableObject {
         disconnect(message: "切回 App 会重新连接；草稿已留在手机上。")
     }
 
+    // A system permission sheet makes the app inactive without backgrounding it.
+    // Pause all input but preserve the connection and explicit permission request.
+    func pauseInput() {
+        stopAirMouse()
+        queuedDX = 0; queuedDY = 0; queuedScroll = 0
+        setDragging(false)
+    }
+
     func connect() {
         guard !demo, foreground, !connecting, !connected,
               let pairing, let endpoint = pairing.endpoint else { return }
@@ -200,6 +210,7 @@ final class ControllerModel: ObservableObject {
         connected = false
         connecting = false
         inputAvailable = false
+        receiverState = ReceiverState()
         motionBusy = false
         scrollBusy = false
         queuedDX = 0; queuedDY = 0; queuedScroll = 0
@@ -265,13 +276,14 @@ final class ControllerModel: ObservableObject {
             guard let item = pending.removeValue(forKey: id) else { return true }
             item.timer.cancel()
             if item.type == "ping", let state = receiverState.updating(message), state != receiverState {
+                let availabilityChanged = state.inputAvailable != receiverState.inputAvailable || state.status != receiverState.status
                 receiverState = state
                 inputAvailable = state.inputAvailable
                 if !inputAvailable {
                     stopAirMouse()
                     if dragging { setDragging(false) }
                 }
-                notice = inputAvailable ? "电脑已就绪，可以继续控制。" : state.unavailableMessage
+                if availabilityChanged { notice = inputAvailable ? "电脑已就绪，可以继续控制。" : state.unavailableMessage }
             }
             if ok { item.completion?(.accepted) }
             else {
@@ -305,8 +317,11 @@ final class ControllerModel: ObservableObject {
         RunLoop.main.add(timer, forMode: .common)
         keepAliveTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(5))
+                // New receivers report only an editable-state hint, never field contents.
+                let interval = self?.receiverState.reportsTextFocus == true ? 0.75 : 5.0
+                try? await Task.sleep(for: .seconds(interval))
                 guard !Task.isCancelled, let self, self.generation == currentGeneration, self.foreground else { return }
+                guard !self.pending.values.contains(where: { $0.type == "ping" }) else { continue }
                 self.send("ping", fields: [:], timeout: 8) { result in
                     if case .uncertain = result { self.disconnect(message: "电脑没有响应，已停止控制。") }
                 }

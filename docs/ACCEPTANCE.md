@@ -1,23 +1,24 @@
 # Sofatap 实机验收
 
-适用于原生窗口版（Windows/Mac 0.3.0、Linux 0.4.0）。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与 Windows 的联合验收。
+适用于 0.5.0 开发源码（iPhone build 6）的单屏交互及原生接收端。公开下载仍是 Windows/Mac 0.3.0、Linux 0.4.0，不能用于验收新增功能。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与电脑的联合验收。共享 Mac 必须先按 AGENTS.md 用 Yomado 验证虚拟显示器与输入隔离。
 
-先在记事本里测试，再进入浏览器和日常软件。测试不使用密码或私人内容。
+先在测试桌面的文本编辑器里测试，再进入浏览器和日常软件。Mac 使用“文本编辑”，Windows 使用记事本，Linux 使用测试环境中的文本编辑器。测试不使用真实密码或私人内容。
 
 | 项目 | 操作 | 通过标准 |
 | --- | --- | --- |
 | 旧版本升级 | 关闭旧接收端并禁用旧快捷方式，安装新版本重新扫码 | 新版 `sofatap://` 链接连接成功，旧进程未占用端口 |
 | 配对 | iPhone 扫描电脑二维码 | 显示正确电脑名称与已连接状态 |
 | 指针 | 慢速、快速滑动触控板 | 电脑鼠标随手指移动，没有松手后继续漂移 |
-| 点击 | 左键、右键、拖动、滚动 | 各项操作正确，松开或断连后没有鼠标键卡住 |
-| 空中模式 | 按住移动按钮转动手机，松开重定位 | 按住时移动，松开和进入后台立即停止 |
+| 点击 | 单击、单指连续双击 | 分别触发一次左键和一次右键；双击不会先触发左键 |
+| 拖动与滚动 | 静止按住 300 ms 再移动，松手；双指滑动 | 拖动和滚动正确，松开／中断／断连后没有鼠标键卡住 |
 | 中文 | `你好，Windows。今天想看一部电影。` | 逐字一致、不自动搜索/发送 |
 | Unicode | `Hello 日本語 👋 café` 和多行文本 | 中文、日文、重音符、emoji、换行保持 |
-| 系统听写 | 在手机原生文本框用系统麦克风听写 | 草稿先出现在手机，仅点发送才到电脑 |
+| 麦克风 | 首次点底部麦克风、授权、听写并停止；再测试拒绝／中断／不支持的语言 | 权限弹窗不会取消自己的请求；本机识别草稿保留，仅点发送才到电脑；App 不上传音频、不转云端；不支持时可用键盘／Typeless；后台无录音 |
+| 系统听写 | 在同页键盘里用系统听写或第三方输入法 | 草稿保留，IME 不被刷新打断；已发送文字不自动成为下一次听写的前缀 |
 | Typeless | 在同一文本框切到 Typeless；测试需要/不需要跳 App 两种情况 | 返回后草稿保留，可以重连发送，不重发旧文字 |
 | 发送结果未知 | 发送时临时断开 Wi-Fi | 保留草稿并提示失败/结果未知，不自动重试 |
 | 防重复 | 连点发送、重复同一消息 ID | 未重复注入；已发送内容需要明确修改/重发动作 |
-| 焦点 | 依次点击记事本、浏览器地址栏、软件搜索框 | 输入进入当前聚焦位置 |
+| 焦点 | 依次点击文本编辑器、浏览器地址栏、软件搜索框，再点按钮和只读／密码测试框 | 支持的原生／网页可编辑字段自动弹出键盘；手动收起后同一字段不反复弹出；只读／密码／未知状态不自动打开；密码框停用麦克风，手动键盘仍可用；无内容读取 |
 | 权限边界 | 测试管理员软件/系统确认界面 | 无法注入时可识别限制，不误报已成功保存 |
 | 恢复 | 锁屏手机后解锁、重启电脑接收端 | 草稿保留，连接可恢复，不自动注入旧操作 |
 
@@ -35,7 +36,7 @@
 | 明确授权 | 用户通过原生窗口入口，在系统设置授权 Sofatap Receiver.app | 授权仅由用户完成；刷新或重启后能控制普通桌面 |
 | 授权撤销 | 连接中手动撤销 Sofatap 辅助功能权限 | 后续操作明确失败或显示不可用，不误报已写入目标软件 |
 | 控制与 Unicode | 在文本编辑测试移动、左右键、拖动、双向滚动及 `Hello 日本語 👋 café` | 方向正确、文字一致；无剪贴板副作用，断连释放程序按住的按钮 |
-| 特殊按键 | 在普通文稿测试回车、退格、Tab、方向键、Escape，以及产品支持的修饰键 | 行为符合 macOS；系统保留快捷键或安全输入限制有明确边界 |
+| 文本提交 | 在手机草稿中编辑、删除和加入换行，再点发送 | 整段文字按预期输入，不额外追加回车；手机键盘编辑草稿，不直接发送快捷键 |
 | 多显示器 | 主副屏位于不同方向或使用不同缩放，跨屏移动和拖动 | 指针坐标正确，可触达显示器边缘，没有跳跃或持续漂移 |
 | 锁屏与切换用户 | 锁定 Mac 或切换用户，再解锁返回 | 安全界面不会被绕过；恢复后需要正常连接，不回放旧操作 |
 | 正常退出 | 原生窗口点“退出 Sofatap”，检查手机与端口 | 连接断开，控制端口停止监听，已按住按钮被释放 |
@@ -45,16 +46,25 @@
 
 ad-hoc 本地签名与交叉编译成功不能替代正式分发或真实 Intel Mac/iPhone 联合测试。测试报告应单独列出构建验证、传输演练、辅助功能授权、物理输入和未执行项目。
 
-## Linux (0.4.0) device acceptance still required
+## Linux：0.5.0 新交互及既有输入的设备验收
 
 Run the native GTK receiver in a logged-in test desktop. Test X11 and each intended
 Wayland compositor separately. On Wayland, deny authorization once, then approve
 from the receiver's native button; verify controls remain disabled until approved,
 and become unavailable when the session is revoked. Confirm native QR scanning,
 TLS connection, multilingual/emoji text in the intended applications, pointer
-movement, left/right clicks, scrolling, dragging, shortcuts, disconnect cleanup,
+movement, single/double taps, 300 ms hold-to-drag, two-finger scrolling, disconnect cleanup,
 lock/unlock and receiver shutdown. Check that clipboard content is unchanged.
 
 CI uses its own Xvfb and private mock D-Bus service. This tests X11/GTK mechanics
 and portal wire behavior; it does not substitute for a physical iPhone, a real
 Wayland permission dialog or compositor-level Unicode compatibility.
+
+For 0.5.0 focus detection, test supported native and browser fields with the
+optional AT-SPI bridge installed. Initial detection waits for a focus event.
+Verify writable, read-only, protected and unsupported targets; then remove or
+disable the helper in the isolated test package and confirm manual keyboard input
+still works. Portal permission alone does not establish AT-SPI availability.
+Microphone permissions, local recognition, Typeless and automatic keyboard
+behavior still require the physical iPhone; the historical 0.4.0 receiver checks
+do not cover these features.

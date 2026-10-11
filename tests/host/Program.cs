@@ -5,6 +5,17 @@ using SofaTap;
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
 LinuxInputChecks.Run(Check);
+TextFocusChecks.Run(Check);
+
+var focusTracker = new TextFocusTracker();
+Check(focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), false) == new TextFocusMetadata("unknown", 0), "unavailable desktop never exposes a focused field");
+var firstFocus = focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), true);
+Check(firstFocus.State == "editable" && firstFocus.Revision == 1, "new writable target advances focus revision");
+Check(focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), true) == firstFocus, "steady target does not reopen dismissed keyboard");
+Check(focusTracker.Update(new(TextFocusKind.Editable, "another-target"), true).Revision == 2, "switching writable fields advances focus revision");
+Check(!JsonSerializer.Serialize(firstFocus).Contains("native-private-target"), "focus metadata never serializes native identities");
+Check(focusTracker.Update(new(TextFocusKind.Protected, "password-target"), true).State == "protected", "protected target stays explicit");
+Check(focusTracker.Update(new(TextFocusKind.Protected, "password-target"), false).State == "unknown", "lock clears current focus metadata");
 ActionMessage Parse(string body) => Protocol.Parse(Encoding.UTF8.GetBytes(body));
 string Message(string fields, string? id = null) => "{\"id\":\"" + (id ?? Guid.NewGuid().ToString("D")) + "\"," + fields + "}";
 void Reject(string body, string name)

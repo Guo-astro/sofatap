@@ -43,6 +43,11 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o "$RUNNER_TEMP/sofatap-receiver-tests"
           "$RUNNER_TEMP/sofatap-receiver-tests"
+      - name: Single-screen touch gestures without desktop input
+        shell: bash
+        run: |
+          swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
+          "$RUNNER_TEMP/sofatap-touch-tests"
       - name: Mac native-window protocol checks without launching a UI
         shell: bash
         run: |
@@ -98,7 +103,7 @@ jobs:
       - name: Install isolated graphical test dependencies
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 xvfb xauth dbus libx11-6 libxtst6 libxdo3
+          sudo apt-get install -y --no-install-recommends python3-gi gir1.2-gtk-3.0 gir1.2-atspi-2.0 at-spi2-core libatk-bridge2.0-0 xvfb xauth dbus libx11-6 libxtst6 libxdo3
       - name: Host checks and worker failure lifecycle
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
       - name: Linux worker and native window checks without input
@@ -106,10 +111,13 @@ jobs:
           /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_protocol.py
           /usr/bin/python3 -B desktop/linux/check_input.py
           /usr/bin/python3 -B desktop/linux/check_wayland_input.py
+          /usr/bin/python3 -B tests/text_focus_linux.py
       - name: Wayland portal wire protocol on a private mock D-Bus service
         run: /usr/bin/python3 -B desktop/linux/check_portal_dbus.py
       - name: Real X11 events on a private Xvfb server
         run: /usr/bin/python3 -B desktop/linux/check_x11_integration.py
+      - name: Focused text metadata on private AT-SPI and Xvfb
+        run: /usr/bin/python3 -B desktop/linux/check_text_focus_integration.py
       - name: Build Linux distributions and verify included licenses
         run: |
           SOFATAP_DOTNET="$(command -v dotnet)" bash scripts/build-linux.sh x64

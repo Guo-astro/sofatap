@@ -33,7 +33,8 @@ try
     IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput()
         : OperatingSystem.IsLinux() ? new LinuxInput() : new WindowsInput();
     using var inputLifetime = input as IDisposable;
-    var server = new ReceiverServer(options, credentials, input);
+    using var textFocus = dryRun ? null : TextFocusProbe.Create();
+    var server = new ReceiverServer(options, credentials, input, textFocus);
     await using var app = server.Build();
     try { await NativeDesktopBridge.RunAsync(app, server, dryRun); }
     finally { input.ReleaseAll(); }

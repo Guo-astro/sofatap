@@ -185,6 +185,7 @@ async def exercise(state, control_port, send_native, states):
         check("dry run explicitly disables input", hello["type"] == "hello" and hello["version"] == 1 and hello["inputAvailable"] is False)
         expected_platform = "macos" if sys.platform == "darwin" else "windows" if sys.platform == "win32" else "linux"
         check("hello identifies platform and dry-run status", hello.get("platform") == expected_platform and hello.get("dryRun") is True and hello.get("inputStatus") == "dry_run")
+        check("dry run never reads or reports desktop text focus", hello.get("textFocus") == {"state": "unknown", "revision": 0})
         await denied("second controller denied", headers, 409)
 
         async def command(name, payload, expected=True):
@@ -218,6 +219,7 @@ async def exercise(state, control_port, send_native, states):
         check("malformed JSON rejected without losing session", response.get("ok") is False)
         _, heartbeat = await command("session recovers after invalid frame", {"type": "ping"})
         check("heartbeat reports current availability", heartbeat.get("inputAvailable") is False and heartbeat.get("dryRun") is True and heartbeat.get("inputStatus") == "dry_run")
+        check("dry-run heartbeat stays content-free", heartbeat.get("textFocus") == {"state": "unknown", "revision": 0})
 
     async with websockets.connect(url, ssl=context, additional_headers=headers, proxy=None) as ws:
         await ws.recv()

@@ -8,31 +8,33 @@
 
 *AI-generated product scenario illustration; not an application screenshot.*
 
-Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn your iPhone into a touchpad, hold-to-move air mouse and text sender for a Windows, Mac or supported Linux computer. Keep the computer's picture on your TV and control it from the sofa.
+Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn your iPhone into a gesture-driven mouse and voice/text input surface for a Windows, Mac or supported Linux computer. Keep the computer's picture on your TV and control it from the sofa.
 
 [Releases](https://github.com/chekusu/sofatap/releases) · [Issues](https://github.com/chekusu/sofatap/issues) · [MIT license](LICENSE)
 
 ## What you can do
 
-- Move the pointer, click, drag and scroll with the native iPhone app. Hold the air-mouse button and rotate your phone to move the pointer.
-- Compose text in a standard iOS text field using your keyboard or dictation, review it, then tap **Send** to type into the computer's focused field. Sending text does not append an Enter or submit action; the text itself may contain line breaks.
+- One touch surface: slide to move, tap for a left click, double-tap for a right click, hold still for 300 ms to drag, and use two fingers to scroll.
+- Tap the bottom microphone for on-device dictation when supported, or use the iPhone keyboard / Typeless. Review the local draft and tap **Send** to type into the computer's focused field. Sending does not append Enter or submit the form; embedded line breaks remain part of the text.
 - Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
 - Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Draft retention, send confirmation and no automatic replay help avoid accidental duplicate input after a disconnect.
 
-**This is an alpha preview.** Touchpad, air-mouse and text workflows are implemented, but the checks below cover different levels of readiness. Typeless compatibility, actual dictation and physical gyroscope behavior still need device testing. Bluetooth and a hosted relay service are not implemented.
+**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.5.0 (iPhone build 6) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+
+The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. Detection never reads field contents; unsupported, read-only or protected targets do not trigger automatic input UI. Linux detection requires an optional AT-SPI bridge. Manual keyboard access remains available. See [focus detection and platform limits](docs/TEXT-FOCUS.md).
 
 ## Platform status
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. Voice and gyroscope testing remain pending. |
+| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.5.0 (6) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
 | Windows | Native receiver released in 0.3.0. This version's desktop UI and physical iPhone integration still need acceptance testing. |
 | Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
 | Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
 
 The [Mac verification record](docs/verification/macos-0.3.0.md) covers real camera pairing, TLS, exact text readback and selected key/pointer actions on 2026-10-11. The [Linux verification record](docs/verification/linux-0.4.0.md) covers native GTK rendering, X11 input on an isolated Xvfb desktop and a mock Wayland portal on a private D-Bus. Neither record establishes complete application compatibility.
 
-Windows uses Win32 `SendInput`; Mac uses Quartz after an explicit local Accessibility grant. The iPhone's Select All action uses Command+A on Mac. Linux X11 requires libX11, libXtst and libxdo; Wayland requires a compatible RemoteDesktop portal and a native user permission grant. Linux accepts up to 2,048 Unicode scalar values per text action and does not read or replace the clipboard. Unsupported Wayland sessions remain unavailable, with no XWayland fallback. See [Linux requirements and limits](desktop/linux/README.md).
+Windows uses Win32 `SendInput`; Mac uses Quartz after an explicit local Accessibility grant. Linux X11 requires libX11, libXtst and libxdo; Wayland requires a compatible RemoteDesktop portal and a native user permission grant. Linux accepts up to 2,048 Unicode scalar values per text action and does not read or replace the clipboard. Unsupported Wayland sessions remain unavailable, with no XWayland fallback. See [Linux requirements and limits](desktop/linux/README.md).
 
 ## Get started
 
@@ -58,6 +60,8 @@ Pairing links contain control credentials: keep them on your own devices. If upg
 ## Privacy and permissions
 
 Sofatap connects directly over the local network. The project has no hosted relay service. Pairing uses a pinned TLS certificate; credentials are stored in iPhone Keychain, Windows DPAPI, or current-user-only receiver files on Mac/Linux. Mac input requires Accessibility permission; Wayland input requires the desktop's explicit portal grant.
+
+The microphone starts only after an explicit tap and the required permissions. Supported on-device recognition keeps audio on the phone; Sofatap does not upload audio or silently switch to cloud recognition. Recognized text stays in the local draft until **Send**. System dictation and third-party keyboards have their own data handling.
 
 Pairing QR codes travel through a private local pipe to the native desktop UI, not a web pairing page. Never publish pairing codes, credentials or signing material. The repository includes no developer account, signing certificate or provisioning profile. See [PROTOCOL.md](PROTOCOL.md) for the transport and input behavior, and [the acceptance checklist](docs/ACCEPTANCE.md) for remaining device checks.
 
@@ -102,12 +106,15 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
+swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+/tmp/sofatap-gesture-tests
+python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device
 ```
 
 The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining acceptance includes Typeless, voice, physical air-mouse behavior, Mac dragging/scrolling and physical-device coverage across the supported desktop platforms.
+Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.5.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
 
 ## Repository layout
 

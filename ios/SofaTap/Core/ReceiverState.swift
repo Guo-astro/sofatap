@@ -1,4 +1,7 @@
 import Foundation
+import CoreFoundation
+
+enum RemoteTextFocus: String { case unknown, other, editable, protected }
 
 /// Additive protocol-v1 metadata. Older receivers omit it; unavailable never implies dry-run.
 struct ReceiverState: Equatable {
@@ -12,6 +15,9 @@ struct ReceiverState: Equatable {
     var status: Status = .unavailable
     var inputAvailable: Bool = false
     var dryRun: Bool = false
+    var textFocus: RemoteTextFocus = .unknown
+    var focusRevision: Int = 0
+    var reportsTextFocus: Bool = false
     var commandModifier: String { platform == .macos ? "win" : "ctrl" }
     var unavailableTitle: String {
         switch status {
@@ -57,7 +63,17 @@ struct ReceiverState: Equatable {
         let dry = message["dryRun"] as? Bool ?? false
         let code = (message["inputStatus"] as? String).flatMap(Status.init(rawValue:))
         let status: Status = dry ? .dry_run : code ?? (message["inputStatus"] == nil && available ? .ready : .unavailable)
-        return ReceiverState(platform: platform, status: status,
-                             inputAvailable: available && status == .ready && !dry, dryRun: dry)
+        let canInput = available && status == .ready && !dry
+        var state = ReceiverState(platform: platform, status: status, inputAvailable: canInput, dryRun: dry)
+        if let focus = message["textFocus"] as? [String: Any],
+           let raw = focus["state"] as? String, let kind = RemoteTextFocus(rawValue: raw),
+           let revision = focus["revision"] as? NSNumber,
+           CFGetTypeID(revision) != CFBooleanGetTypeID(),
+           revision.doubleValue.isFinite, revision.doubleValue >= 0,
+           revision.doubleValue <= Double(Int32.max), revision.doubleValue.rounded() == revision.doubleValue {
+            state.reportsTextFocus = true
+            if canInput { state.textFocus = kind; state.focusRevision = revision.intValue }
+        }
+        return state
     }
 }

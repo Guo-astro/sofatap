@@ -8,31 +8,33 @@
 
 *AI で生成した利用イメージです。アプリのスクリーンショットではありません。*
 
-Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソースのリモコンアプリです。iPhone を、Windows・Mac・対応 Linux パソコンのタッチパッド、ボタンを押して動かすエアマウス、テキスト送信ツールとして使えます。パソコンの画面はテレビに映し、操作はソファから。
+Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソースのリモコンアプリです。iPhone を、Windows・Mac・対応 Linux パソコンのジェスチャーマウスと音声・テキスト入力ツールとして使えます。パソコンの画面はテレビに映し、操作はソファから。
 
 [リリース](https://github.com/chekusu/sofatap/releases) · [Issue](https://github.com/chekusu/sofatap/issues) · [MIT ライセンス](LICENSE)
 
 ## できること
 
-- ネイティブ iPhone アプリでポインター移動、クリック、ドラッグ、スクロール。エアマウスのボタンを押しながらスマートフォンを傾けると、ポインターを動かせます。
-- 標準の iOS テキスト入力欄でキーボードや音声入力を使い、内容を確認してから**送信**。パソコンでフォーカスされている欄に文字を入力します。送信後に Enter キーやフォーム送信の操作を追加することはありません。テキスト自体には改行を含められます。
+- ひとつのタッチ面で、スワイプして移動、1 回タップで左クリック、2 回連続タップで右クリック、300 ms 長押しでドラッグ、2 本指でスクロールできます。
+- 下部のマイクから、対応する端末・言語では端末内の音声認識を利用できます。iPhone キーボード／Typeless も使用可能です。下書きを確認して**送信**すると、パソコンでフォーカスされた欄に入力します。Enter や送信操作は追加せず、文章内の改行は保持します。
 - **パソコンのネイティブウインドウ**に表示された QR コードでペアリング。Mac は AppKit/SwiftUI、Windows は WinForms、Linux は GTK3 を使用し、ブラウザを開く必要はありません。
 - 家庭内ネットワークで接続し、WSS/TLS、証明書ピンニング、ローカル保存のペアリング認証情報を使用。下書きの保持、送信確認、切断後の自動再送の禁止により、意図しない重複入力を防ぎます。
 
-**現在はアルファプレビュー版です。** タッチパッド、エアマウス、テキスト送信の処理は実装済みですが、確認済みの範囲は下記のとおりです。Typeless との互換性、実際の音声入力、実機のジャイロ動作は引き続き検証が必要です。Bluetooth 接続とクラウド中継サービスは未実装です。
+**現在はアルファプレビュー版です。** 単一画面のジェスチャー、マイク、入力欄の検出は `main` の 0.5.0 開発ソース（iPhone ビルド 6）に含まれます。下記のダウンロードは以前のアルファ版で、これらの変更は含まれません。実機 iPhone の操作・音声、Typeless、アプリごとのフォーカス動作は引き続き検証が必要です。Bluetooth とクラウド中継は未実装です。[操作仕様と今後の独立 CUA 構想](docs/INTERACTION.md)をご覧ください。
+
+対応する受信アプリが、アクセシビリティの属性を公開する新しい編集可能なネイティブ／Web の入力欄を検出すると、iPhone のキーボードが自動で開きます。欄の内容は読みません。未対応・読み取り専用・保護された欄では自動表示しません。Linux の検出には任意の AT-SPI ブリッジが必要です。手動でもキーボードを開けます。[検出方式と各 OS の制限](docs/TEXT-FOCUS.md)をご確認ください。
 
 ## プラットフォーム別の状況
 
 | プラットフォーム | 現在の状況 |
 | --- | --- |
-| iPhone | iOS 17 以降。iPhone 17 Pro Max の 0.3.0 (4) で、Mac との一部の実機連携を確認済み。音声とジャイロは未検証です。 |
+| iPhone | iOS 17 以降。iPhone 17 Pro Max の 0.3.0 (4) で、Mac との一部の実機連携を確認済み。0.5.0 (6) の単一画面のジェスチャー、マイク、自動キーボードは実機検証が必要です。 |
 | Windows | 0.3.0 でネイティブ受信アプリを公開済み。このバージョンのデスクトップ UI と実機 iPhone 連携は検証待ちです。 |
 | Mac | macOS 15 以降。Apple Silicon・Intel 両方のパッケージを公証済み。Apple Silicon では一部の実機検証が完了し、Intel の実入力は未検証です。 |
 | Linux | 0.4.0 で GTK3 のネイティブ受信アプリを公開済み。X11 入力は隔離デスクトップで検証済み。Wayland portal は実験的対応で、実機 iPhone 連携、実際の Wayland コンポジター、ARM64 での動作は未検証です。 |
 
 [Mac の検証記録](docs/verification/macos-0.3.0.md)には、2026-10-11 に行った実カメラによるペアリング、TLS 接続、入力文字の完全一致確認、一部のキー・ポインター操作を記載しています。[Linux の検証記録](docs/verification/linux-0.4.0.md)は、ネイティブ GTK の描画、独立した Xvfb デスクトップでの X11 入力、プライベート D-Bus 上の模擬 Wayland portal を対象としています。すべてのアプリとの互換性を保証するものではありません。
 
-Windows は Win32 `SendInput`、Mac はユーザーが明示的にアクセシビリティ権限を許可した後に Quartz を使用します。Mac 向けの「すべて選択」は Command+A になります。Linux の X11 は libX11・libXtst・libxdo が必要です。Wayland は互換性のある RemoteDesktop portal と、システムのネイティブ画面でのユーザー許可が必要です。Linux では 1 回につき最大 2,048 Unicode スカラー値のテキストを受け付け、クリップボードを読み書きしません。未対応の Wayland セッションでは入力を無効にし、XWayland へのフォールバックは行いません。[Linux の要件と制限](desktop/linux/README.md)をご覧ください。
+Windows は Win32 `SendInput`、Mac はユーザーが明示的にアクセシビリティ権限を許可した後に Quartz を使用します。Linux の X11 は libX11・libXtst・libxdo が必要です。Wayland は互換性のある RemoteDesktop portal と、システムのネイティブ画面でのユーザー許可が必要です。Linux では 1 回につき最大 2,048 Unicode スカラー値のテキストを受け付け、クリップボードを読み書きしません。未対応の Wayland セッションでは入力を無効にし、XWayland へのフォールバックは行いません。[Linux の要件と制限](desktop/linux/README.md)をご覧ください。
 
 ## 使い始める
 
@@ -58,6 +60,8 @@ Windows は Win32 `SendInput`、Mac はユーザーが明示的にアクセシ�
 ## プライバシーと権限
 
 Sofatap はローカルネットワークで直接接続し、このプロジェクトはクラウド中継サービスを提供していません。ペアリングでは TLS 証明書を固定して検証します。認証情報は iPhone の Keychain、Windows の DPAPI、または Mac/Linux 上の現在のユーザーのみ読み取り可能な受信アプリのファイルに保存します。Mac の入力にはアクセシビリティ権限、Wayland の入力には明示的な portal の許可が必要です。
+
+マイクは明示的なタップと必要な権限の許可後にのみ起動します。対応する端末内の音声認識では音声は iPhone 内にとどまり、Sofatap は音声をアップロードせず、自動的にクラウド認識へ切り替えません。認識した文章は**送信**を押すまでローカルの下書きとして保持します。システムの音声入力やサードパーティ製キーボードには、それぞれ独自のデータ処理方針があります。
 
 ペアリングの QR コードはローカルのプライベートパイプでネイティブ UI に渡し、Web ページは使いません。ペアリングコード、認証情報、署名用ファイルを公開しないでください。リポジトリには開発アカウント、署名証明書、プロビジョニングプロファイルを含めていません。通信と入力の仕様は [PROTOCOL.md](PROTOCOL.md)、未完了の実機検証は[受け入れチェックリスト](docs/ACCEPTANCE.md)をご覧ください。
 
@@ -102,12 +106,15 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
+swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+/tmp/sofatap-gesture-tests
+python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device
 ```
 
 Host runner は模擬入力を使います。TLS/WebSocket の確認は一時的な受信アプリを `--dry-run` で起動し、システムに入力を送りません。最後のコマンドはプロビジョニング未設定の ARM64 iOS アプリをコンパイルするだけで、iPhone にはインストールしません。CI では各プラットフォームのビルドと隔離 Linux デスクトップの確認も行います。関連コマンドは [Linux ガイド](desktop/linux/README.md#lifecycle-and-checks)をご覧ください。
 
-ビルド、プロトコル、仮想デスクトップ、実機での確認は、それぞれ検証する範囲が異なります。Typeless、音声、実機でのエアマウス、Mac のドラッグ・スクロール、各対応デスクトップでの実機連携は引き続き検証が必要です。
+ビルド、プロトコル、仮想デスクトップ、実機での確認は、それぞれ検証する範囲が異なります。0.5.0 では実機でのシングル／ダブルタップ、300 ms 長押しドラッグ、スクロール、マイク権限と音声認識、Typeless、アプリごとの入力欄検出、各対応デスクトップとの iPhone 連携を引き続き検証する必要があります。
 
 ## リポジトリ構成
 

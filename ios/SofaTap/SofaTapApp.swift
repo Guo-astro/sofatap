@@ -12,7 +12,8 @@ struct SofaTapApp: App {
                 .tint(Palette.mint)
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { controller.becameActive() }
-                    else { controller.becameInactive() }
+                    else if phase == .background { controller.becameInactive() }
+                    else { controller.pauseInput() }
                 }
                 .onOpenURL { url in controller.acceptPairing(url.absoluteString) }
         }
