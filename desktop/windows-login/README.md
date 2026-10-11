@@ -1,3 +1,5 @@
+> **Retired experiment:** this account-password component is not the product direction and must not be installed for PIN validation. Ordinary receiver discovery and iPhone use are disabled. See [current PIN work](../../docs/FACE-ID-UNLOCK.md). The remainder is historical documentation.
+
 # Sofatap optional Windows phone sign-in — development pilot
 
 This source adds phone-initiated Windows **local or personal Microsoft account password** authentication while the console is locked. The iPhone holds the saved password behind Face ID; the Windows service only handles an ephemeral submission through a V2 Credential Provider. It does not change normal mouse input or replace Windows sign-in methods. Read [the protocol and security boundaries](PROTOCOL.md).

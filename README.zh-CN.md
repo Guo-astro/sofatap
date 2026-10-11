@@ -26,7 +26,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 兼容接收端识别到提供辅助功能元数据的原生或网页可编辑输入框时，手机会自动弹出键盘。检测不读取框内内容；不支持检测、只读或安全输入框不会自动唤起输入界面。Linux 检测需要可选的 AT-SPI 桥接，仍可手动打开键盘。参见[焦点检测及平台限制](docs/TEXT-FOCUS.md)。
 
-**实验性 Face ID 解锁：** 0.6.0 源码加入仅保存在本机 iPhone 钥匙串的密码保管，以及针对 Windows 本地账户或个人 Microsoft 账户密码的可选登录组件。需要明确启用并由管理员安装；普通扫码配对不会直接获得锁屏解锁能力。仅允许 Hello 登录或无密码账户可能无法使用此功能，Sofatap 不会修改这些设置。真实 Face ID 与 Windows 登录联合验收待完成。参见[设置、支持范围与验收要求](docs/FACE-ID-UNLOCK.md)。
+**Windows 锁屏 PIN 控制（验证中）：** 目标是用 iPhone 触控板操作锁屏并手动输入 PIN，再提供可选的 Face ID 授权自动输入已保存 PIN。Sofatap 不要求 Microsoft 账户密码。此前的账户密码实验已停用，普通接收器和 iPhone UI 不再提供入口。鼠标探测、原生 PIN 接受和手机联合实测分别验收，扫码配对或编译成功不代表已支持。参见[范围与验证](docs/FACE-ID-UNLOCK.md)。
 
 ## 平台进度
 

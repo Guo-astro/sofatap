@@ -36,28 +36,29 @@ The first prints an adhoc signed simulator `.app` path in a temporary staging di
 Offline simulator screenshots and recordings demonstrate local UI and effects, not physical-device frame rate, touch latency or desktop input. Simulator compile, UI and TLS checks do not verify real iPhone LAN permissions, camera scanning, gesture timing and drag feel, microphone permissions/recognition, Typeless, automatic keyboard behavior or actual desktop input. The 0.5.0 interaction still needs physical iPhone acceptance on each supported desktop OS. Earlier 0.3.0 Mac and 0.4.0 Linux verification records do not establish acceptance of these new features. Shared-Mac receiver tests must follow the Yomado virtual-display and input-isolation requirements in `AGENTS.md`.
 
 
-## Experimental Face ID unlock (0.6.0 / build 9)
+## Windows Hello PIN direction (0.6.0 / build 9)
 
-The iPhone app contains a separate Face ID flow for Windows local-account passwords and password-bearing personal Microsoft accounts. It requires the opt-in Windows login service and Credential Provider; an ordinary or older receiver does not support lock-screen input. This has not yet passed physical Face ID or Windows sign-in acceptance.
+The account-password unlock experiment has been retired. Sofatap no longer offers account-password enrollment, replacement or Face ID submission. The ordinary receiver's legacy `unlock` advertisement is ignored, cached password capabilities are not activated, and the retained experimental controller has a fixed disabled gate on enrollment, authentication and network requests. Its protocol/binding source remains for review; it must not be relabeled as a Windows Hello PIN implementation.
 
-1. Unlock Windows locally, install/configure its experimental login component, then pair Sofatap through the receiver's native QR window. The phone accepts the login capability only over the existing pinned receiver connection.
-2. In Sofatap, tap the logo → **Face ID 解锁电脑**. Verify the computer and account, enter the account password indicated by the account type (local or Microsoft account, not a Hello PIN), and explicitly allow local storage. Face ID confirms enrollment.
-3. While the computer is locked, tap the lock/Face ID icon inside the touch surface, then **用 Face ID 解锁**. Each attempt obtains a new, short-lived challenge before requesting Face ID. A cached capability allows connecting to the login service before the ordinary receiver starts.
-4. Sofatap reports success only after the Windows login component confirms it. Cancellation or an uncertain response never resends the password; inspect the TV before explicitly starting another attempt. Use the same settings page to replace/remove the saved password.
+If an earlier experimental build saved a credential, the logo's status sheet exposes only **删除旧版解锁记录** to delete that iPhone's legacy Keychain record and service authorization. This cleanup reads only binding metadata and deletes the items; it does not read the protected password, request Face ID or contact Windows. The Face ID purpose string is removed because the current UI cannot request biometric authentication.
 
-The password uses an independent, non-syncing iOS Keychain item with `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly` and `.biometryCurrentSet`; the ACL protects the actual password read. It is bound to the paired host/port/certificate/token, login-service certificate/device identity, exact Windows account SID, and password-provider kind. Each use creates a fresh `LAContext`, disables reuse and the passcode fallback, and invalidates the context afterward. Changing Face ID enrollment invalidates the password. Re-pairing or a detected service identity change removes the prior enrollment. The login capability itself is stored device-only in Keychain, never in text drafts or UserDefaults.
+The intended product direction is saved Windows Hello PIN use after explicit Face ID, with a manual phone pointer/PIN fallback while Windows is locked. Neither path is enabled in this build. Both depend on a separately verified Windows secure-desktop component and protocol. Ordinary desktop controls remain unchanged and do not gain lock-screen access. PIN input must not reuse the text draft: that draft persists in UserDefaults and supports dictation. A future manual PIN path needs its own native input surface, no clipboard/dictation or stored PIN, no secret echo, and no automatic resend after an uncertain result.
 
-Passwords use a dedicated secure keyboard field, without clipboard actions, dictation/composer integration, or autofill. After Face ID, the one-use request goes directly to the separately pinned HTTPS login service on TCP 53320. Backgrounding cancels authentication and any pending attempt; a system Face ID prompt becoming inactive does not cancel itself. The ordinary `/control` connection never receives a password, and there is no mouse/keyboard injection fallback. Owned temporary `Data` buffers are cleared; Swift, Foundation and Security may still create runtime copies, so this is not a guarantee that all process memory is zeroized.
-
-The capability keeps the Windows profile SAM alias (such as `outur`) for display, even for a Microsoft account. The Windows component obtains the Microsoft qualified sign-in identity directly from LogonUI after matching the enrolled SID; the phone does not choose or submit an account identity. Microsoft-account passwordless mode and the Windows setting that only allows Windows Hello sign-in make this password flow unavailable. Sofatap does not alter either setting.
-
-Powered-off wake, firmware/BitLocker pre-boot screens, domain/Entra accounts and Windows Hello PIN are not supported in this first integration. Keep a working local sign-in method while testing the login component.
-
-Protocol and binding checks (no real password, biometric prompt or desktop input):
+Legacy protocol/binding checks (synthetic fixtures, no real password, biometric prompt or desktop input):
 
 ```sh
 xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
   ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
   ios/tests/UnlockProtocolTests.swift -o /tmp/sofatap-unlock-protocol-tests
 /tmp/sofatap-unlock-protocol-tests
+```
+
+Retirement regression checks also exercise the disabled controller with synthetic capability advertisements:
+
+```sh
+xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+  ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
+  ios/SofaTap/Core/ComputerUnlockController.swift ios/tests/UnlockRetirementTests.swift \
+  -o /tmp/sofatap-unlock-retirement-tests
+/tmp/sofatap-unlock-retirement-tests
 ```

@@ -65,6 +65,15 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         var candidate = Encoding.ASCII.GetBytes(authorization[7..]);
         return CryptographicOperations.FixedTimeEquals(candidate, _token);
     }
+    // The retired account-password pilot must not be discoverable, even when a
+    // legacy enrollment file remains on disk. PIN control needs a separate, verified protocol.
+    internal static object CreateHello(string name, string platform, bool dryRun,
+        string status, TextFocusMetadata focus) => new
+    {
+        type = "hello", version = 1, name, platform, dryRun,
+        inputAvailable = status == "ready", inputStatus = status, textFocus = focus
+    };
+
     private async Task RunController(WebSocket socket, CancellationToken requestAborted)
     {
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(requestAborted, _applicationStopping);
@@ -73,11 +82,8 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
             code == "ready" && !options.DryRun && textFocus is not null
                 ? textFocus.Read() : new(TextFocusKind.Unknown), code == "ready" && !options.DryRun);
         var status = ReceiverPlatform.StatusCode(input, options.DryRun);
-        var unlock = UnlockCapabilityStore.Read(options.DataDirectory, credentials.Fingerprint,
-            OperatingSystem.IsWindows(), options.DryRun, status);
-        await Send(socket, new { type = "hello", version = 1, name = Environment.MachineName,
-            platform = ReceiverPlatform.Id, dryRun = options.DryRun, inputAvailable = status == "ready", inputStatus = status,
-            textFocus = Focus(status), unlock }, lifetime.Token);
+        await Send(socket, CreateHello(Environment.MachineName, ReceiverPlatform.Id,
+            options.DryRun, status, Focus(status)), lifetime.Token);
         var session = new ActionSession(input);
         var buffer = new byte[Protocol.MaximumFrameBytes + 1];
         while (socket.State == WebSocketState.Open && !lifetime.IsCancellationRequested)

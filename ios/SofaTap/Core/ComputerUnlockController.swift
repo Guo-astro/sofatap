@@ -4,6 +4,10 @@ import Security
 
 @MainActor
 final class ComputerUnlockController: ObservableObject {
+    // Retired account-password experiment. A future Windows Hello PIN feature
+    // needs its own verified capability and transport; never enable this path
+    // by relabeling its password field. Only legacy-record deletion is exposed.
+    private static let accountPasswordFlowEnabled = false
     @Published private(set) var state: ComputerUnlockState = .idle
     @Published private(set) var capability: UnlockCapability?
     @Published private(set) var savedBinding: UnlockCredentialBinding?
@@ -17,7 +21,7 @@ final class ComputerUnlockController: ObservableObject {
     private var passwordSubmitted = false
     private var foreground = true
 
-    var supported: Bool { capability != nil }
+    var supported: Bool { Self.accountPasswordFlowEnabled && capability != nil }
     var canUnlock: Bool { supported && savedBinding != nil && !state.busy && state != .uncertain && foreground }
     var canEnroll: Bool { supported && !state.busy && state != .uncertain && foreground }
     var explanation: String {
@@ -28,16 +32,17 @@ final class ComputerUnlockController: ObservableObject {
     func setPairing(_ newPairing: Pairing?) {
         cancel()
         pairing = newPairing
-        capability = newPairing.flatMap { UnlockCapabilityStore.read(for: $0) }
+        capability = Self.accountPasswordFlowEnabled ? newPairing.flatMap { UnlockCapabilityStore.read(for: $0) } : nil
         savedBinding = newPairing.flatMap { vault.binding(for: $0) }
-        if let pairing = newPairing, let capability, savedBinding != capability.binding(pairing) { savedBinding = nil }
+        if Self.accountPasswordFlowEnabled, let pairing = newPairing, let capability,
+           savedBinding != capability.binding(pairing) { savedBinding = nil }
         state = .idle; serviceState = nil
     }
 
     /// Called only for an authenticated, certificate-pinned Windows hello from
     /// a real, unlocked receiver. An old/malformed capability never enables auth.
     func receiveCapability(_ object: Any?, pairing: Pairing) {
-        guard self.pairing == pairing, let object = object as? [String: Any],
+        guard Self.accountPasswordFlowEnabled, self.pairing == pairing, let object = object as? [String: Any],
               let candidate = UnlockCapability.parse(object) else { return }
         if let existing = capability, existing != candidate, savedBinding != nil {
             cancel()
@@ -52,7 +57,7 @@ final class ComputerUnlockController: ObservableObject {
     }
 
     func savePassword(_ password: Data) {
-        guard canEnroll, let pairing, let capability else { return }
+        guard Self.accountPasswordFlowEnabled, canEnroll, let pairing, let capability else { return }
         let binding = capability.binding(pairing)
         beginOperation()
         let current = generation
@@ -79,7 +84,7 @@ final class ComputerUnlockController: ObservableObject {
     }
 
     func unlock() {
-        guard canUnlock, let pairing, let capability, let binding = savedBinding,
+        guard Self.accountPasswordFlowEnabled, canUnlock, let pairing, let capability, let binding = savedBinding,
               binding == capability.binding(pairing) else { return }
         beginOperation()
         let current = generation
@@ -148,7 +153,13 @@ final class ComputerUnlockController: ObservableObject {
 
     func removePassword() {
         cancel()
-        if let pairing { vault.remove(for: pairing); UnlockCapabilityStore.delete(for: pairing) }
+        if let pairing {
+            guard UnlockCapabilityStore.delete(for: pairing),
+                  vault.remove(for: pairing, knownBinding: savedBinding) else {
+                state = .failed("旧版解锁记录尚未删除。请解锁 iPhone 后重试。")
+                return
+            }
+        }
         savedBinding = nil; state = .idle
     }
 
@@ -173,7 +184,7 @@ final class ComputerUnlockController: ObservableObject {
     }
 
     private func discardPendingChallenge() {
-        guard let challenge, let pairing, let capability else { return }
+        guard Self.accountPasswordFlowEnabled, let challenge, let pairing, let capability else { return }
         var parts = URLComponents(); parts.scheme = "https"; parts.host = pairing.host
         parts.port = capability.port; parts.path = "/v1/attempt/\(challenge.attemptID)"
         guard let url = parts.url else { return }
@@ -222,7 +233,8 @@ final class ComputerUnlockController: ObservableObject {
     private func request(_ method: String, path: String, body: Data? = nil,
                          pairing: Pairing, capability: UnlockCapability) async throws -> [String: Any] {
         try Task.checkCancellation()
-        guard foreground, self.pairing == pairing, self.capability == capability else { throw CancellationError() }
+        guard Self.accountPasswordFlowEnabled, foreground, self.pairing == pairing,
+              self.capability == capability else { throw CancellationError() }
         if session == nil {
             let config = URLSessionConfiguration.ephemeral
             config.timeoutIntervalForRequest = 8; config.timeoutIntervalForResource = 10
@@ -284,5 +296,9 @@ private enum UnlockCapabilityStore {
             guard SecItemAdd(query as CFDictionary, nil) == errSecSuccess else { throw UnlockVaultError.saveFailed }
         } else if updated != errSecSuccess { throw UnlockVaultError.saveFailed }
     }
-    static func delete(for pairing: Pairing) { SecItemDelete(query(pairing) as CFDictionary) }
+    @discardableResult
+    static func delete(for pairing: Pairing) -> Bool {
+        let result = SecItemDelete(query(pairing) as CFDictionary)
+        return result == errSecSuccess || result == errSecItemNotFound
+    }
 }

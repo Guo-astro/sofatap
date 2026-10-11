@@ -155,10 +155,40 @@ final class UnlockCredentialVault {
         return bytes
     }
 
-    func remove(for pairing: Pairing) {
+    @discardableResult
+    func remove(for pairing: Pairing, knownBinding: UnlockCredentialBinding? = nil) -> Bool {
         cancel()
-        if let binding = binding(for: pairing) { SecItemDelete(Self.secretQuery(binding) as CFDictionary) }
-        SecItemDelete(Self.metadataQuery(pairing) as CFDictionary)
+        // Removal never releases the protected value or permits biometric UI.
+        let context = LAContext()
+        context.interactionNotAllowed = true
+        defer { context.invalidate() }
+        func delete(_ query: [String: Any]) -> Bool {
+            var query = query
+            query[kSecUseAuthenticationContext as String] = context
+            let result = SecItemDelete(query as CFDictionary)
+            return result == errSecSuccess || result == errSecItemNotFound
+        }
+        let binding: UnlockCredentialBinding
+        if let knownBinding {
+            guard knownBinding.matches(pairing) else { return false }
+            binding = knownBinding
+        } else {
+            var query = Self.metadataQuery(pairing)
+            query[kSecReturnData as String] = true
+            query[kSecMatchLimit as String] = kSecMatchLimitOne
+            query[kSecUseAuthenticationContext as String] = context
+            var result: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &result)
+            if status == errSecItemNotFound { return true }
+            guard status == errSecSuccess, let bytes = result as? Data,
+                  let decoded = try? JSONDecoder().decode(UnlockCredentialBinding.self, from: bytes),
+                  decoded.matches(pairing) else { return false }
+            binding = decoded
+        }
+        // Never discard metadata after a failed read/decode; it is the only
+        // reference to the protected item needed for a later cleanup attempt.
+        guard delete(Self.secretQuery(binding)) else { return false }
+        return delete(Self.metadataQuery(pairing))
     }
 
     private func makeContext() throws -> LAContext {

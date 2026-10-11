@@ -1,3 +1,5 @@
+> Historical account-password experiment; retired on 2026-10-12. [Current PIN validation](../FACE-ID-UNLOCK.md) supersedes this scope. Native Windows compilation and 15 COM fixture checks subsequently passed at `f4a8d13564644d210d7f5350382d742d91f7420b`; no real sign-in or PIN acceptance occurred.
+
 # Sofatap 0.6.0 Face ID unlock: development verification
 
 Date: 2026-10-11. iPhone source version: 0.6.0, build 9.

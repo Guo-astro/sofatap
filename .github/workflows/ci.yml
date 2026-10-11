@@ -39,9 +39,21 @@ jobs:
             ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
             ios/tests/UnlockProtocolTests.swift -o "$RUNNER_TEMP/sofatap-unlock-tests"
           "$RUNNER_TEMP/sofatap-unlock-tests"
+      - name: Retired password flow cannot enroll or send requests
+        shell: bash
+        run: |
+          xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+            ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
+            ios/SofaTap/Core/ComputerUnlockController.swift ios/tests/UnlockRetirementTests.swift \
+            -o "$RUNNER_TEMP/sofatap-unlock-retirement-tests"
+          "$RUNNER_TEMP/sofatap-unlock-retirement-tests"
       - name: TLS and WebSocket integration in dry-run mode
         shell: bash
         run: SOFATAP_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
+      - name: Secure-desktop diagnostic policy checks without OS input
+        run: |
+          xcrun clang++ -std=c++17 -Wall -Wextra -Werror desktop/windows-secure-input-probe/ProbeChecks.cpp -o "$RUNNER_TEMP/sofatap-secure-input-policy-tests"
+          "$RUNNER_TEMP/sofatap-secure-input-policy-tests"
       - name: Native pairing parser checks
         shell: bash
         run: |
@@ -106,6 +118,18 @@ jobs:
           ctest --test-dir artifacts/windows-login/provider-build -C Release --output-on-failure
       - name: Compile self-contained Windows receiver without launching it
         run: dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci
+      - name: Compile bounded secure-desktop diagnostic and run no-input policy checks
+        # Never install its service or run its input worker in CI.
+        run: |
+          $probeTokens = $null
+          $probeParseErrors = $null
+          [System.Management.Automation.Language.Parser]::ParseFile("$PWD/desktop/windows-secure-input-probe/Probe.ps1", [ref]$probeTokens, [ref]$probeParseErrors) | Out-Null
+          if ($probeParseErrors.Count -ne 0) { $probeParseErrors | Format-List; exit 1 }
+          cmake -S desktop/windows-secure-input-probe -B artifacts/windows-secure-input-probe -A x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cmake --build artifacts/windows-secure-input-probe --config Release
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ctest --test-dir artifacts/windows-secure-input-probe -C Release --output-on-failure
       - name: Windows native-window parser checks without launching a UI
         run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
       - name: Compile self-contained WinForms frontend without launching it

@@ -13,7 +13,6 @@
   <key>UILaunchScreen</key><dict/>
   <key>UIRequiredDeviceCapabilities</key><array><string>arm64</string></array>
   <key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string></array>
-  <key>NSFaceIDUsageDescription</key><string>每次解锁已配对的 Windows 电脑前，通过 Face ID 授权读取仅保存在本机钥匙串中的计算机密码。</string>
   <key>NSCameraUsageDescription</key><string>扫描客厅电脑显示的配对二维码，安全连接你的电脑。</string>
   <key>NSLocalNetworkUsageDescription</key><string>在家庭网络中连接你配对的 Windows、Mac 或 Linux 电脑并发送鼠标与文字操作。</string>
   <key>NSMicrophoneUsageDescription</key><string>点击麦克风后，用本机语音识别把你说的话变成文字草稿；确认发送后才会输入到电脑。</string>

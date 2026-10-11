@@ -26,7 +26,7 @@ Tap the logo for connection details and gesture help. The text composer appears 
 
 The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. Detection never reads field contents; unsupported, read-only or protected targets do not trigger automatic input UI. Linux detection requires an optional AT-SPI bridge. Manual keyboard access remains available. See [focus detection and platform limits](docs/TEXT-FOCUS.md).
 
-**Experimental Face ID unlock:** the 0.6.0 source adds a device-only iPhone Keychain vault and an optional Windows login component for local or personal Microsoft account passwords. It requires explicit enrollment and administrator installation; ordinary pairing alone does not unlock Windows. Hello-only/passwordless settings may prevent password sign-in; Sofatap does not change those settings. Real Face ID and Windows sign-in acceptance are pending. See [setup, boundaries and verification](docs/FACE-ID-UNLOCK.md).
+**Windows lock-screen PIN control (under validation):** the target is iPhone touchpad + manual PIN entry, with optional Face ID-authorized saved PIN entry. Sofatap does not require a Microsoft account password. The earlier account-password pilot is retired and disabled in ordinary discovery and iPhone UI. Pointer diagnostics, native PIN acceptance and iPhone end-to-end tests are separate gates; none is implied by pairing or compilation. See [scope and verification](docs/FACE-ID-UNLOCK.md).
 
 ## Platform status
 

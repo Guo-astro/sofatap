@@ -17,7 +17,6 @@ struct RemoteView: View {
     @StateObject private var dictation = SpeechDictationController()
     @State private var pairingSheet = false
     @State private var statusSheet = false
-    @State private var unlockSheet = false
     @State private var showingSpeechError = false
     @State private var touchControl = TouchSurface.Control()
     @State private var resendAlert = false
@@ -31,7 +30,7 @@ struct RemoteView: View {
 
     private var speechBusy: Bool { dictation.state != .idle }
     private var inputEnabled: Bool {
-        model.canControl && scenePhase == .active && !pairingSheet && !statusSheet && !unlockSheet &&
+        model.canControl && scenePhase == .active && !pairingSheet && !statusSheet &&
         !showingSpeechError && !resendAlert && !clearAlert
     }
 
@@ -57,12 +56,6 @@ struct RemoteView: View {
         .background(Palette.background)
         .sheet(isPresented: $pairingSheet) { PairingView(model: model) }
         .sheet(isPresented: $statusSheet) { statusDetails }
-        .sheet(isPresented: $unlockSheet) {
-            NavigationStack {
-                ComputerUnlockView(unlock: unlock)
-                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("完成") { unlockSheet = false } } }
-            }.tint(Palette.mint)
-        }
         .alert("语音输入暂不可用", isPresented: $showingSpeechError) {
             Button("使用键盘") { toggleKeyboard() }
             Button("好", role: .cancel) {}
@@ -225,17 +218,7 @@ struct RemoteView: View {
             .accessibilityValue(dictation.isRecording ? "麦克风正在录音" : dictation.state == .finishing ? "正在整理听写结果" : "")
             .accessibilityIdentifier("dictationButton")
             Spacer(minLength: 0)
-            if !model.canControl, model.pairing != nil,
-               model.receiverState.platform == .windows || unlock.savedBinding != nil {
-                Button { stopInteraction(); unlockSheet = true } label: {
-                    Image(systemName: unlock.savedBinding == nil ? "lock" : "faceid")
-                        .font(.system(size: 22)).frame(width: 48, height: 52)
-                        .foregroundStyle(Palette.mint.opacity(0.8))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Face ID 解锁电脑与设置")
-                .accessibilityIdentifier("computerUnlockButton")
-            } else { Color.clear.frame(width: 48, height: 52).allowsHitTesting(false) }
+            Color.clear.frame(width: 48, height: 52).allowsHitTesting(false)
         }
     }
 
@@ -265,10 +248,8 @@ struct RemoteView: View {
                             Text(error).foregroundStyle(.orange)
                         }
                     }
-                    if model.pairing != nil {
-                        NavigationLink {
-                            ComputerUnlockView(unlock: unlock)
-                        } label: { Label("Face ID 解锁电脑", systemImage: "faceid") }
+                    if unlock.savedBinding != nil {
+                        LegacyUnlockCredentialRemovalView(unlock: unlock)
                     }
                     VStack(alignment: .leading, spacing: 14) {
                         Label("滑动手指，移动电脑光标", systemImage: "hand.draw")
@@ -389,7 +370,7 @@ struct RemoteView: View {
         }
     }
     private func applyRemoteFocus() {
-        guard model.canControl, scenePhase == .active, !pairingSheet, !statusSheet, !unlockSheet, !showingSpeechError,
+        guard model.canControl, scenePhase == .active, !pairingSheet, !statusSheet, !showingSpeechError,
               !resendAlert, !clearAlert,
               handledFocusRevision != model.focusRevision else { return }
         // A desktop field may become focused while the user is selecting text.

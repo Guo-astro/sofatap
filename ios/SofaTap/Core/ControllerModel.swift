@@ -276,9 +276,8 @@ final class ControllerModel: ObservableObject {
             receiverState = state
             inputAvailable = state.inputAvailable
             computerName = name
-            if state.platform == .windows, state.inputAvailable, !state.dryRun, let pairing {
-                unlock.receiveCapability(message["unlock"], pairing: pairing)
-            }
+            // The retired account-password capability is deliberately ignored.
+            // Windows Hello PIN support requires a separate verified protocol.
             notice = state.inputAvailable ? "已连接。先点选电脑上的输入框，即可发送文字。" : state.unavailableMessage
             startTimers()
             return true

@@ -1,6 +1,6 @@
 # Windows account passwords, Hello PIN and Sofatap
 
-Research checkpoint: 2026-10-11. This explains the current development boundary;
+Research checkpoint: 2026-10-12. This explains the current development boundary;
 it does not claim that Sofatap can submit a Windows Hello PIN.
 
 ## Account and sign-in method are different
@@ -19,20 +19,19 @@ Face ID verifies the person locally on the phone. It cannot by itself declare
 the Windows session authenticated.
 [Microsoft's PIN explanation](https://learn.microsoft.com/en-us/windows/security/identity-protection/hello-for-business/hello-faq).
 
-## What the current code does
+## Current product direction
 
-The 0.6.0 optional login component accepts **account passwords only**. Its local
-account and personal Microsoft account branches use the corresponding Windows
-authentication serialization. A numeric string can also be an account password,
-so credential type must never be guessed from character content. A user's Hello
-PIN must not be submitted to the password branch as though it were a password.
-[Microsoft packing API](https://learn.microsoft.com/en-us/windows/win32/api/wincred/nf-wincred-credpackauthenticationbufferw).
+Sofatap targets the existing native Windows Hello PIN interface. The user should
+be able to control the lock-screen pointer and enter a PIN manually from iOS;
+optional saving and Face ID authorization can then automate the same entry.
+No Microsoft account password is requested. Both modes require the same
+secure-desktop input bridge and must be verified separately from normal desktop
+control.
 
-This path can coexist with a user's ordinary PIN sign-in when an actual account
-password exists and Windows permits password sign-in. A passwordless Microsoft
-account or Hello-only sign-in setting may prevent it. Sofatap does not change
-those settings. Local registry configuration alone does not establish whether
-a cloud account currently has a password.
+The earlier account-password Credential Provider experiment is retired. Its
+password serialization cannot accept a Hello PIN by renaming a field. Ordinary
+receiver discovery and iPhone use of that protocol are disabled. Historical
+source and tests are not a supported installation path.
 
 ## A separate PIN path needs validation
 
@@ -60,8 +59,15 @@ not evidence of a supported general-purpose phone unlock API.
 
 ## Product consequence
 
-Keep account-password support explicitly labeled experimental, keep PIN marked
-unsupported until validated, and preserve the user's current account and native
-Windows sign-in methods. Do not install a password-only pilot as if it satisfies
-a PIN-only acceptance test. Neither a PIN nor an account password belongs in
-Codex, diagnostics, source, Yobiru messages or a test script.
+Microsoft's own PowerToys documents a SYSTEM service mode that can control the
+lock screen, providing a concrete reference for a privileged session helper.
+That is evidence for the architecture, not proof of Sofatap phone input or PIN
+acceptance on a particular Windows build. The first diagnostic is deliberately
+a one-shot pointer probe with no network, keys, clicks or real credentials.
+[PowerToys documentation](https://learn.microsoft.com/en-us/windows/powertoys/mouse-without-borders).
+
+Keep the user's existing account, PIN and native sign-in methods. Treat pointer
+movement, key acceptance, actual PIN authentication, phone transport and
+restart-before-first-login as separate acceptance gates. Manual iOS input is
+still injected input on Windows, so it cannot be promised as a fallback before
+the shared secure-desktop route works. See [current validation plan](FACE-ID-UNLOCK.md).

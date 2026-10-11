@@ -18,6 +18,14 @@ static class UnlockCapabilityChecks
         byte[] Body() => JsonSerializer.SerializeToUtf8Bytes(fields);
         var capability = UnlockCapabilityStore.Parse(Body(), pin);
         check(capability is { Version: 1, Port: 53320 }, "explicit login capability parses");
+        foreach (var status in new[] { "ready", "desktop_unavailable", "dry_run" })
+        {
+            var hello = JsonSerializer.SerializeToElement(ReceiverServer.CreateHello(
+                "synthetic-device", "windows", status == "dry_run", status, new("unknown", 0)));
+            check(!hello.TryGetProperty("unlock", out _), "retired password capability absent from " + status + " hello");
+            check(hello.GetProperty("inputAvailable").GetBoolean() == (status == "ready"),
+                "password retirement preserves desktop availability for " + status);
+        }
         check(!capability!.ToString().Contains(new string('A', 43)), "diagnostic formatting redacts login token");
         check(UnlockCapabilityStore.Parse(Body(), new string('c', 64)) is null, "receiver identity rotation invalidates login enrollment");
         foreach (var pair in new Dictionary<string, object>

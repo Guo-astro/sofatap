@@ -1,8 +1,8 @@
 import Foundation
 import CoreFoundation
 
-/// Authentication and desktop control are separate protocols. This capability
-/// may only be enrolled after it arrives through the existing pinned receiver.
+/// Legacy account-password experiment, retained for compatibility review and
+/// binding tests only. The app controller rejects it; it is not a Hello PIN API.
 struct UnlockCapability: Codable, Equatable {
     let version: Int
     let port: Int
