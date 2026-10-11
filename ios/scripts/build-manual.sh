@@ -35,7 +35,7 @@ data = plistlib.loads(Path(source).read_bytes())
 data.update({
     'CFBundleName': 'Sofatap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
     'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.5.0',
-    'CFBundleVersion': '6', 'CFBundleSupportedPlatforms': [platform],
+    'CFBundleVersion': '7', 'CFBundleSupportedPlatforms': [platform],
     'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],
     'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}}
 })
@@ -43,6 +43,7 @@ Path(output).write_bytes(plistlib.dumps(data))
 PY
 sips -z 120 120 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@2x.png" >/dev/null
 sips -z 180 180 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@3x.png" >/dev/null
+cp "$IOS_ROOT/SofaTap/Assets.xcassets/BrandMark.imageset/BrandMark.png" "$APP_BUNDLE/BrandMark.png"
 cp "$IOS_ROOT/SofaTap/PrivacyInfo.xcprivacy" "$APP_BUNDLE/PrivacyInfo.xcprivacy"
 xattr -cr "$APP_BUNDLE"
 if [[ "$BUILD_MODE" == simulator ]]; then

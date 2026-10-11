@@ -14,12 +14,15 @@ Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn 
 
 ## What you can do
 
-- One touch surface: slide to move, tap for a left click, double-tap for a right click, hold still for 300 ms to drag, and use two fingers to scroll.
+- One rounded touch surface contains the logo, QR scanner, microphone and keyboard controls. Its resting state uses icons only; particle feedback follows your finger, with simpler feedback when Reduce Motion is enabled.
+- Slide to move, tap for a left click, double-tap for a right click, hold still for 300 ms to drag, and use two fingers to scroll.
 - Tap the bottom microphone for on-device dictation when supported, or use the iPhone keyboard / Typeless. Review the local draft and tap **Send** to type into the computer's focused field. Sending does not append Enter or submit the form; embedded line breaks remain part of the text.
 - Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
 - Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Draft retention, send confirmation and no automatic replay help avoid accidental duplicate input after a disconnect.
 
-**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.5.0 (iPhone build 6) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.5.0 (iPhone build 7) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+
+Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface, and keeps draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [particle-effects preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
 
 The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. Detection never reads field contents; unsupported, read-only or protected targets do not trigger automatic input UI. Linux detection requires an optional AT-SPI bridge. Manual keyboard access remains available. See [focus detection and platform limits](docs/TEXT-FOCUS.md).
 
@@ -27,7 +30,7 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.5.0 (6) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
+| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.5.0 (7) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
 | Windows | Native receiver released in 0.3.0. This version's desktop UI and physical iPhone integration still need acceptance testing. |
 | Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
 | Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
@@ -114,7 +117,7 @@ bash ios/scripts/build-manual.sh device
 
 The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.5.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
+Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.5.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, particle feedback and Reduce Motion, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
 
 ## Repository layout
 

@@ -11,6 +11,7 @@
 		235031F88751C7AF87089F98 /* ControllerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */; };
 		2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895EB1B944638483C701ADDC /* TouchGestureState.swift */; };
 		390FF8AC98B4923D8FE0BD44 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 951A32A70DFF898858DD7CDD /* Assets.xcassets */; };
+		62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */; };
 		62E055F9B738880A3F6FB68A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */; };
 		667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6898F264D24CA602D5304DA0 /* Pairing.swift */; };
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
@@ -26,6 +27,7 @@
 		1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictationController.swift; sourceTree = "<group>"; };
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchParticleRenderer.swift; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
 		8836BE62D39309B8AF525D9F /* ReceiverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverState.swift; sourceTree = "<group>"; };
@@ -76,6 +78,7 @@
 				073F44E198299E317E1E4D3D /* NativeControls.swift */,
 				A8F19D4B8423478A9CA42C50 /* PairingView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
+				4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -168,6 +171,7 @@
 				993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */,
 				9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */,
 				2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */,
+				62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -179,7 +183,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -199,7 +203,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

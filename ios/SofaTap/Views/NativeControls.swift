@@ -85,11 +85,19 @@ struct NativeDraftEditor: UIViewRepresentable {
 
 struct TouchSurface: UIViewRepresentable {
     let enabled: Bool
+    var control: Control? = nil
     let onMove: (Double, Double) -> Void
     let onLeftTap: () -> Void
     let onRightTap: () -> Void
     let onDraggingChanged: (Bool) -> Void
     let onScroll: (Double) -> Void
+
+    /// Overlay controls cancel the underlying pad synchronously before opening
+    /// another UI. This also cancels deferred taps and releases an active drag.
+    final class Control {
+        fileprivate weak var view: TouchInputView?
+        func cancel() { view?.cancelInput() }
+    }
 
     func makeUIView(context: Context) -> TouchInputView {
         let view = TouchInputView()
@@ -103,7 +111,7 @@ struct TouchSurface: UIViewRepresentable {
         return view
     }
     func updateUIView(_ view: TouchInputView, context: Context) { view.configure(self) }
-    static func dismantleUIView(_ view: TouchInputView, coordinator: ()) { view.cancelInput() }
+    static func dismantleUIView(_ view: TouchInputView, coordinator: ()) { view.detach() }
 
     final class TouchInputView: UIView {
         private var parent: TouchSurface?
@@ -111,6 +119,9 @@ struct TouchSurface: UIViewRepresentable {
         private var contacts: [ObjectIdentifier: CGPoint] = [:]
         private var deadlineTimer: Timer?
         private var active = true
+        private lazy var effects = TouchParticleRenderer(in: layer)
+        private var effectPoint = CGPoint.zero
+        private var lastLiftPoint = CGPoint.zero
 
         override init(frame: CGRect) {
             super.init(frame: frame)
@@ -126,12 +137,27 @@ struct TouchSurface: UIViewRepresentable {
 
         func configure(_ parent: TouchSurface) {
             if !parent.enabled && self.parent?.enabled == true { cancelInput() }
+            if self.parent?.control !== parent.control {
+                if self.parent?.control?.view === self { self.parent?.control?.view = nil }
+            }
             self.parent = parent
+            parent.control?.view = self
             isUserInteractionEnabled = parent.enabled && active
+        }
+        override func layoutSubviews() {
+            super.layoutSubviews()
+            effects.layout(in: bounds)
+#if targetEnvironment(simulator)
+            if window != nil, active { effects.startPreviewIfRequested() }
+#endif
         }
         override func didMoveToWindow() {
             super.didMoveToWindow()
             if window == nil { cancelInput() }
+        }
+        func detach() {
+            cancelInput()
+            if parent?.control?.view === self { parent?.control?.view = nil }
         }
         @objc private func inactive() {
             active = false
@@ -147,32 +173,52 @@ struct TouchSurface: UIViewRepresentable {
             deadlineTimer = nil
             contacts.removeAll()
             dispatch(state.cancel())
+            effects.clear()
         }
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { return }
             for touch in touches { contacts[ObjectIdentifier(touch)] = touch.location(in: self) }
+            effectPoint = CGPoint(x: centroid.x, y: centroid.y)
             dispatch(state.begin(at: centroid, count: contacts.count, time: event?.timestamp ?? now))
+            effects.beginContact(at: effectPoint)
             scheduleDeadline()
         }
         override func touchesMoved(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { cancelInput(); return }
+            guard touches.contains(where: { contacts[ObjectIdentifier($0)] != nil }) else { return }
             for touch in touches where contacts[ObjectIdentifier(touch)] != nil {
                 contacts[ObjectIdentifier(touch)] = touch.location(in: self)
+            }
+            if !contacts.isEmpty {
+                effectPoint = CGPoint(x: centroid.x, y: centroid.y)
+                effects.updateContact(at: effectPoint)
             }
             dispatch(state.move(to: centroid, count: contacts.count, time: event?.timestamp ?? now))
             scheduleDeadline()
         }
         override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { cancelInput(); return }
+            // A control can cancel a contact while its finger is still down.
+            // Its later UIKit end event must not end a new finger's gesture.
+            guard touches.contains(where: { contacts[ObjectIdentifier($0)] != nil }) else { return }
             for touch in touches where contacts[ObjectIdentifier(touch)] != nil {
                 contacts[ObjectIdentifier(touch)] = touch.location(in: self)
             }
             let finalPoint = centroid
+            if !contacts.isEmpty {
+                effectPoint = CGPoint(x: finalPoint.x, y: finalPoint.y)
+                lastLiftPoint = effectPoint
+                effects.updateContact(at: effectPoint)
+            }
             for touch in touches { contacts.removeValue(forKey: ObjectIdentifier(touch)) }
             dispatch(state.end(at: finalPoint, remainingCount: contacts.count, time: event?.timestamp ?? now))
+            effects.endContact()
             scheduleDeadline()
         }
-        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { cancelInput() }
+        override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
+            guard touches.contains(where: { contacts[ObjectIdentifier($0)] != nil }) else { return }
+            cancelInput()
+        }
 
         private var now: Double { ProcessInfo.processInfo.systemUptime }
         private var centroid: TouchGestureState.Point {
@@ -196,21 +242,35 @@ struct TouchSurface: UIViewRepresentable {
             guard let parent else { return }
             for action in actions {
                 switch action {
-                case .move(let dx, let dy): parent.onMove(dx, dy)
-                case .leftClick: parent.onLeftTap()
-                case .rightClick: parent.onRightTap()
-                case .dragging(let down): parent.onDraggingChanged(down)
-                case .scroll(let dy): parent.onScroll(dy)
+                case .move(let dx, let dy):
+                    parent.onMove(dx, dy)
+                    effects.moveTrail(to: effectPoint)
+                case .leftClick:
+                    parent.onLeftTap()
+                    effects.click(at: lastLiftPoint, double: false)
+                case .rightClick:
+                    parent.onRightTap()
+                    effects.click(at: lastLiftPoint, double: true)
+                case .dragging(let down):
+                    parent.onDraggingChanged(down)
+                    effects.setDragging(down, at: effectPoint)
+                case .scroll(let dy):
+                    parent.onScroll(dy)
+                    effects.moveTrail(to: effectPoint, scrolling: true)
                 }
             }
         }
         @objc private func accessibleLeftClick() -> Bool {
             guard parent?.enabled == true, active else { return false }
-            parent?.onLeftTap(); return true
+            parent?.onLeftTap()
+            effects.click(at: CGPoint(x: bounds.midX, y: bounds.midY), double: false)
+            return true
         }
         @objc private func accessibleRightClick() -> Bool {
             guard parent?.enabled == true, active else { return false }
-            parent?.onRightTap(); return true
+            parent?.onRightTap()
+            effects.click(at: CGPoint(x: bounds.midX, y: bounds.midY), double: true)
+            return true
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## The phone is the touchpad
 
-The main iPhone screen has a small connection/pairing header, one large touch surface and a bottom microphone button with a keyboard affordance. It has no mode picker, separate left/right mouse buttons, drag button, shortcut grid or sensitivity slider. The five desktop visual proposals remain unselected; this interaction change does not select a receiver theme.
+The main iPhone screen is one large rounded touch surface. The logo and QR-scanning control sit inside its top edge; the microphone and left-hand keyboard control sit inside its bottom edge. The resting surface has no instructional text or mouse-arrow graphic. Connection and recording states use icons with accessible labels. Tapping the logo opens connection details and gesture help; the QR control opens the pairing sheet. The five desktop visual proposals remain unselected; this phone interaction change does not select a receiver theme.
 
 - Slide one finger to move the computer pointer.
 - Tap once for a left click. Delivery waits briefly for the double-tap decision so a right click never includes an accidental left click.
@@ -10,7 +10,13 @@ The main iPhone screen has a small connection/pairing header, one large touch su
 - Hold still for **300 ms** to press the left mouse button, then move to drag. Lifting the finger ends the drag. Cancellation, loss of control and leaving the app release the held button; the receiver independently releases owned input on disconnect.
 - Slide two fingers to scroll, keeping scrolling on the same surface.
 
-Pairing remains an occasional sheet, rather than a second everyday control mode. A text composer appears inline only when needed. Existing uncertain-delivery and manual resend safeguards remain available in that composer.
+Pairing remains an occasional sheet, rather than a second everyday control mode. A text composer appears inline below the touch surface only when needed. Existing uncertain-delivery and manual resend safeguards remain available in that composer.
+
+## Touch feedback
+
+Movement leaves a short particle trail at the finger's position. A single tap, double tap and the start of a 300 ms hold produce distinct local particle feedback; dragging keeps feedback with the finger until release. These effects visualize the phone gesture, not the computer pointer's position or confirmation that a desktop application acted on it. Tapping the logo, QR, microphone or keyboard control must not also send a mouse gesture.
+
+Effects remain inside the touch surface. Reduce Motion replaces particle travel with simpler feedback. App inactivity, touch cancellation and disconnect clear active touch feedback and release any held mouse button. Screen-reader labels describe the icon controls without adding visible instruction text to the surface. The text composer and pairing sheet retain the wording needed to review drafts, errors and connection details.
 
 ## Voice and keyboard input
 
@@ -18,7 +24,7 @@ An explicit microphone tap requests the iPhone's microphone and Speech permissio
 
 If local recognition is unavailable or permission is denied, the same composer accepts the iPhone keyboard, system dictation or Typeless. The app does not use a private API to start keyboard dictation. Backgrounding, interruption and cancellation stop microphone capture. A successful transport acknowledgement means system input was submitted, not that an application saved or submitted the text.
 
-The receiver reports a small focus hint: `editable`, `other`, `protected` or `unknown`, plus a connection-local revision. The phone automatically opens the keyboard on a new editable target. Dismissing the keyboard keeps it dismissed for that same target. It does not automatically start recording. Protected or unknown targets never automatically open input UI. The manual keyboard remains available when a target does not expose accessibility information.
+The receiver reports a small focus hint: `editable`, `other`, `protected` or `unknown`, plus a connection-local revision. The phone automatically opens the keyboard on a new editable target, waiting until an active drag is released so the keyboard does not interrupt it. Dismissing the keyboard keeps it dismissed for that same target. It does not automatically start recording. Protected or unknown targets never automatically open input UI. The manual keyboard remains available when a target does not expose accessibility information.
 
 Focus detection uses native accessibility metadata and does not read the field value, selection, window title or password. Availability varies with the target app and desktop; “any input field” is a design goal, not a promise that every custom game/browser widget exposes accessibility metadata. Windows and Mac need native provider validation, and Linux requires an available accessibility bridge in addition to its input-control permission. Old receivers remain usable with manual keyboard selection.
 
@@ -32,4 +38,4 @@ No CUA model, cloud transcription, screen streaming or arbitrary-command endpoin
 
 ## Validation boundary
 
-Gesture timing, focus metadata, transport and compile checks can be automated without moving the user's real pointer. Real iPhone gesture/voice behavior and third-party target coverage require later device acceptance. On the shared Mac, all receiver acceptance windows and input targets must first be isolated through Yomado on a virtual display; moving a window alone is insufficient.
+Gesture timing, focus metadata, transport and compile checks can be automated without moving the user's real pointer. Offline simulator screenshots and recordings illustrate the app's local layout and effects; they do not establish physical-device frame rate, touch latency or desktop input. Real iPhone gesture/voice behavior, Reduce Motion and third-party target coverage require later device acceptance. On the shared Mac, all receiver acceptance windows and input targets must first be isolated through Yomado on a virtual display; moving a window alone is insufficient.
