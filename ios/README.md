@@ -1,4 +1,4 @@
-# Sofa Tap iPhone controller
+# Sofatap iPhone controller
 
 Native SwiftUI app, iOS 17+, no third-party libraries. Version 0.4.0, build 5. Open `SofaTap.xcodeproj` in Xcode. Select your company's Apple development team and a connected iPhone to install. The repository contains no provisioning profiles or developer account identifiers. `project.yml` is the reproducible XcodeGen source; use `xcodegen generate --spec ios/project.yml` from the repository root after changing it.
 

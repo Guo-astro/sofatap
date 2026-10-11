@@ -131,7 +131,7 @@ public sealed class MacInput : IInputInjector
     }
 
     private static InputInjectionException Unavailable() => new(
-        "input_unavailable: Sign in and unlock the Mac, then allow Sofa Tap in Privacy & Security > Accessibility.");
+        "input_unavailable: Sign in and unlock the Mac, then allow Sofatap in Privacy & Security > Accessibility.");
 
     private void CheckKeyboardOwnership(ushort key)
     {

@@ -8,7 +8,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SofaTap</AssemblyName>
     <Version>0.3.0</Version>
-    <Product>Sofa Tap</Product>
+    <Product>Sofatap</Product>
+    <AssemblyTitle>Sofatap Receiver</AssemblyTitle>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <DefaultItemExcludes>$(DefaultItemExcludes);tests/**</DefaultItemExcludes>

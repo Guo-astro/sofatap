@@ -1,6 +1,6 @@
-# Sofa Tap development
+# Sofatap development
 
-Sofa Tap is maintained in the public `chekusu/sofatap` GitHub repository. Keep product development here and coordinate the Sandbank Dev copy through Yobiru. GitHub is the sole source distribution channel: send repository/branch/commit references, not source archives or source-file attachments, through Yobiru.
+Sofatap is maintained in the public `chekusu/sofatap` GitHub repository. Keep product development here and coordinate the Sandbank Dev copy through Yobiru. GitHub is the sole source distribution channel: send repository/branch/commit references, not source archives or source-file attachments, through Yobiru.
 
 ## Standing synchronization instruction
 
@@ -13,3 +13,9 @@ Ask the receiving agent to fetch and synchronize using fast-forward-only Git ope
 ## Receiver tests on the shared Mac
 
 Use Yomado to place receiver acceptance-test windows on a virtual display before the next desktop test. Keep the user's normal displays and active work undisturbed. Do not make the virtual display primary or change the physical display arrangement. Verify the test windows and input target are isolated before sending real mouse or keyboard events; moving a window alone does not prove input isolation. If isolation cannot be verified, defer live input tests. Restore any test-window placement after testing.
+
+## Brand and language
+
+The public brand is **Sofatap**, one word with only the initial S capitalized. Use this spelling in UI, store metadata, README text, web copy, promotional images, video titles, subtitles and narration scripts. Never separate sofa and tap. English is the default `README.md`; keep `README.zh-CN.md` and `README.ja.md` aligned and linked. The proposed Chinese-market name is **沙发瘫**, using 瘫 as in 瘫倒; do not silently change installed app names to the Chinese proposal.
+
+Keep compatibility identifiers (such as existing `SofaTap` executable/project names, bundle IDs and credential paths) stable. Preserve literal historical artifact paths and verbatim generation provenance, clearly labeled as historical. New marketing assets must use the current spelling. See `docs/BRAND.md`.

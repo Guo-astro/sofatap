@@ -75,7 +75,7 @@ struct RemoteView: View {
     private var header: some View {
         HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 5) {
-                Text("Sofa Tap")
+                Text("Sofatap")
                     .font(.system(size: 30, weight: .semibold, design: .rounded))
                     .tracking(-0.7)
                 Text("坐下来，电脑在手上。")

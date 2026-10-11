@@ -29,7 +29,7 @@ struct ReceiverState: Equatable {
     var unavailableMessage: String {
         switch status {
         case .dry_run: return "接收器正在演练模式，鼠标和文字操作已停用。"
-        case .accessibility_required: return "请在 Mac 接收器页面打开辅助功能授权，并在系统设置中允许 Sofa Tap。"
+        case .accessibility_required: return "请在 Mac 接收器页面打开辅助功能授权，并在系统设置中允许 Sofatap。"
         case .desktop_unavailable: return "请登录并解锁电脑，保持桌面打开；连接会自动检查状态。"
         case .permission_required, .permission_denied: return "请在 Linux 接收器点允许控制桌面，再完成系统授权。"
         case .permission_pending: return "请在 Linux 原生系统窗口中确认；完成后会自动检查状态。"

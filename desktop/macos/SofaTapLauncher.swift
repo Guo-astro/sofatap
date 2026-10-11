@@ -21,17 +21,17 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         let mainMenu = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
-        appMenu.addItem(withTitle: "关于 Sofa Tap", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "关于 Sofatap", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "隐藏 Sofa Tap", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
-        appMenu.addItem(withTitle: "退出 Sofa Tap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        appMenu.addItem(withTitle: "隐藏 Sofatap", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
+        appMenu.addItem(withTitle: "退出 Sofatap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
         appItem.submenu = appMenu
         mainMenu.addItem(appItem)
         NSApp.mainMenu = mainMenu
 
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 580, height: 760),
             styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "Sofa Tap"
+        window.title = "Sofatap"
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = true
         window.backgroundColor = NSColor(red: 0.039, green: 0.051, blue: 0.067, alpha: 1)
@@ -119,7 +119,7 @@ struct ReceiverView: View {
                 .frame(width: 60, height: 60).background(Palette.mint, in: RoundedRectangle(cornerRadius: 19))
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 6) {
-                Text("Sofa Tap").font(.system(size: 29, weight: .bold, design: .rounded))
+                Text("Sofatap").font(.system(size: 29, weight: .bold, design: .rounded))
                 Text("把 iPhone 变成你的 Mac 遥控器")
                     .font(.system(size: 14)).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
             }
@@ -138,8 +138,8 @@ struct ReceiverView: View {
                 statusCard(icon: "testtube.2", title: "演练模式", message: "连接可用，但不会向 Mac 提交鼠标或键盘操作。", color: .orange)
             } else if state.inputStatus == "accessibility_required" {
                 VStack(alignment: .leading, spacing: 14) {
-                    Label("允许 Sofa Tap 操作 Mac", systemImage: "hand.raised").font(.system(size: 15, weight: .semibold))
-                    Text(receiver.accessNotice ?? "点下方按钮请求辅助功能授权。允许 Sofa Tap Receiver 后，接收器会自动重新检查。")
+                    Label("允许 Sofatap 操作 Mac", systemImage: "hand.raised").font(.system(size: 15, weight: .semibold))
+                    Text(receiver.accessNotice ?? "点下方按钮请求辅助功能授权。允许 Sofatap Receiver 后，接收器会自动重新检查。")
                         .font(.system(size: 13)).foregroundStyle(Palette.muted).fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 10) {
                         Button(receiver.accessRequested ? "再次请求授权" : "请求辅助功能授权", action: receiver.requestAccess)
@@ -159,13 +159,13 @@ struct ReceiverView: View {
     private func pairingCard(_ state: ReceiverState) -> some View {
         VStack(alignment: .center, spacing: 16) {
             Text("扫码，坐回沙发").font(.system(size: 22, weight: .semibold, design: .rounded))
-            Text("在 iPhone 打开 Sofa Tap → 配对电脑 → 扫码")
+            Text("在 iPhone 打开 Sofatap → 配对电脑 → 扫码")
                 .font(.system(size: 13)).foregroundStyle(Palette.muted).multilineTextAlignment(.center)
                 .fixedSize(horizontal: false, vertical: true)
             if let pairing = receiver.selectedPairing, let data = pairing.pngData, let image = NSImage(data: data) {
                 Image(nsImage: image).resizable().interpolation(.none).scaledToFit()
                     .frame(width: 224, height: 224).padding(12).background(.white, in: RoundedRectangle(cornerRadius: 18))
-                    .accessibilityLabel("用 iPhone 的 Sofa Tap 扫描此二维码以配对 Mac")
+                    .accessibilityLabel("用 iPhone 的 Sofatap 扫描此二维码以配对 Mac")
                 Text(state.name).font(.system(size: 14, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
                 if state.pairings.count > 1 {
                     Picker("连接地址", selection: $receiver.selectedHost) {
@@ -204,7 +204,7 @@ struct ReceiverView: View {
             Button(action: receiver.refresh) { Label("重新检查", systemImage: "arrow.clockwise") }
                 .disabled(receiver.isStarting || receiver.isStopping)
             Spacer(minLength: 0)
-            Button("退出 Sofa Tap") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
+            Button("退出 Sofatap") { NSApp.terminate(nil) }.keyboardShortcut("q", modifiers: .command)
                 .disabled(receiver.isStopping)
         }.buttonStyle(.bordered).controlSize(.large)
     }

@@ -1,4 +1,6 @@
-# Sofa Tap 0.3.0 Mac 公证与实机验收
+# Sofatap 0.3.0 Mac 公证与实机验收
+
+本文品牌写法已统一为 Sofatap；下文引号中的旧 `.app` 文件名是已公证归档内的实际路径，不代表当前品牌写法。
 
 记录日期：**2026-10-11**。发布：[v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)。
 
@@ -28,7 +30,7 @@
 
 ## 真实 iPhone → Mac 验收
 
-环境为 **iPhone 17 Pro Max、Sofa Tap 0.3.0 (4)** 与 **Apple Silicon Mac**。Mac 安装的是上述最终公证版本，位于用户“应用程序”目录，已获得正常系统授权，接收端显示桌面就绪。
+环境为 **iPhone 17 Pro Max、Sofatap 0.3.0 (4)** 与 **Apple Silicon Mac**。Mac 安装的是上述最终公证版本，位于用户“应用程序”目录，已获得正常系统授权，接收端显示桌面就绪。
 
 | 操作 | 观察结果 |
 | --- | --- |

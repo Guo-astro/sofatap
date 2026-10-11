@@ -64,7 +64,7 @@ using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using var rsa = RSA.Create(2048);
-var request = new CertificateRequest("CN=Sofa Tap Renewal Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+var request = new CertificateRequest("CN=Sofatap Renewal Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
 using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(730));
 var secret = new { Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
     Pfx = Convert.ToBase64String(certificate.Export(X509ContentType.Pfx, "")) };

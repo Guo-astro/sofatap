@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Native GTK3 receiver window for Sofa Tap on Linux."""
+"""Native GTK3 receiver window for Sofatap on Linux."""
 
 import argparse
 import base64
@@ -24,7 +24,7 @@ INPUT_STATUSES = frozenset({"dry_run", "ready", "permission_required", "permissi
 STATUS_LABELS = {
     "dry_run": "演练模式 · 不会控制电脑",
     "ready": "桌面已就绪",
-    "permission_required": "请允许 Sofa Tap 控制此桌面",
+    "permission_required": "请允许 Sofatap 控制此桌面",
     "permission_pending": "请在系统窗口中选择并允许控制桌面",
     "permission_denied": "尚未允许桌面控制，可点击下方按钮重试",
     "desktop_unavailable": "桌面会话不可用，请在本机桌面中重新打开",
@@ -205,28 +205,28 @@ class Backend:
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--backend", required=True, type=Path, help="self-contained Sofa Tap receiver executable")
+    parser.add_argument("--backend", required=True, type=Path, help="self-contained Sofatap receiver executable")
     parser.add_argument("--dry-run", action="store_true", help="preview pairing without sending mouse or keyboard events")
     args = parser.parse_args(argv)
     if sys.platform != "linux":
         parser.error("the Linux receiver requires Linux; protocol checks can run on other systems")
     executable = args.backend.expanduser().resolve()
     if not executable.is_file() or not os.access(executable, os.X_OK):
-        parser.error("--backend must point to an executable Sofa Tap receiver")
+        parser.error("--backend must point to an executable Sofatap receiver")
     try:
         import gi
         gi.require_version("Gtk", "3.0")
         from gi.repository import GdkPixbuf, GLib, Gtk
     except (ImportError, ValueError):
-        print("Sofa Tap requires Python 3, PyGObject and GTK 3. See the included README.md.", file=sys.stderr)
+        print("Sofatap requires Python 3, PyGObject and GTK 3. See the included README.md.", file=sys.stderr)
         return 2
     if not Gtk.init_check()[0]:
-        print("Sofa Tap requires a logged-in graphical Linux desktop.", file=sys.stderr)
+        print("Sofatap requires a logged-in graphical Linux desktop.", file=sys.stderr)
         return 2
 
     class Window(Gtk.Window):
         def __init__(self):
-            super().__init__(title="Sofa Tap")
+            super().__init__(title="Sofatap")
             self.set_default_size(450, 640)
             self.set_border_width(24)
             self.set_position(Gtk.WindowPosition.CENTER)

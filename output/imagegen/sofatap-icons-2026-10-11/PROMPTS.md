@@ -1,4 +1,6 @@
-# Sofa Tap App Icon Concepts
+# Sofatap App Icon Concepts
+
+**Historical provenance:** The prompt blocks below are preserved verbatim, including the former two-word spelling. They are not current marketing copy. New images and all public branding follow [Sofatap brand guidance](../../../docs/BRAND.md).
 
 Created 2026-10-11 with the built-in image_gen tool. Five separate generation calls; no existing AppIcon will be overwritten.
 

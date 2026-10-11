@@ -76,7 +76,7 @@ public static class NativeDesktopBridge
             }
         }
         catch (JsonException) { }
-        throw new InvalidDataException("Invalid native window command. Restart Sofa Tap.");
+        throw new InvalidDataException("Invalid native window command. Restart Sofatap.");
     }
     private static async Task<string?> ReadLine(StreamReader reader, CancellationToken cancellation)
     {

@@ -20,7 +20,7 @@ internal sealed class PairingWindow : Form
     internal PairingWindow(string[] arguments)
     {
         _arguments = arguments;
-        Text = "Sofa Tap";
+        Text = "Sofatap";
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(470, 700);
         MinimumSize = new Size(410, 640);
@@ -37,7 +37,7 @@ internal sealed class PairingWindow : Form
         var imageArea = new Panel { Dock = DockStyle.Fill, MinimumSize = new Size(280, 280), Margin = new Padding(0, 0, 0, 14) };
         imageArea.Controls.Add(_qr);
         imageArea.Controls.Add(_placeholder);
-        var help = new Label { Text = "让 iPhone 和电脑连接同一个家庭网络，\n在手机 Sofa Tap 中扫描这里的二维码。", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
+        var help = new Label { Text = "让 iPhone 和电脑连接同一个家庭网络，\n在手机 Sofatap 中扫描这里的二维码。", AutoSize = true, Dock = DockStyle.Fill, Margin = new Padding(0, 0, 0, 8) };
         var privacy = new Label { Text = "二维码可授权控制这台电脑，请勿分享。\n关闭此窗口会退出接收器。", AutoSize = true, Dock = DockStyle.Fill, ForeColor = SystemColors.GrayText, Margin = new Padding(0, 0, 0, 16) };
         var buttons = new FlowLayoutPanel { AutoSize = true, Dock = DockStyle.Fill, FlowDirection = FlowDirection.RightToLeft, WrapContents = false };
         buttons.Controls.Add(_quit);
@@ -138,7 +138,7 @@ internal sealed class PairingWindow : Form
         _refresh.Enabled = false;
         _pairings = [];
         _status.Text = "接收端连接已中断。请退出并重新打开。";
-        ClearQr("请确认完整解压了 Sofa Tap 安装包");
+        ClearQr("请确认完整解压了 Sofatap 安装包");
     }
 
     private async Task RefreshAsync()

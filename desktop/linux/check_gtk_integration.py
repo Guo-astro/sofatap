@@ -76,7 +76,7 @@ def child_check(backend, dry_run, profile, port):
 
     def poll():
         nonlocal closing_at
-        windows = [window for window in Gtk.Window.list_toplevels() if window.get_title() == "Sofa Tap"]
+        windows = [window for window in Gtk.Window.list_toplevels() if window.get_title() == "Sofatap"]
         window = next((window for window in windows if hasattr(window, "backend")), None)
         if window is None:
             if time.monotonic() - started > 15:

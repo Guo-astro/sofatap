@@ -1,0 +1,17 @@
+{
+  "asset": "../images/sofatap-living-room.png",
+  "purpose": "Shared README product scenario illustration",
+  "generatedWith": "Built-in imagegen tool",
+  "prompt": "living-room-image-prompt.txt",
+  "width": 1672,
+  "height": 941,
+  "sha256": "395d088bb08fff00fb5079b9af1a953b1744025408f4cf32fa4044cf1ba7a2e5",
+  "isApplicationScreenshot": false,
+  "reviewed": [
+    "Sofatap spelling on hero and phone",
+    "iPhone controls a computer shown on a TV",
+    "Couch use case visible",
+    "No real QR codes or credentials",
+    "Concept illustration labeled in all READMEs"
+  ]
+}

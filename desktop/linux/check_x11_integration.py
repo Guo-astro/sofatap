@@ -63,7 +63,7 @@ def acceptance():
     from gi.repository import Gdk, GdkX11, GLib, Gtk
     from x11_input import X11Native
     Gtk.init([])
-    window = Gtk.Window(title="Sofa Tap isolated Xvfb acceptance")
+    window = Gtk.Window(title="Sofatap isolated Xvfb acceptance")
     window.set_default_size(800, 600)
     window.move(0, 0)
     editor = Gtk.TextView()
@@ -141,7 +141,7 @@ def acceptance():
         clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
         clipboard.set_text("clipboard must remain unchanged · 原文", -1)
         mapping_before = native.mapping()
-        sample = "你好 Linux，Sofa Tap 真机前测试。\nHello 日本語 👋 café $()`"
+        sample = "你好 Linux，Sofatap 真机前测试。\nHello 日本語 👋 café $()`"
         request("apply", {"type": "text", "text": sample})
         try:
             wait_for(lambda: contents() == sample)

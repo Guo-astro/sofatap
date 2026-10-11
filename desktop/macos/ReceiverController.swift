@@ -45,7 +45,7 @@ final class ReceiverController: ObservableObject {
         accessNotice = nil
         let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/SofaTapHost")
         guard FileManager.default.isExecutableFile(atPath: helper.path) else {
-            fail("找不到 Mac 接收组件。请重新安装 Sofa Tap。")
+            fail("找不到 Mac 接收组件。请重新安装 Sofatap。")
             return
         }
 
@@ -58,7 +58,7 @@ final class ReceiverController: ObservableObject {
         child.standardError = errors
         // Writing after a child exit must throw EPIPE instead of terminating the UI with SIGPIPE.
         guard fcntl(input.fileHandleForWriting.fileDescriptor, F_SETNOSIGPIPE, 1) != -1 else {
-            fail("无法建立接收组件连接。请退出后重新打开 Sofa Tap。")
+            fail("无法建立接收组件连接。请退出后重新打开 Sofatap。")
             return
         }
         child.terminationHandler = { [weak self] _ in
@@ -70,7 +70,7 @@ final class ReceiverController: ObservableObject {
             try child.run()
         } catch {
             cleanUp()
-            fail("无法启动 Mac 接收组件。请确认安装完整，并检查是否已打开另一个 Sofa Tap。")
+            fail("无法启动 Mac 接收组件。请确认安装完整，并检查是否已打开另一个 Sofatap。")
             return
         }
         // Only the child owns these ends after launch; close our copies so EOF is observable.
@@ -117,13 +117,13 @@ final class ReceiverController: ObservableObject {
 
     func requestAccess() {
         guard state?.inputStatus == "accessibility_required", state?.dryRun == false, !isStopping else { return }
-        // Ask from the user-visible, signed .app, so macOS can identify Sofa Tap rather
+        // Ask from the user-visible, signed .app, so macOS can identify Sofatap rather
         // than only its helper. Apple documents this prompt as asynchronous: the
         // return value is current trust, not the user's response or helper readiness.
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
         accessRequested = true
-        accessNotice = "请在系统提示中打开设置，并允许 Sofa Tap Receiver。若没有出现提示，可点“打开系统设置”；列表中没有应用时，点 + 选择已安装的 Sofa Tap Receiver.app。"
+        accessNotice = "请在系统提示中打开设置，并允许 Sofatap Receiver。若没有出现提示，可点“打开系统设置”；列表中没有应用时，点 + 选择已安装的 Sofatap Receiver.app。"
         // Leave the asynchronous system prompt in front. Do not concurrently ask
         // the helper to open Settings. Its periodic AX/CG preflight remains the
         // authority for whether real input is available.
@@ -134,7 +134,7 @@ final class ReceiverController: ObservableObject {
         guard state?.inputStatus == "accessibility_required", state?.dryRun == false, !isStopping else { return }
         let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!
         if !NSWorkspace.shared.open(url) {
-            accessNotice = "请手动打开系统设置 → 隐私与安全 → 辅助功能，允许 Sofa Tap Receiver，然后回到这里重新检查。"
+            accessNotice = "请手动打开系统设置 → 隐私与安全 → 辅助功能，允许 Sofatap Receiver，然后回到这里重新检查。"
         }
     }
 
@@ -169,7 +169,7 @@ final class ReceiverController: ObservableObject {
             guard !Task.isCancelled, self.isStopping else { return }
             if child.isRunning {
                 self.isStopping = false
-                self.fail("接收组件尚未退出。请稍后再点“退出 Sofa Tap”。")
+                self.fail("接收组件尚未退出。请稍后再点“退出 Sofatap”。")
                 let callback = self.stopCompletion
                 self.stopCompletion = nil
                 callback?(false)
@@ -198,13 +198,13 @@ final class ReceiverController: ObservableObject {
         watchdog = Task { [weak self] in
             try? await Task.sleep(for: .seconds(8))
             guard !Task.isCancelled, let self, self.generation == id, !self.isStopping else { return }
-            self.fail("接收组件没有及时响应。请重新检查，或退出后再打开 Sofa Tap。")
+            self.fail("接收组件没有及时响应。请重新检查，或退出后再打开 Sofatap。")
         }
     }
 
     private func pipeFailed(id: UUID) {
         guard id == generation, process != nil, !isStopping else { return }
-        fail("与 Mac 接收组件的连接已中断。请重新打开 Sofa Tap。")
+        fail("与 Mac 接收组件的连接已中断。请重新打开 Sofatap。")
         if process?.isRunning == true { process?.terminate() }
     }
 
@@ -216,7 +216,7 @@ final class ReceiverController: ObservableObject {
         cleanUp()
         isStopping = false
         if wasStopping { callback?(true) }
-        else { fail(failure ?? "Mac 接收组件已停止。请重新检查，或退出后再打开 Sofa Tap。") }
+        else { fail(failure ?? "Mac 接收组件已停止。请重新检查，或退出后再打开 Sofatap。") }
     }
 
     private func fail(_ message: String) {

@@ -115,7 +115,7 @@ def yobiru_command():
 
 def message(receipt):
     return (
-        "Sofa Tap published code synchronization request.\n"
+        "Sofatap published code synchronization request.\n"
         f"Repository: {REPOSITORY}\n"
         f"Branch/ref: {receipt['ref']}\n"
         f"Full commit SHA: {receipt['sha']}\n"
@@ -137,7 +137,7 @@ def deliver(root, path, receipt):
     save_receipt(path, receipt)
     try:
         if receipt.get("repository") != REPOSITORY:
-            raise RuntimeError("Receipt repository does not match Sofa Tap")
+            raise RuntimeError("Receipt repository does not match Sofatap")
         target = receipt["target"]
         if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9.:-]*(?:/[A-Za-z0-9_.-]+)?", target):
             raise RuntimeError("Invalid Yobiru target")

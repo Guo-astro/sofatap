@@ -20,7 +20,7 @@ SOFATAP_MAC_STAGING="$stage_dir" \
   bash scripts/build-macos.sh arm64
 
 bash scripts/notarize-macos.sh \
-  --app "$stage_dir/SofaTap-macOS-arm64/Sofa Tap Receiver.app" \
+  --app "$stage_dir/SofaTap-macOS-arm64/Sofatap Receiver.app" \
   --manifest "$stage_dir/SofaTap-macOS-arm64/BUILD-MANIFEST.json" \
   --output-dir artifacts/notarization/arm64-release
 ```
@@ -44,7 +44,7 @@ Only run the following after reviewing the signed build and preflight result:
 
 ```sh
 bash scripts/notarize-macos.sh \
-  --app "$stage_dir/SofaTap-macOS-arm64/Sofa Tap Receiver.app" \
+  --app "$stage_dir/SofaTap-macOS-arm64/Sofatap Receiver.app" \
   --manifest "$stage_dir/SofaTap-macOS-arm64/BUILD-MANIFEST.json" \
   --output-dir artifacts/notarization/arm64-release \
   --submit
@@ -72,7 +72,7 @@ When the receipt contains a confirmed `submissionID`, rerun with the same origin
 
 ```sh
 bash scripts/notarize-macos.sh \
-  --app "$stage_dir/SofaTap-macOS-arm64/Sofa Tap Receiver.app" \
+  --app "$stage_dir/SofaTap-macOS-arm64/Sofatap Receiver.app" \
   --manifest "$stage_dir/SofaTap-macOS-arm64/BUILD-MANIFEST.json" \
   --output-dir artifacts/notarization/arm64-release \
   --resume

@@ -1,4 +1,4 @@
-# Sofa Tap 0.4.0 Linux preview verification
+# Sofatap 0.4.0 Linux preview verification
 
 Date: **2026-10-11**. Release: [v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha).
 

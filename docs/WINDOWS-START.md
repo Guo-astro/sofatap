@@ -1,4 +1,4 @@
-# Sofa Tap Windows 接收端
+# Sofatap Windows 接收端
 
 本说明对应 **0.3.0 原生窗口版** 的 `SofaTap-Windows-x64.zip`。校验文件为 `SofaTap-Windows-x64.zip.sha256`；它记录 ZIP 的 SHA256，而非解压后单个 EXE 的摘要。
 
@@ -6,10 +6,10 @@
 2. 双击 `Start-SofaTap.cmd` 或 `SofaTap.exe`。此版本包含 .NET 运行时，不需要另装 Python、Node 或 .NET。
 3. 如果 Windows 防火墙询问是否允许连接，只允许后台 `SofaTapHost.exe` 在你信任的家庭“专用网络”使用 TCP 53319。`SofaTap.exe` 是原生窗口，本身不监听网络。不用关闭防火墙，也不用给路由器设置公网端口转发。
 4. 程序打开原生 Windows 配对窗口，不会启动浏览器。电脑可接网线，iPhone 连接同一个家庭局域网。访客 Wi-Fi 的设备隔离可能阻止连接。
-5. 在 Sofa Tap iPhone App 中扫描电脑显示的二维码。如果有多个网卡，选择手机可以到达的家庭局域网地址。
+5. 在 Sofatap iPhone App 中扫描电脑显示的二维码。如果有多个网卡，选择手机可以到达的家庭局域网地址。
 6. 配对后打开记事本并点进输入区域。在手机触控板上滑动、轻点；输入一句“你好 Windows 👋”，点击手机上的发送。文字发送不会额外追加回车；草稿本身的换行会按 Windows 文本控件惯例发送，具体软件如何处理换行需要测试。
 
-手机文本框可调用 iOS 系统听写和 Typeless 等第三方键盘。先验证系统听写，再验证 Typeless 的 App 切换、中文、标点和换行。Sofa Tap 不采集或转发麦克风音频。
+手机文本框可调用 iOS 系统听写和 Typeless 等第三方键盘。先验证系统听写，再验证 Typeless 的 App 切换、中文、标点和换行。Sofatap 不采集或转发麦克风音频。
 
 关闭电脑端原生窗口或点击退出会停止接收并释放由程序按住的鼠标键。手机进入后台会停止移动、结束拖动并断开连接；返回时保留草稿，重连不会自动重发文字。
 
@@ -19,7 +19,7 @@
 
 若已有旧版本，请先关闭旧接收端。如果设置过登录后自动启动，在旧安装目录运行其 `Disable-Autostart.ps1`，或打开 `shell:startup` 并删除旧的 `Tiltro.lnk` 快捷方式；之后再启动新版本。新版本的关闭自动启动脚本只管理 `SofaTap.lnk`，不能替你移除旧名称的快捷方式。
 
-Sofa Tap 使用新的 `%LOCALAPPDATA%\SofaTap` 配对目录、`sofatap://` 配对链接和 `com.chekusu.sofatap` iPhone bundle ID。旧版本的配对凭据与手机草稿不会自动迁移；如需保留旧草稿，请先手动复制，然后安装两端的新版本并重新扫描新二维码。不要复用旧名称的配对链接。
+Sofatap 使用新的 `%LOCALAPPDATA%\SofaTap` 配对目录、`sofatap://` 配对链接和 `com.chekusu.sofatap` iPhone bundle ID。旧版本的配对凭据与手机草稿不会自动迁移；如需保留旧草稿，请先手动复制，然后安装两端的新版本并重新扫描新二维码。不要复用旧名称的配对链接。
 
 升级至原生窗口不代表所有设备都已通过实机联合验收；下列限制仍适用。
 

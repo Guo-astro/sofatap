@@ -7,6 +7,6 @@ $shell = New-Object -ComObject WScript.Shell
 $link = $shell.CreateShortcut($linkPath)
 $link.TargetPath = $exe
 $link.WorkingDirectory = $PSScriptRoot
-$link.Description = 'Sofa Tap iPhone remote receiver'
+$link.Description = 'Sofatap iPhone remote receiver'
 $link.Save()
-Write-Output 'Sofa Tap will start after you sign in. Keep this folder in its current location.'
+Write-Output 'Sofatap will start after you sign in. Keep this folder in its current location.'

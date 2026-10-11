@@ -2,7 +2,7 @@ using SofaTap;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("Sofa Tap receiver backend\nLaunch the native Sofa Tap desktop app to pair.\n  --native-ui          Private stdin/stdout bridge for the native desktop app\n  --dry-run            Validate transport without injecting input\n  --data-dir <path>    Store pairing credentials in a separate profile\n  --port <n>           TLS control endpoint (default 53319)");
+    Console.WriteLine("Sofatap receiver backend\nLaunch the native Sofatap desktop app to pair.\n  --native-ui          Private stdin/stdout bridge for the native desktop app\n  --dry-run            Validate transport without injecting input\n  --data-dir <path>    Store pairing credentials in a separate profile\n  --port <n>           TLS control endpoint (default 53319)");
     return;
 }
 try
@@ -23,10 +23,10 @@ try
     }
     var nativeUi = args.Contains("--native-ui", StringComparer.Ordinal);
     if (!nativeUi || !Console.IsInputRedirected || !Console.IsOutputRedirected)
-        throw new InvalidOperationException("Open the native Sofa Tap desktop app. The backend requires its private input/output pipes.");
+        throw new InvalidOperationException("Open the native Sofatap desktop app. The backend requires its private input/output pipes.");
     var dryRun = args.Contains("--dry-run", StringComparer.Ordinal);
     if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !OperatingSystem.IsLinux() && !dryRun)
-        throw new InvalidOperationException("Sofa Tap requires Windows, macOS or a supported Linux desktop.");
+        throw new InvalidOperationException("Sofatap requires Windows, macOS or a supported Linux desktop.");
     var options = new ReceiverOptions(dryRun, Value("--data-dir") ?? Credentials.DefaultDirectory,
         Port("--port", Port("--control-port", 53319)));
     using var credentials = Credentials.LoadOrCreate(Path.GetFullPath(options.DataDirectory));
@@ -41,6 +41,6 @@ try
 catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or FormatException or System.Text.Json.JsonException or System.Security.Cryptography.CryptographicException)
 {
     // Never dump request bodies, pairing tokens, certificate bytes, or raw framework exceptions.
-    Console.Error.WriteLine(error is ArgumentException or InvalidOperationException ? error.Message : "Sofa Tap could not read its local profile or open its ports. Check file permissions and whether another receiver is running.");
+    Console.Error.WriteLine(error is ArgumentException or InvalidOperationException ? error.Message : "Sofatap could not read its local profile or open its ports. Check file permissions and whether another receiver is running.");
     Environment.ExitCode = 1;
 }

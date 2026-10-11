@@ -1,6 +1,6 @@
-# Sofa Tap receiver for Linux
+# Sofatap receiver for Linux
 
-Use your iPhone as a touchpad, mouse and keyboard for a Linux computer. Pairing happens in a native GTK window. Sofa Tap does not open a browser or serve a local pairing website.
+Use your iPhone as a touchpad, mouse and keyboard for a Linux computer. Pairing happens in a native GTK window. Sofatap does not open a browser or serve a local pairing website.
 
 The receiver needs a logged-in graphical Linux desktop. It is not a headless remote-login service. Builds are available for x86-64 (`x64`) and 64-bit ARM (`arm64`). The self-contained backend includes .NET; Python, GTK and the desktop input libraries remain system dependencies.
 
@@ -10,11 +10,11 @@ The receiver needs a logged-in graphical Linux desktop. It is not a headless rem
 2. Install the dependencies listed below using your distribution's package manager.
 3. Open the extracted folder and run `./sofatap`. Depending on your file manager, you can also double-click the executable and choose **Run**.
 4. On Wayland, click **允许控制桌面** and approve the desktop's native permission prompt. If you decline, the receiver cannot control the desktop; the same button lets you try again.
-5. Connect the iPhone and computer to the same trusted home network. Choose the reachable address in Sofa Tap's window, then scan its QR code in the iPhone app.
+5. Connect the iPhone and computer to the same trusted home network. Choose the reachable address in Sofatap's window, then scan its QR code in the iPhone app.
 
 The status must read **桌面已就绪** before mouse or keyboard input is available. A successful network connection alone does not grant desktop control. Never share the QR code or screenshots containing it.
 
-Close the window or click **退出接收器** to stop receiving control. Closing a Wayland permission session also ends its input access. Sofa Tap does not install a background service, modify firewall rules, add startup items or require root access. If your distribution's firewall blocks the connection, allow TCP 53319 only on your trusted home network through the distribution's normal firewall settings.
+Close the window or click **退出接收器** to stop receiving control. Closing a Wayland permission session also ends its input access. Sofatap does not install a background service, modify firewall rules, add startup items or require root access. If your distribution's firewall blocks the connection, allow TCP 53319 only on your trusted home network through the distribution's normal firewall settings.
 
 ## Desktop support and dependencies
 
@@ -29,11 +29,11 @@ For Ubuntu/Debian, the typical packages are:
 sudo apt install python3 python3-gi gir1.2-gtk-3.0 libx11-6 libxtst6 libxdo3
 ```
 
-PyGObject also provides the Gio/GLib bindings used to communicate with the native portal. A normal GNOME or KDE Wayland installation also provides `xdg-desktop-portal` and its matching GNOME/KDE backend. Install or repair them using your desktop's own package documentation; do not install an unrelated backend merely to suppress an unavailable status. Sofa Tap never launches an installer automatically.
+PyGObject also provides the Gio/GLib bindings used to communicate with the native portal. A normal GNOME or KDE Wayland installation also provides `xdg-desktop-portal` and its matching GNOME/KDE backend. Install or repair them using your desktop's own package documentation; do not install an unrelated backend merely to suppress an unavailable status. Sofatap never launches an installer automatically.
 
-Sofa Tap sends Wayland text as XKB keysyms. Unicode support depends on the compositor and destination application; verify your text in the target application. Both Linux backends accept at most 2,048 Unicode characters per text action (after normalizing CRLF); split longer text before sending. X11 may reject a shorter selection before typing if its distinct characters exceed the available temporary key slots, or its estimated input time exceeds the action budget. A slow portal may report partial input: check the computer before resending, because retrying can duplicate text. The receiver never requests clipboard or screen-capture access and does not persist a portal restore token.
+Sofatap sends Wayland text as XKB keysyms. Unicode support depends on the compositor and destination application; verify your text in the target application. Both Linux backends accept at most 2,048 Unicode characters per text action (after normalizing CRLF); split longer text before sending. X11 may reject a shorter selection before typing if its distinct characters exceed the available temporary key slots, or its estimated input time exceeds the action budget. A slow portal may report partial input: check the computer before resending, because retrying can duplicate text. The receiver never requests clipboard or screen-capture access and does not persist a portal restore token.
 
-Dictation and third-party iPhone keyboards work through Sofa Tap's text field: finish composing, review the text, then send it to the computer's focused application. This Linux implementation still needs physical iPhone acceptance testing; automated protocol checks and virtual desktop tests do not prove microphone, voice keyboard or real-device behavior.
+Dictation and third-party iPhone keyboards work through Sofatap's text field: finish composing, review the text, then send it to the computer's focused application. This Linux implementation still needs physical iPhone acceptance testing; automated protocol checks and virtual desktop tests do not prove microphone, voice keyboard or real-device behavior.
 
 ## Optional applications-menu entry
 

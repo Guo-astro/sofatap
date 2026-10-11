@@ -1,8 +1,8 @@
-# Sofa Tap protocol v1
+# Sofatap protocol v1
 
 Native iPhone controller and Windows/macOS/Linux receivers, local network, TLS with certificate pinning.
 
-The `v0.1.1-alpha` release adopts the Sofa Tap brand and the `sofatap://` pairing scheme. The wire protocol remains version 1. Its new iOS bundle ID (`com.chekusu.sofatap`) and Windows profile (`%LOCALAPPDATA%\SofaTap`) do not automatically migrate previous pairing credentials; both ends must be paired again.
+The `v0.1.1-alpha` release adopts the Sofatap brand and the `sofatap://` pairing scheme. The wire protocol remains version 1. Its new iOS bundle ID (`com.chekusu.sofatap`) and Windows profile (`%LOCALAPPDATA%\SofaTap`) do not automatically migrate previous pairing credentials; both ends must be paired again.
 
 ## Pairing
 

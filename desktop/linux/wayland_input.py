@@ -197,7 +197,7 @@ class PortalInput:
             if kind == "move":
                 send("NotifyPointerMotion", action["dx"], action["dy"])
             elif kind == "scroll":
-                # Sofa Tap uses positive y for scrolling up, whereas Wayland
+                # Sofatap uses positive y for scrolling up, whereas Wayland
                 # pointer axes use positive y for scrolling down.
                 send("NotifyPointerAxis", action["dx"], -action["dy"], options={"finish": True})
             elif kind == "click":

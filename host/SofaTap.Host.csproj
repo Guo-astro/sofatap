@@ -6,7 +6,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SofaTap</AssemblyName>
     <Version>0.4.0</Version>
-    <Product>Sofa Tap</Product>
+    <Product>Sofatap</Product>
+    <AssemblyTitle>Sofatap Receiver</AssemblyTitle>
     <InvariantGlobalization>true</InvariantGlobalization>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

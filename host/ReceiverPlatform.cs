@@ -15,7 +15,7 @@ public static class ReceiverPlatform
     {
         "dry_run" => "演练模式 · 不会操作电脑",
         "ready" => $"桌面可用 · 可以向 {DisplayName} 提交操作",
-        "accessibility_required" => "请在 Mac 的系统设置中允许 Sofa Tap 使用辅助功能",
+        "accessibility_required" => "请在 Mac 的系统设置中允许 Sofatap 使用辅助功能",
         "permission_required" or "permission_denied" => "请在 Linux 接收器中允许控制桌面",
         "permission_pending" => "请在 Linux 系统窗口中确认桌面控制授权",
         "unsupported_session" => "当前 Linux 桌面不提供支持的远程控制接口",

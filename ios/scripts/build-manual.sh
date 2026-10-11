@@ -33,7 +33,7 @@ from pathlib import Path
 source, output, platform, sdk = sys.argv[1:]
 data = plistlib.loads(Path(source).read_bytes())
 data.update({
-    'CFBundleName': 'SofaTap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
+    'CFBundleName': 'Sofatap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
     'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.4.0',
     'CFBundleVersion': '5', 'CFBundleSupportedPlatforms': [platform],
     'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],

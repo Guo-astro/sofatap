@@ -37,7 +37,7 @@ public sealed class Credentials : IDisposable
         var lockPath = Path.Combine(directory, "receiver.lock");
         FileStream fileLock;
         try { fileLock = new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-        catch (IOException) { throw new InvalidOperationException("Another Sofa Tap receiver is using this profile. Close it before starting another."); }
+        catch (IOException) { throw new InvalidOperationException("Another Sofatap receiver is using this profile. Close it before starting another."); }
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(lockPath, UnixFileMode.UserRead | UnixFileMode.UserWrite);
         try
         {
@@ -76,7 +76,7 @@ public sealed class Credentials : IDisposable
     private static Secret CreateSecret()
     {
         using var rsa = RSA.Create(3072);
-        var request = new CertificateRequest("CN=Sofa Tap Local Receiver", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+        var request = new CertificateRequest("CN=Sofatap Local Receiver", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
         request.CertificateExtensions.Add(new X509BasicConstraintsExtension(false, false, 0, true));
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
         request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.1") }, true));
@@ -124,7 +124,7 @@ public sealed class Credentials : IDisposable
             {
                 Marshal.Copy(bytes, 0, input.Data, bytes.Length);
                 var ok = protect
-                    ? CryptProtectData(ref input, "Sofa Tap local pairing", IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output)
+                    ? CryptProtectData(ref input, "Sofatap local pairing", IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output)
                     : CryptUnprotectData(ref input, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output);
                 if (!ok) throw new InvalidOperationException("Windows could not unlock this user's pairing profile. Run under the original Windows user, or choose a new data directory.");
                 var result = new byte[output.Size]; Marshal.Copy(output.Data, result, 0, output.Size); return result;

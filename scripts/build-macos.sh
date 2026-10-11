@@ -45,7 +45,7 @@ release_name="SofaTap-macOS-$architecture"
 stage_dir="$(mktemp -d "${TMPDIR:-/tmp}/sofatap-macos.XXXXXX")"
 trap 'rm -rf "$stage_dir"' EXIT
 release_dir="$stage_dir/$release_name"
-app_dir="$release_dir/Sofa Tap Receiver.app"
+app_dir="$release_dir/Sofatap Receiver.app"
 publish_dir="$build_dir/self-contained"
 mkdir -p "$build_dir"
 # Recreate only this architecture's generated publish directory.
@@ -102,8 +102,8 @@ info = {
     "CFBundleInfoDictionaryVersion": "6.0",
     "CFBundleIdentifier": "com.chekusu.sofatap.receiver",
     "CFBundleExecutable": "SofaTap",
-    "CFBundleName": "Sofa Tap Receiver",
-    "CFBundleDisplayName": "Sofa Tap Receiver",
+    "CFBundleName": "Sofatap Receiver",
+    "CFBundleDisplayName": "Sofatap Receiver",
     "CFBundlePackageType": "APPL",
     "CFBundleShortVersionString": short_version,
     "CFBundleVersion": build,
@@ -112,8 +112,8 @@ info = {
     "LSMinimumSystemVersion": "15.0",
     "LSUIElement": False,
     "NSHighResolutionCapable": True,
-    "NSLocalNetworkUsageDescription": "Sofa Tap 通过家庭局域网接收你已配对的 iPhone 发来的鼠标和文字操作。",
-    "NSHumanReadableCopyright": "Copyright © CHEKUSU INC. Sofa Tap is available under the MIT license.",
+    "NSLocalNetworkUsageDescription": "Sofatap 通过家庭局域网接收你已配对的 iPhone 发来的鼠标和文字操作。",
+    "NSHumanReadableCopyright": "Copyright © CHEKUSU INC. Sofatap is available under the MIT license.",
 }
 with (app / "Contents/Info.plist").open("wb") as output:
     plistlib.dump(info, output)
@@ -162,7 +162,7 @@ import subprocess
 import sys
 
 root, release = map(Path, sys.argv[1:3])
-exe = release / "Sofa Tap Receiver.app/Contents/MacOS/SofaTap"
+exe = release / "Sofatap Receiver.app/Contents/MacOS/SofaTap"
 manifest = {
     "runtime": sys.argv[3],
     "bundleIdentifier": "com.chekusu.sofatap.receiver",
@@ -176,7 +176,7 @@ manifest = {
     "sdkVersion": subprocess.check_output([sys.argv[4], "--version"], cwd=root, text=True).strip(),
     "builtAt": datetime.now(timezone.utc).isoformat(),
     "executableSHA256": hashlib.sha256(exe.read_bytes()).hexdigest(),
-    "backendSHA256": hashlib.sha256((release / "Sofa Tap Receiver.app/Contents/Helpers/SofaTapHost").read_bytes()).hexdigest(),
+    "backendSHA256": hashlib.sha256((release / "Sofatap Receiver.app/Contents/Helpers/SofaTapHost").read_bytes()).hexdigest(),
     "pairingUI": "native AppKit and SwiftUI",
     "iconSource": "ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
     "physicalInputVerified": False,

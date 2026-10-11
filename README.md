@@ -1,95 +1,98 @@
-# Sofa Tap
+# Sofatap
 
-**Your iPhone, your living-room remote.** Sofa Tap is an open-source couch remote by [chekusu](https://github.com/chekusu): a native iPhone touchpad, hold-to-move air mouse and explicit text sender for Windows, Mac and supported Linux desktops. It uses local-network TLS, QR pairing and certificate pinning. **Alpha:** [0.3.0 Mac packages are notarized](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha); real iPhone-to-Mac pairing, text and selected pointer/key actions have [passed a scoped check](docs/verification/macos-0.3.0.md). Voice, physical air-mouse behavior and other platform acceptance remain pending. Bluetooth and a hosted service are not implemented.
+**English** · [简体中文](README.zh-CN.md) · [日本語](README.ja.md)
 
-[Source](https://github.com/chekusu/sofatap) · [Issues](https://github.com/chekusu/sofatap/issues) · [Releases](https://github.com/chekusu/sofatap/releases) · [MIT license](LICENSE)
+**Your iPhone, your living-room remote.**
 
-<img src="docs/images/sofatap-demo.png" width="280" alt="Sofa Tap iPhone simulator demo showing the remote control interface" />
+![Sofatap product scenario: using an iPhone from the sofa to control a computer connected to the living-room TV](docs/images/sofatap-living-room.png)
 
-*Simulator demo; the screenshot does not establish physical-device behavior.*
+*AI-generated product scenario illustration; not an application screenshot.*
 
-## 用 iPhone 操作客厅里的电脑
+Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn your iPhone into a touchpad, hold-to-move air mouse and text sender for a Windows, Mac or supported Linux computer. Keep the computer's picture on your TV and control it from the sofa.
 
-Sofa Tap 把 iPhone 变成 Windows、Mac 或受支持 Linux 桌面的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制电脑的系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
+[Releases](https://github.com/chekusu/sofatap/releases) · [Issues](https://github.com/chekusu/sofatap/issues) · [MIT license](LICENSE)
 
-当前是 **alpha 预览版**。2026-10-11 已在真实 iPhone 与最终公证的 Apple Silicon Mac 接收端完成相机扫码、TLS 连接、文字精确读回、部分按键和指针操作；[验收记录](docs/verification/macos-0.3.0.md) 列出了具体边界。Typeless、实际语音、实体陀螺仪、拖拽与滚动，以及本版 Windows 手机联合验收、Linux 真手机联调仍待完成。Linux 原生 GTK 窗口和 X11 输入已通过[隔离桌面测试](docs/verification/linux-0.4.0.md)。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
+## What you can do
 
-## 已实现
+- Move the pointer, click, drag and scroll with the native iPhone app. Hold the air-mouse button and rotate your phone to move the pointer.
+- Compose text in a standard iOS text field using your keyboard or dictation, review it, then tap **Send** to type into the computer's focused field. Sending text does not append an Enter or submit action; the text itself may contain line breaks.
+- Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
+- Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Draft retention, send confirmation and no automatic replay help avoid accidental duplicate input after a disconnect.
 
-- 原生 SwiftUI iPhone App，最低 iOS 17；标准 `UITextView` 保留第三方键盘、中文输入组合和听写流程。
-- 触控板、左右点击、按住拖动、滚动，以及按住按钮转动手机的空中鼠标。
-- Windows 接收端通过 Win32 `SendInput` 注入鼠标、按键和完整 Unicode 文本，不自动追加回车。
-- Mac 接收端通过 Quartz 提交鼠标、拖拽、滚轮、快捷键和 Unicode 文字；在本机明确授予辅助功能权限后使用。手机“全选”自动切换为 Command+A。
-- 局域网 WSS/TLS、二维码配对、证书指纹校验；iPhone Keychain 和 Windows DPAPI 保存配对凭据；Mac 接收端使用仅当前用户可读的凭据文件。
-- 电脑端配对使用原生窗口：Mac AppKit/SwiftUI、Windows WinForms、Linux GTK3。二维码通过本机私有管道传递，接收端不提供网页配对界面。
-- 前后台切换保护、发送确认、草稿保留、断线禁止自动重放。
-- Windows x64 自包含可执行文件；Mac 提供 Apple Silicon 和 Intel 两份原生 `.app` 构建，均不需要另外安装 .NET。
+**This is an alpha preview.** Touchpad, air-mouse and text workflows are implemented, but the checks below cover different levels of readiness. Typeless compatibility, actual dictation and physical gyroscope behavior still need device testing. Bluetooth and a hosted relay service are not implemented.
 
-第一版通过家庭局域网连接。蓝牙连接尚未实现。手机与电脑需要网络互通；客人 Wi-Fi 的设备隔离可能阻止连接。
+## Platform status
 
-## 平台进度
-
-| 平台 | 当前状态 |
+| Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+；iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 Mac 联合验收，语音与陀螺仪待测 |
-| Windows | 0.3.0 原生接收端已发布；本版 UI 和手机联合实测待完成 |
-| Mac | macOS 15+；arm64 / x64 均已公证，Apple Silicon 完成部分真机验收，Intel 实机输入待测 |
-| Linux | 0.4.0 GTK3 原生接收器；X11 隔离桌面验收通过；Wayland portal 实验支持；真手机和 ARM64 运行待测 |
+| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. Voice and gyroscope testing remain pending. |
+| Windows | Native receiver released in 0.3.0. This version's desktop UI and physical iPhone integration still need acceptance testing. |
+| Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
+| Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
 
-Windows、Mac 和 Linux 共用配对、TLS 与输入协议。Linux X11 需要 libX11、libXtst 和 libxdo；Wayland 需要支持键盘、鼠标控制的 RemoteDesktop portal，首次控制由用户在原生系统窗口授权。Linux 文字每次最多 2048 个 Unicode 字符，不读写剪贴板。不同 Wayland 合成器的能力不同；授权失败时禁用输入，不回退到 XWayland 绕过授权。见 [Linux 使用与限制](desktop/linux/README.md)。
+The [Mac verification record](docs/verification/macos-0.3.0.md) covers real camera pairing, TLS, exact text readback and selected key/pointer actions on 2026-10-11. The [Linux verification record](docs/verification/linux-0.4.0.md) covers native GTK rendering, X11 input on an isolated Xvfb desktop and a mock Wayland portal on a private D-Bus. Neither record establishes complete application compatibility.
 
-## 开始使用
+Windows uses Win32 `SendInput`; Mac uses Quartz after an explicit local Accessibility grant. The iPhone's Select All action uses Command+A on Mac. Linux X11 requires libX11, libXtst and libxdo; Wayland requires a compatible RemoteDesktop portal and a native user permission grant. Linux accepts up to 2,048 Unicode scalar values per text action and does not read or replace the clipboard. Unsupported Wayland sessions remain unavailable, with no XWayland fallback. See [Linux requirements and limits](desktop/linux/README.md).
 
-Windows / Mac 发布版本为 **[v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`。解压并运行 `SofaTap.exe` 会显示 WinForms 原生配对窗口；历史版本 `v0.1.1-alpha` 使用浏览器。防火墙只允许接收端通过家庭的专用网络。
+## Get started
 
-Mac 从同一发布页下载 `SofaTap-macOS-arm64-notarized.zip` 或 `SofaTap-macOS-x64-notarized.zip` 及对应 `.sha256`。两份包均通过 Apple 公证；安装与授权步骤见 [Mac 启动说明](docs/MAC-START.md)，固定源码版本、SHA256 和实机范围见 [0.3.0 验收记录](docs/verification/macos-0.3.0.md)。
+### Install the desktop receiver
 
-Linux 从 **[v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha)** 下载 `SofaTap-Linux-x64.tar.gz` 或 `SofaTap-Linux-arm64.tar.gz` 和对应 `.sha256`。安装系统 GTK 和输入依赖后，解压并运行包中的 `./sofatap`；原生窗口提供扫码、状态和 Wayland 授权入口。见 [Linux 启动说明](desktop/linux/README.md)与[测试范围及校验值](docs/verification/linux-0.4.0.md)。也可运行 `bash scripts/build-linux.sh x64` 或 `arm64` 从源码构建；`--dry-run` 可用于不产生桌面输入的演练。
+| Computer | Download | Instructions |
+| --- | --- | --- |
+| Windows x64 | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha): `SofaTap-Windows-x64.zip` and its `.sha256` | Extract and run `SofaTap.exe`. Allow firewall access only on your trusted home private network. [Windows guide](docs/WINDOWS-START.md) |
+| Mac | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha): `SofaTap-macOS-arm64-notarized.zip` or `SofaTap-macOS-x64-notarized.zip` and its `.sha256` | Choose Apple Silicon or Intel. Both packages are notarized. Follow the [Mac installation and permission guide](docs/MAC-START.md). |
+| Linux x64 / ARM64 | [v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha): `SofaTap-Linux-x64.tar.gz` or `SofaTap-Linux-arm64.tar.gz` and its `.sha256` | Install the system GTK/input dependencies, extract and run `./sofatap`. The native window includes the Wayland authorization action. [Linux guide](desktop/linux/README.md) |
 
-在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
+The desktop packages include the .NET runtime. Linux still requires the system dependencies in its guide. `--dry-run` previews connectivity without generating desktop input.
 
-手机扫描电脑原生窗口里的二维码，或粘贴完整配对链接。连上后，在电视上找到目标输入框并点选，在手机文字页完成输入，再明确点发送。Typeless 的实际兼容性需要在真机上验证。
+### Install the iPhone app and pair
 
-详细步骤见 [Windows 启动说明](docs/WINDOWS-START.md)、[Mac 启动说明](docs/MAC-START.md)、[iOS 构建说明](ios/README.md) 和 [实机验收清单](docs/ACCEPTANCE.md)。配对链接含有控制凭据，应保留在自己的设备上。
+1. Open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, then run the app. Installation requires valid development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
+2. Connect the iPhone and computer to the same reachable home network. Guest Wi-Fi device isolation may prevent a connection.
+3. Scan the QR code in the receiver's native window, or paste the complete pairing link into the iPhone app.
+4. Select a field on the computer, compose and review your text on the phone, then explicitly send it. Verify the result on the computer before resending an uncertain action.
 
-## 从旧名称版本升级
+Pairing links contain control credentials: keep them on your own devices. If upgrading from the earliest **Tiltro** releases, follow the [upgrade guide](docs/WINDOWS-START.md#从旧名称版本升级): those releases used different identifiers and storage, and their pairings and drafts do not migrate automatically. The current Sofatap spelling update preserves existing Sofatap pairings.
 
-`v0.1.1-alpha` 使用新的 `sofatap://` 配对链接、`com.chekusu.sofatap` iPhone bundle ID 和 `%LOCALAPPDATA%\SofaTap` Windows 配对目录。旧配对和手机草稿不会自动迁移；如需保留旧草稿，请先手动复制，再用新版本重新扫码配对。
+## Privacy and permissions
 
-如果已经安装过旧版本，先关闭旧接收端，在旧安装目录运行其 `Disable-Autostart.ps1`，或在 `shell:startup` 中删除旧的 `Tiltro.lnk` 快捷方式，再启动 `SofaTap.exe`。否则旧接收端可能占用端口。完整步骤见 [Windows 启动说明](docs/WINDOWS-START.md#从旧名称版本升级)。
+Sofatap connects directly over the local network. The project has no hosted relay service. Pairing uses a pinned TLS certificate; credentials are stored in iPhone Keychain, Windows DPAPI, or current-user-only receiver files on Mac/Linux. Mac input requires Accessibility permission; Wayland input requires the desktop's explicit portal grant.
 
-## 从源码构建
+Pairing QR codes travel through a private local pipe to the native desktop UI, not a web pairing page. Never publish pairing codes, credentials or signing material. The repository includes no developer account, signing certificate or provisioning profile. See [PROTOCOL.md](PROTOCOL.md) for the transport and input behavior, and [the acceptance checklist](docs/ACCEPTANCE.md) for remaining device checks.
 
-接收端需要 .NET 10 SDK。在 Mac/Unix 上构建包含许可文本的 Windows ZIP：
+## Build from source
+
+The receiver requires the **.NET 10 SDK** and Python 3. Set `SOFATAP_DOTNET` to the `dotnet` executable if your SDK is in a custom location.
 
 ```sh
+# Windows distribution, built on Mac/Unix
 bash scripts/build-windows.sh
+
+# Mac distributions, built on macOS
+bash scripts/build-macos.sh arm64
+bash scripts/build-macos.sh x64
+
+# Linux distributions; cross-building is supported
+bash scripts/build-linux.sh x64
+bash scripts/build-linux.sh arm64
 ```
 
-如 SDK 在自定义位置，可将 `SOFATAP_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3，结果写入 `artifacts/SofaTap-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
+Packages are written to `artifacts/` with licenses and SHA256 files. Windows and Mac outputs are named `SofaTap-Windows-x64.zip` and `SofaTap-macOS-<architecture>.zip`; Linux outputs are `SofaTap-Linux-<architecture>.tar.gz`. Mac builds use an ad-hoc development signature by default. Distribution signing and Apple notarization are documented in [NOTARIZATION.md](docs/NOTARIZATION.md).
 
-Windows 开发者可以在 PowerShell 中构建底层接收组件（普通用户应使用包含原生窗口的完整包）：
+Windows developers can build the underlying receiver in PowerShell; the complete package above also includes its native window:
 
 ```powershell
 dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
 ```
 
-分发自包含程序时也应附上 `LICENSE`、`THIRD-PARTY-NOTICES.md` 和相应第三方许可；完整打包流程见构建脚本。
+Redistributed builds must include `LICENSE`, `THIRD-PARTY-NOTICES.md` and the relevant dependency licenses. The packaging scripts collect the licenses for the resolved runtime/NuGet versions.
 
-在 macOS 上构建 Mac 接收端：
+For iPhone, open the checked-in Xcode project. After changing `ios/project.yml`, regenerate it with `xcodegen generate --spec ios/project.yml`. The [iOS guide](ios/README.md) also describes direct compilation; a successful device build is separate from signing and installation.
 
-```sh
-bash scripts/build-macos.sh arm64
-bash scripts/build-macos.sh x64
-```
+## Development checks
 
-输出为 `artifacts/SofaTap-macOS-arm64.zip` 与 `artifacts/SofaTap-macOS-x64.zip`，包含应用、许可和 SHA256。默认使用 ad-hoc 开发签名；CHEKUSU Developer ID 分发签名和 Apple 公证流程见 [公证说明](docs/NOTARIZATION.md)。
-
-iPhone 用 Xcode 打开现成工程即可。`ios/project.yml` 是 XcodeGen 工程源；修改它后运行 `xcodegen generate --spec ios/project.yml`。备用直接编译方式见 [iOS 说明](ios/README.md)，设备编译成功不等于完成签名安装。
-
-## 开发验证
-
-Mac 上安装 .NET 10 SDK、Python 3 后：
+On macOS with .NET 10, Python 3 and Xcode installed:
 
 ```sh
 python3 -m pip install websockets==16.0
@@ -102,28 +105,27 @@ swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /t
 bash ios/scripts/build-manual.sh device
 ```
 
-Host runner 使用模拟输入器。TLS/WebSocket 测试启动临时接收端并明确使用 `--dry-run`，不会向系统注入输入。最后一项编译并链接未配置签名的 ARM64 iOS App，不安装到手机。CI 执行相同层级的检查。
+The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-编译、模拟器界面和协议测试分别只证明对应层工作。[2026-10-11 实机记录](docs/verification/macos-0.3.0.md) 已覆盖 iPhone 到 Mac 的部分操作；完整可用性仍需补齐实际语音、Typeless、陀螺仪、拖拽与滚动，以及本版其他平台的实机验收。
+Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining acceptance includes Typeless, voice, physical air-mouse behavior, Mac dragging/scrolling and physical-device coverage across the supported desktop platforms.
 
-## 源码目录
+## Repository layout
 
-| 路径 | 内容 |
+| Path | Contents |
 | --- | --- |
-| `ios/` | iPhone App、Xcode 工程和工程生成配置 |
-| `host/` | Windows / Mac 原生输入后端和共用接收协议 |
-| `desktop/` | Mac、Windows、Linux 的原生配对窗口 |
-| `tests/` | 协议、认证和输入边界检查 |
-| `PROTOCOL.md` | 两端通信协议 |
-| `docs/` | 安装和实机验收说明 |
-| `scripts/build-windows.sh` | Windows x64 自包含包构建 |
-| `scripts/build-macos.sh` | Mac Apple Silicon / Intel 自包含应用构建 |
-| `licenses/` | 第三方许可和通知原文 |
+| `ios/` | Native iPhone app, Xcode project and project-generation configuration |
+| `host/` | Shared receiver protocol, Windows/Mac input backends and Linux worker bridge |
+| `desktop/` | Native pairing windows and Linux input workers |
+| `tests/` | Protocol, authentication and input-boundary checks |
+| `PROTOCOL.md` | Wire protocol |
+| `docs/` | Installation guides and acceptance records |
+| `scripts/build-*.sh` | Desktop distribution builds |
+| `licenses/` | Third-party license and notice texts |
 
-本机构建产物、配对凭据和签名材料不属于源码。
+Local build artifacts, pairing credentials and signing material are not source files. For naming background, see [NAME.md](docs/NAME.md).
 
-## 参与和许可
+## Contributing and license
 
-欢迎通过 [Issues](https://github.com/chekusu/sofatap/issues) 和 Pull Request 参与，提交前请看 [CONTRIBUTING.md](CONTRIBUTING.md)。
+Issues and pull requests are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing.
 
-Sofa Tap 采用 [MIT 许可](LICENSE)。第三方依赖见 [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md)。
+Sofatap is released under the [MIT license](LICENSE). See [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md) for dependency notices.

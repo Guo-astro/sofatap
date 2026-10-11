@@ -22,7 +22,7 @@ IDENTITY = f"Developer ID Application: CHEKUSU INC. ({TEAM})"
 BUNDLE = "com.chekusu.sofatap.receiver"
 ROOT = Path(sys.argv[1]).resolve()
 parser = argparse.ArgumentParser(description="Preflight, submit, or resume notarization of a clean CHEKUSU macOS build.")
-parser.add_argument("--app", required=True, type=Path, help="Signed Sofa Tap Receiver.app from build-macos.sh")
+parser.add_argument("--app", required=True, type=Path, help="Signed Sofatap Receiver.app from build-macos.sh")
 parser.add_argument("--manifest", required=True, type=Path, help="That build's BUILD-MANIFEST.json")
 parser.add_argument("--output-dir", required=True, type=Path, help="New directory, outside the source tree or Git-ignored")
 parser.add_argument("--profile", help="Existing ASC Keychain profile; omitted uses its current default")
@@ -128,7 +128,7 @@ def verify_app(app, manifest):
     require(app.is_dir() and app.suffix == ".app", "--app must be an existing .app bundle.")
     info = plistlib.loads((app / "Contents/Info.plist").read_bytes())
     require(info.get("CFBundleIdentifier") == BUNDLE and info.get("CFBundleExecutable") == "SofaTap",
-            "The app's Info.plist is not the Sofa Tap receiver bundle.")
+            "The app's Info.plist is not the Sofatap receiver bundle.")
     paths = {"executable": app / "Contents/MacOS/SofaTap", "backend": app / "Contents/Helpers/SofaTapHost"}
     for name, path in paths.items():
         require(path.is_file() and not path.is_symlink(), f"Missing regular {name} executable.")
