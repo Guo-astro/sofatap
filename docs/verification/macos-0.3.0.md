@@ -51,7 +51,7 @@
 - Intel Mac 的真实输入；本版 Windows 原生窗口与 iPhone 联合操作；Linux GTK GUI。
 - TextEdit 之外的目标软件兼容性，以及完整的 [实机验收清单](../ACCEPTANCE.md)。
 
-Linux 当前仍是原生配对界面的 dry-run 预览，没有可用的桌面输入后端。
+在本记录对应的 0.3.0 版本中，Linux 仍是原生配对界面的 dry-run 预览。之后的 [0.4.0 Linux 预览版](linux-0.4.0.md) 增加了桌面输入；其测试结果单独记录。
 
 ## 自动检查证据
 

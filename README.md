@@ -12,7 +12,7 @@
 
 Sofa Tap 把 iPhone 变成 Windows、Mac 或受支持 Linux 桌面的触控板、空中鼠标和文字输入器。电视显示电脑画面，手机控制电脑的系统鼠标；在手机原生文本框里用 Typeless、系统听写或其他键盘生成文字，检查后点发送，输入到电脑当前聚焦的位置。
 
-当前是 **alpha 预览版**。2026-10-11 已在真实 iPhone 与最终公证的 Apple Silicon Mac 接收端完成相机扫码、TLS 连接、文字精确读回、部分按键和指针操作；[验收记录](docs/verification/macos-0.3.0.md) 列出了具体边界。Typeless、实际语音、实体陀螺仪、拖拽与滚动，以及本版 Windows 原生窗口和 Linux GUI 仍待实测。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
+当前是 **alpha 预览版**。2026-10-11 已在真实 iPhone 与最终公证的 Apple Silicon Mac 接收端完成相机扫码、TLS 连接、文字精确读回、部分按键和指针操作；[验收记录](docs/verification/macos-0.3.0.md) 列出了具体边界。Typeless、实际语音、实体陀螺仪、拖拽与滚动，以及本版 Windows 手机联合验收、Linux 真手机联调仍待完成。Linux 原生 GTK 窗口和 X11 输入已通过[隔离桌面测试](docs/verification/linux-0.4.0.md)。项目没有已上线的独立域名或云服务；命名与域名查询见 [名称说明](docs/NAME.md)。
 
 ## 已实现
 
@@ -34,7 +34,7 @@ Sofa Tap 把 iPhone 变成 Windows、Mac 或受支持 Linux 桌面的触控板�
 | iPhone | iOS 17+；iPhone 17 Pro Max 上的 0.3.0 (4) 已通过部分 Mac 联合验收，语音与陀螺仪待测 |
 | Windows | 0.3.0 原生接收端已发布；本版 UI 和手机联合实测待完成 |
 | Mac | macOS 15+；arm64 / x64 均已公证，Apple Silicon 完成部分真机验收，Intel 实机输入待测 |
-| Linux | GTK3 原生接收器；X11 使用 XTest，Wayland 使用系统 RemoteDesktop portal 授权；真手机联合验收待完成 |
+| Linux | 0.4.0 GTK3 原生接收器；X11 隔离桌面验收通过；Wayland portal 实验支持；真手机和 ARM64 运行待测 |
 
 Windows、Mac 和 Linux 共用配对、TLS 与输入协议。Linux X11 需要 libX11、libXtst 和 libxdo；Wayland 需要支持键盘、鼠标控制的 RemoteDesktop portal，首次控制由用户在原生系统窗口授权。Linux 文字每次最多 2048 个 Unicode 字符，不读写剪贴板。不同 Wayland 合成器的能力不同；授权失败时禁用输入，不回退到 XWayland 绕过授权。见 [Linux 使用与限制](desktop/linux/README.md)。
 
@@ -44,7 +44,7 @@ Windows / Mac 发布版本为 **[v0.3.0-alpha](https://github.com/chekusu/sofata
 
 Mac 从同一发布页下载 `SofaTap-macOS-arm64-notarized.zip` 或 `SofaTap-macOS-x64-notarized.zip` 及对应 `.sha256`。两份包均通过 Apple 公证；安装与授权步骤见 [Mac 启动说明](docs/MAC-START.md)，固定源码版本、SHA256 和实机范围见 [0.3.0 验收记录](docs/verification/macos-0.3.0.md)。
 
-Linux 可以运行 `bash scripts/build-linux.sh x64` 或 `arm64` 构建自包含接收端。安装系统 GTK 和输入依赖后，解压并打开包中的 `sofatap`；原生窗口提供扫码、状态和 Wayland 授权入口。`--dry-run` 仍可用于不产生桌面输入的演练。
+Linux 从 **[v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha)** 下载 `SofaTap-Linux-x64.tar.gz` 或 `SofaTap-Linux-arm64.tar.gz` 和对应 `.sha256`。安装系统 GTK 和输入依赖后，解压并运行包中的 `./sofatap`；原生窗口提供扫码、状态和 Wayland 授权入口。见 [Linux 启动说明](desktop/linux/README.md)与[测试范围及校验值](docs/verification/linux-0.4.0.md)。也可运行 `bash scripts/build-linux.sh x64` 或 `arm64` 从源码构建；`--dry-run` 可用于不产生桌面输入的演练。
 
 在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
 
