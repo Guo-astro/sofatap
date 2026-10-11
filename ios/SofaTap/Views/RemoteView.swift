@@ -60,9 +60,9 @@ struct RemoteView: View {
         .sheet(isPresented: $pairingSheet) { PairingView(model: model) }
         .alert("允许再次发送这段文字？", isPresented: $resendAlert) {
             Button("取消", role: .cancel) {}
-            Button("已查看电视，允许重发") { model.allowManualResend() }
+            Button("已查看屏幕，允许重发") { model.allowManualResend() }
         } message: {
-            Text("上一次的文字可能已经输入。请先检查电视，再手动按发送；重复文字无法自动撤销。")
+            Text("上一次的文字可能已经输入。请先检查电脑屏幕，再手动按发送；重复文字无法自动撤销。")
         }
         .alert("清空手机上的草稿？", isPresented: $clearAlert) {
             Button("取消", role: .cancel) {}
@@ -309,6 +309,15 @@ struct RemoteView: View {
                 if model.textDelivery == .uncertain || model.textDelivery == .sent {
                     Button("检查后允许重发") { resendAlert = true }
                 }
+            }
+            .font(.system(size: 12, weight: .medium))
+            HStack(spacing: 12) {
+                Button("全选电脑文字", action: model.selectAll)
+                    .disabled(!model.canControl || model.sendingText)
+                    .accessibilityHint("选中电脑当前输入框中的文字，不会修改手机草稿")
+                Spacer()
+                keyButton("退格", key: "backspace")
+                keyButton("Enter", key: "enter")
             }
             .font(.system(size: 12, weight: .medium))
             HStack(alignment: .top, spacing: 9) {

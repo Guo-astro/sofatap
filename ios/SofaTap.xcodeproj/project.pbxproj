@@ -15,6 +15,7 @@
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
 		993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2194963D13F182243533BEB /* SofaTapApp.swift */; };
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
+		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -24,6 +25,7 @@
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
+		8836BE62D39309B8AF525D9F /* ReceiverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverState.swift; sourceTree = "<group>"; };
 		951A32A70DFF898858DD7CDD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
@@ -36,6 +38,7 @@
 			children = (
 				7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */,
 				6898F264D24CA602D5304DA0 /* Pairing.swift */,
+				8836BE62D39309B8AF525D9F /* ReceiverState.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -154,6 +157,7 @@
 				C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */,
 				667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */,
 				0C3B35855B50DA22F878C842 /* PairingView.swift in Sources */,
+				DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */,
 				84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */,
 				993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */,
 			);
@@ -167,14 +171,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -187,14 +191,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.1.1;
+				MARKETING_VERSION = 0.2.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

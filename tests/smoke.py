@@ -41,8 +41,8 @@ def unused_port():
         return sock.getsockname()[1]
 
 
-def http_status(url, headers=None):
-    request = urllib.request.Request(url, headers=headers or {})
+def http_status(url, headers=None, data=None, method=None):
+    request = urllib.request.Request(url, headers=headers or {}, data=data, method=method)
     try:
         with urllib.request.urlopen(request, timeout=2) as response:
             return response.status, response.read()
@@ -68,6 +68,17 @@ async def exercise(dashboard_port, control_port):
     check("dashboard DNS rebinding denied", http_status(dashboard, {"Host": f"evil.example:{dashboard_port}"})[0] == 403)
     check("dashboard foreign origin denied", http_status(dashboard, {"Origin": "https://evil.example"})[0] == 403)
     check("foreign QR host denied", http_status(dashboard + "qr.svg?host=evil.example")[0] == 400)
+
+    nonce_match = re.search(r'name="nonce" value="([0-9a-f]{64})"', page)
+    check("local action nonce present", nonce_match is not None)
+    nonce_body = urllib.parse.urlencode({"nonce": nonce_match[1]}).encode()
+    form_headers = {"Origin": dashboard.rstrip("/"), "Content-Type": "application/x-www-form-urlencoded"}
+    check("GET cannot quit receiver", http_status(dashboard + "quit")[0] == 404)
+    check("local action requires Origin", http_status(dashboard + "quit", {"Content-Type": form_headers["Content-Type"]}, nonce_body)[0] == 403)
+    check("foreign page cannot quit receiver", http_status(dashboard + "quit", {**form_headers, "Origin": "https://evil.example"}, nonce_body)[0] == 403)
+    check("local action requires correct nonce", http_status(dashboard + "quit", form_headers, b"nonce=wrong")[0] == 403)
+    check("dry-run cannot request macOS permission", http_status(dashboard + "request-access", form_headers, nonce_body)[0] == 409)
+    check("oversized local form rejected", http_status(dashboard + "quit", form_headers, nonce_body + b"&extra=" + b"x" * 4096)[0] in (400, 413))
 
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
@@ -107,6 +118,8 @@ async def exercise(dashboard_port, control_port):
                 check("Apple native SSL policy accepts paired certificate", native.returncode == 0)
         hello = json.loads(await ws.recv())
         check("dry run explicitly disables input", hello["type"] == "hello" and hello["version"] == 1 and hello["inputAvailable"] is False)
+        expected_platform = "macos" if sys.platform == "darwin" else "windows" if sys.platform == "win32" else "linux"
+        check("hello identifies platform and dry-run status", hello.get("platform") == expected_platform and hello.get("dryRun") is True and hello.get("inputStatus") == "dry_run")
         await denied("second controller denied", headers, 409)
 
         async def command(name, payload, expected=True):
@@ -138,7 +151,8 @@ async def exercise(dashboard_port, control_port):
         await ws.send('{"id":')
         response = json.loads(await ws.recv())
         check("malformed JSON rejected without losing session", response.get("ok") is False)
-        await command("session recovers after invalid frame", {"type": "ping"})
+        _, heartbeat = await command("session recovers after invalid frame", {"type": "ping"})
+        check("heartbeat reports current availability", heartbeat.get("inputAvailable") is False and heartbeat.get("dryRun") is True and heartbeat.get("inputStatus") == "dry_run")
 
     async with websockets.connect(url, ssl=context, additional_headers=headers, proxy=None) as ws:
         await ws.recv()
@@ -172,6 +186,15 @@ async def exercise(dashboard_port, control_port):
             check("idle controller expires", 19 <= elapsed <= 24 and
                   (error.rcvd is None or error.rcvd.code == 1008))
 
+    async with websockets.connect(url, ssl=context, additional_headers=headers, proxy=None) as ws:
+        await ws.recv()
+        check("valid local quit accepted", http_status(dashboard + "quit", form_headers, nonce_body)[0] == 200)
+        try:
+            await asyncio.wait_for(ws.recv(), timeout=3)
+            raise AssertionError("quit must disconnect the controller")
+        except ConnectionClosed:
+            check("local quit promptly disconnects active controller", True)
+
 
 def main():
     dashboard_port, control_port = unused_port(), unused_port()
@@ -195,8 +218,10 @@ def main():
                 else:
                     raise RuntimeError("Dry-run host startup timeout")
                 asyncio.run(exercise(dashboard_port, control_port))
+                check("local quit actually stops receiver", process.wait(timeout=5) == 0)
             finally:
-                process.send_signal(signal.SIGINT)
+                if process.poll() is None:
+                    process.send_signal(signal.SIGINT)
                 try:
                     process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
@@ -206,7 +231,7 @@ def main():
     report = {"suite": "TLS and WebSocket integration", "mode": "dry-run, no OS input", "passed": RESULTS}
     (ROOT / "artifacts").mkdir(exist_ok=True)
     (ROOT / "artifacts/transport-tests.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
-    print(f"PASS {len(RESULTS)} TLS/WebSocket integration checks (dry-run; Windows injection unverified)")
+    print(f"PASS {len(RESULTS)} TLS/WebSocket integration checks (dry-run; OS input unverified)")
 
 
 if __name__ == "__main__":

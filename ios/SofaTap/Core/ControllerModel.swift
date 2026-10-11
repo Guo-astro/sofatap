@@ -18,6 +18,7 @@ final class ControllerModel: ObservableObject {
     @Published private(set) var connected = false
     @Published private(set) var connecting = false
     @Published private(set) var inputAvailable = false
+    @Published private(set) var receiverState = ReceiverState()
     @Published private(set) var computerName = "客厅电脑"
     @Published var notice = "配对一次，坐下来就能控制电脑。"
     @Published var pairingError: String?
@@ -82,7 +83,7 @@ final class ControllerModel: ObservableObject {
     var statusTitle: String {
         if demo { return "界面演示" }
         if connecting { return "正在安全连接…" }
-        if connected { return inputAvailable ? computerName : "演练接收器 · 不会操作电脑" }
+        if connected { return inputAvailable ? computerName : receiverState.unavailableTitle }
         return pairing == nil ? "尚未配对电脑" : "已配对 · 未连接"
     }
     var statusSubtitle: String {
@@ -103,9 +104,9 @@ final class ControllerModel: ObservableObject {
         switch textDelivery {
         case .ready: return "先点电脑里的输入框，再发送整段文字。"
         case .sending: return "等待电脑确认… 请勿重复发送。"
-        case .sent: return "电脑已接受文字输入；请在电视上确认内容。"
+        case .sent: return "已向电脑系统提交文字；请在屏幕上确认内容。"
         case .rejected(let error): return "未被电脑接受：\(error)"
-        case .uncertain: return "发送结果不完整或未确认，文字可能已输入。请先查看电视，避免重复。"
+        case .uncertain: return "发送结果不完整或未确认，文字可能已输入。请先查看电脑屏幕，避免重复。"
         }
     }
 
@@ -148,6 +149,7 @@ final class ControllerModel: ObservableObject {
         let currentGeneration = generation
         connecting = true
         inputAvailable = false
+        receiverState = ReceiverState()
         notice = "正在验证电脑证书与配对凭据…"
         let delegate = PinnedSessionDelegate(pairing: pairing)
         sessionDelegate = delegate
@@ -246,20 +248,31 @@ final class ControllerModel: ObservableObject {
         case "hello":
             guard connecting, let version = message["version"] as? Int, version == 1,
                   let name = message["name"] as? String, name.utf8.count <= 256,
-                  let available = message["inputAvailable"] as? Bool else { return false }
+                  message["inputAvailable"] is Bool,
+                  let state = ReceiverState.hello(message) else { return false }
             helloTimeout?.cancel()
             helloTimeout = nil
             connecting = false
             connected = true
-            inputAvailable = available
+            receiverState = state
+            inputAvailable = state.inputAvailable
             computerName = name
-            notice = available ? "已连接。先点选电脑上的输入框，即可发送文字。" : "接收器正在演练模式，鼠标和文字操作已停用。"
+            notice = state.inputAvailable ? "已连接。先点选电脑上的输入框，即可发送文字。" : state.unavailableMessage
             startTimers()
             return true
         case "ack":
             guard connected, let id = message["id"] as? String, let ok = message["ok"] as? Bool else { return false }
             guard let item = pending.removeValue(forKey: id) else { return true }
             item.timer.cancel()
+            if item.type == "ping", let state = receiverState.updating(message), state != receiverState {
+                receiverState = state
+                inputAvailable = state.inputAvailable
+                if !inputAvailable {
+                    stopAirMouse()
+                    if dragging { setDragging(false) }
+                }
+                notice = inputAvailable ? "电脑已就绪，可以继续控制。" : state.unavailableMessage
+            }
             if ok { item.completion?(.accepted) }
             else {
                 // Show a bounded generic code, not server-controlled arbitrary text or echoed drafts.
@@ -271,7 +284,7 @@ final class ControllerModel: ObservableObject {
                 // A failed injection can have typed a prefix. Unknown errors are conservative.
                 let definitelyRejected = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited"].contains(rawCode ?? "")
                 if item.type == "text" && !definitelyRejected {
-                    notice = "电脑未完整确认操作，文字可能已经部分输入。请先查看电视。"
+                    notice = "电脑未完整确认操作，文字可能已经部分输入。请先查看电脑屏幕。"
                     item.completion?(.uncertain)
                 } else {
                     notice = "电脑未接受操作：\(code)"
@@ -319,7 +332,7 @@ final class ControllerModel: ObservableObject {
             guard !Task.isCancelled, let self, self.generation == currentGeneration,
                   let item = self.pending.removeValue(forKey: id) else { return }
             item.completion?(.uncertain)
-            self.disconnect(message: "电脑响应超时，已停止控制。文字可能已输入，请查看电视。")
+            self.disconnect(message: "电脑响应超时，已停止控制。文字可能已输入，请查看电脑屏幕。")
         }
         pending[id] = Pending(type: type, timer: timer, completion: completion)
         socket.send(.string(text)) { [weak self] error in
@@ -394,6 +407,8 @@ final class ControllerModel: ObservableObject {
         if demo { notice = "演示：\(key.uppercased()) 快捷键。"; return }
         send("key", fields: ["key": key, "modifiers": modifiers])
     }
+
+    func selectAll() { key("a", modifiers: [receiverState.commandModifier]) }
 
     func sendText() {
         guard canSendText else { return }

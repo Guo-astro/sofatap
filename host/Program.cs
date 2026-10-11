@@ -22,15 +22,16 @@ try
         return port;
     }
     var dryRun = args.Contains("--dry-run", StringComparer.Ordinal);
-    if (!OperatingSystem.IsWindows() && !dryRun) throw new InvalidOperationException("Windows input requires Windows. Use --dry-run for transport tests on this operating system.");
+    if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !dryRun)
+        throw new InvalidOperationException("Sofa Tap currently supports input on Windows and macOS. Linux input is planned; use --dry-run only for transport tests.");
     var options = new ReceiverOptions(dryRun, Value("--data-dir") ?? Credentials.DefaultDirectory,
         Port("--dashboard-port", 53318), Port("--port", Port("--control-port", 53319)), !args.Contains("--no-browser", StringComparer.Ordinal));
     if (options.ControlPort == options.DashboardPort) throw new ArgumentException("Dashboard and control ports must be different.");
     using var credentials = Credentials.LoadOrCreate(Path.GetFullPath(options.DataDirectory));
-    IInputInjector input = dryRun ? new DryRunInput() : new WindowsInput();
+    IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput() : new WindowsInput();
     var server = new ReceiverServer(options, credentials, input);
     await using var app = server.Build();
-    Console.WriteLine($"Sofa Tap {(dryRun ? "DRY RUN: input disabled" : "Windows receiver")}. Pair at http://localhost:{options.DashboardPort}/ on this PC. Press Ctrl+C to stop.");
+    Console.WriteLine($"Sofa Tap {(dryRun ? "DRY RUN: input disabled" : ReceiverPlatform.DisplayName + " receiver")}. Pair at http://localhost:{options.DashboardPort}/ on this computer. Press Ctrl+C to stop.");
     try { await app.RunAsync(); }
     finally { input.ReleaseAll(); }
 }

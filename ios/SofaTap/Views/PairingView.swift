@@ -18,7 +18,7 @@ struct PairingView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("连接你的客厅电脑")
                             .font(.system(size: 27, weight: .semibold))
-                        Text("在 Windows 上打开 Sofa Tap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
+                        Text("在 Windows 或 Mac 上打开 Sofa Tap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
                             .font(.system(size: 15)).foregroundStyle(Palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -98,7 +98,7 @@ private struct ScannerSheet: View {
                 Color.black
                 QRScanner(onScan: onScan, onError: { error = $0 })
                 VStack {
-                    Text("将 Windows 配对二维码放入画面")
+                    Text("将 电脑配对二维码放入画面")
                         .font(.system(size: 15, weight: .medium))
                         .padding(14).background(.black.opacity(0.65), in: Capsule())
                     Spacer()

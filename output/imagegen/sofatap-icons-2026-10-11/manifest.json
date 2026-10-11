@@ -63,5 +63,25 @@
     "generator": "built-in image_gen",
     "visual_review": "passed",
     "used_in_app": false
+  },
+  {
+    "file": "06-phone-sofa.png",
+    "width": 1254,
+    "height": 1254,
+    "bit_depth": 8,
+    "color_mode": "RGB",
+    "has_alpha": false,
+    "bytes": 1381986,
+    "sha256": "bab56f458fe7b76832788c4926b04a3574b3c09249372282a86922c8cfa9df05",
+    "generator": "built-in image_gen",
+    "mode": "edit",
+    "input_files": [
+      "01-sofa-click.png",
+      "02-pocket-pointer.png"
+    ],
+    "visual_review": "passed",
+    "visual_review_notes": "Unified sofa with portrait phone central backrest; one dark negative-space cursor fully inside the phone; no outside cursor, text or OS logos.",
+    "used_in_app": false,
+    "status": "latest user-requested concept"
   }
 ]

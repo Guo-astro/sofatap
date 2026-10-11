@@ -38,8 +38,17 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/sofatap-pairing-tests"
           "$RUNNER_TEMP/sofatap-pairing-tests"
+      - name: Receiver platform and permission-state checks
+        shell: bash
+        run: |
+          swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o "$RUNNER_TEMP/sofatap-receiver-tests"
+          "$RUNNER_TEMP/sofatap-receiver-tests"
       - name: Compile unprovisioned iPhone app without installation
         run: bash ios/scripts/build-manual.sh device
+      - name: Build Mac distributions and verify signatures
+        run: |
+          bash scripts/build-macos.sh arm64
+          bash scripts/build-macos.sh x64
       - name: Build Windows distribution and include licenses
         run: bash scripts/build-windows.sh
 

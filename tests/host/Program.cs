@@ -81,6 +81,150 @@ try
         Check(File.GetUnixFileMode(Path.Combine(directory, "pairing.dat")) == (UnixFileMode.UserRead | UnixFileMode.UserWrite), "pairing file user-only permissions");
 }
 finally { Directory.Delete(directory, true); }
+
+// macOS backend coverage uses a recording sink only: no Quartz calls, prompts or real input.
+var unavailableMacSink = new RecordingMacSink { StatusCode = "accessibility_required" };
+var unavailableMac = new MacInput(unavailableMacSink);
+Check(!unavailableMac.Available && unavailableMac.StatusCode == "accessibility_required" && unavailableMacSink.Events.Count == 0,
+    "Mac availability is a pure permission check");
+try { unavailableMac.Apply(new("", "click", Button: "left")); throw new Exception("FAIL: untrusted Mac input"); }
+catch (InputInjectionException error) { Check(error.Message.StartsWith("input_unavailable:") && unavailableMacSink.Events.Count == 0, "Mac denies input without permission"); }
+unavailableMacSink.StatusCode = "desktop_unavailable";
+Check(!unavailableMac.Available, "Mac denies a locked or missing desktop");
+
+var macSink = new RecordingMacSink(); var mac = new MacInput(macSink);
+mac.Apply(new("", "button", Button: "left", Down: true));
+mac.Apply(new("", "move", Dx: -150, Dy: -25));
+Check(macSink.Events[^1] is { MouseType: 6, Button: 0 } && macSink.CursorPosition == new MacPoint(-50, 75),
+    "Mac held left button generates a drag into the display left of the main display");
+mac.Apply(new("", "button", Button: "left", Down: false));
+mac.Apply(new("", "button", Button: "right", Down: true));
+mac.Apply(new("", "move", Dx: 5, Dy: -500));
+Check(macSink.Events[^1] is { MouseType: 7, Button: 1 } && macSink.CursorPosition.Y == -200,
+    "Mac right drag preserves negative display coordinates and clamps at the display edge");
+mac.ReleaseAll();
+Check(macSink.HeldButtons.Count == 0 && macSink.Events[^1].MouseType == 4, "Mac disconnect releases only its held mouse button");
+var releasedCount = macSink.Events.Count;
+mac.ReleaseAll();
+Check(macSink.Events.Count == releasedCount, "Mac repeated release does not emit unowned releases");
+mac.Apply(new("", "move", Dx: .4)); mac.Apply(new("", "move", Dx: .4));
+Check(macSink.Events.Count == releasedCount, "Mac subpixel pointer movement accumulates before posting");
+mac.Apply(new("", "move", Dx: .4));
+Check(macSink.Events.Count == releasedCount + 1 && macSink.Events[^1].DeltaX == 1 && macSink.Events[^1].MouseType == 5,
+    "Mac fractional pointer remainder is preserved without stale drag state");
+mac.Apply(new("", "scroll", Dx: .7, Dy: -.7)); mac.Apply(new("", "scroll", Dx: .7, Dy: -.7));
+Check(macSink.Events[^1] is { Kind: MacEventKind.Scroll, DeltaX: 1, DeltaY: -1 }, "Mac both scroll axes preserve signed fractional deltas");
+Check(MacInput.ClampToDisplays(new(210, 50), [new(0, 0, 100, 100), new(300, 0, 100, 100)]) == new MacPoint(300, 50),
+    "Mac pointer in a monitor gap chooses the nearest real display rather than an invalid bounding-box point");
+
+var clickingSink = new RecordingMacSink { DoubleClickInterval = .4, DoubleClickDistance = 3 };
+var clickingMac = new MacInput(clickingSink);
+clickingMac.Apply(new("", "click", Button: "left"));
+clickingSink.MonotonicSeconds = .2;
+clickingMac.Apply(new("", "move", Dx: 2));
+clickingMac.Apply(new("", "click", Button: "left"));
+clickingSink.MonotonicSeconds = .5;
+clickingMac.Apply(new("", "click", Button: "left"));
+Check(clickingSink.Events.Where(item => item.MouseType is 1 or 2).Select(item => item.ClickCount).SequenceEqual([1L, 1L, 2L, 2L, 3L, 3L]),
+    "Mac nearby clicks within the system interval produce matching single, double and triple down/up counts");
+clickingSink.MonotonicSeconds = 1;
+clickingMac.Apply(new("", "click", Button: "left"));
+Check(clickingSink.Events[^1].ClickCount == 1, "Mac clicks after the configured interval start a new sequence");
+clickingMac.Apply(new("", "click", Button: "right"));
+Check(clickingSink.Events[^1] is { Button: 1, ClickCount: 1 }, "Mac switching mouse buttons starts a new click sequence");
+clickingMac.Apply(new("", "click", Button: "left"));
+clickingMac.Apply(new("", "move", Dx: 4)); clickingMac.Apply(new("", "move", Dx: -4));
+clickingMac.Apply(new("", "click", Button: "left"));
+Check(clickingSink.Events[^1].ClickCount == 1, "Mac movement beyond tolerance resets click count even if the pointer returns");
+clickingMac.ReleaseAll(); clickingMac.Apply(new("", "click", Button: "left"));
+Check(clickingSink.Events[^1].ClickCount == 1, "Mac disconnect clears multi-click history");
+clickingMac.Apply(new("", "button", Button: "left", Down: true));
+var dragEventCount = clickingSink.Events.Count;
+try { clickingMac.Apply(new("", "click", Button: "left")); throw new Exception("FAIL: Mac click interrupted drag"); }
+catch (InputInjectionException error)
+{
+    Check(error.Message.StartsWith("input_busy:") && clickingSink.Events.Count == dragEventCount && clickingSink.HeldButtons.Contains(0),
+        "Mac click during a remote drag is rejected without silently releasing the held button");
+}
+clickingMac.Apply(new("", "move", Dx: 1));
+clickingMac.Apply(new("", "button", Button: "left", Down: false));
+clickingMac.Apply(new("", "click", Button: "left"));
+Check(clickingSink.Events[^1].ClickCount == 1, "Mac explicit dragging cannot merge with the previous click sequence");
+
+var ctrlSink = new RecordingMacSink();
+new MacInput(ctrlSink).Apply(new("", "key", Key: "a", Modifiers: ["ctrl"]));
+Check(ctrlSink.Events[0] is { KeyCode: 0x3B, Flags: 0x40000 } && ctrlSink.Events[^1].Flags == 0,
+    "Mac ctrl maps to real Control and releases its flags");
+var commandSink = new RecordingMacSink();
+new MacInput(commandSink).Apply(new("", "key", Key: "c", Modifiers: ["win", "shift"]));
+Check(commandSink.Events[0] is { KeyCode: 0x37, Flags: 0x100000 }
+    && commandSink.Events[2] is { KeyCode: 8, Down: true, Flags: 0x120000 }
+    && commandSink.Events[^2] is { KeyCode: 0x38, Down: false, Flags: 0x100000 }
+    && commandSink.Events[^1] is { KeyCode: 0x37, Down: false, Flags: 0 }, "Mac Command shortcut maintains and unwinds each modifier");
+Check(commandSink.HeldKeys.Count == 0, "Mac successful shortcut leaves no held keys");
+for (var interruptAt = 1; interruptAt <= 6; interruptAt++)
+{
+    var interruptedSink = new RecordingMacSink { FailAtPost = interruptAt };
+    var interruptedMac = new MacInput(interruptedSink);
+    try { interruptedMac.Apply(new("", "key", Key: "c", Modifiers: ["win", "shift"])); throw new Exception("FAIL: Mac interruption accepted"); }
+    catch (InputInjectionException error)
+    {
+        Check(error.Message.StartsWith("input_partial:") && interruptedSink.HeldKeys.Count == 0 && interruptedSink.Events[^1].Flags == 0,
+            $"Mac uncertain shortcut at event {interruptAt} releases all owned keys with no remaining modifier flags");
+    }
+}
+var mouseFailureSink = new RecordingMacSink { FailAtPost = 1 };
+try { new MacInput(mouseFailureSink).Apply(new("", "click", Button: "right")); throw new Exception("FAIL: Mac mouse interruption accepted"); }
+catch (InputInjectionException error)
+{
+    Check(error.Message.StartsWith("input_partial:") && mouseFailureSink.HeldButtons.Count == 0 && mouseFailureSink.Events[^1].MouseType == 4,
+        "Mac uncertain mouse down receives a matching release");
+}
+var physicalSink = new RecordingMacSink(); physicalSink.PhysicalKeys.Add(0x3E);
+try { new MacInput(physicalSink).Apply(new("", "text", Text: "hello")); throw new Exception("FAIL: physical Control ignored"); }
+catch (InputInjectionException error)
+{
+    Check(error.Message.StartsWith("input_busy:") && physicalSink.Events.Count == 0 && physicalSink.PhysicalKeys.Contains(0x3E),
+        "Mac refuses text while right Control is physically down and never releases it");
+}
+var lockingSink = new RecordingMacSink(); var lockingMac = new MacInput(lockingSink);
+lockingMac.Apply(new("", "button", Button: "left", Down: true));
+lockingSink.StatusCode = "desktop_unavailable";
+lockingMac.ReleaseAll();
+Check(lockingSink.Events.Count == 1, "Mac release does not post into a locked desktop");
+lockingSink.StatusCode = "ready";
+lockingMac.ReleaseAll();
+Check(lockingSink.Events.Count == 1, "Mac does not replay stale releases after the desktop returns");
+
+var macText = new string('a', 19) + "👋中文\r\n日本語\r独立\n👨‍👩‍👧‍👦" + new string('z', 75);
+var textSink = new RecordingMacSink(); new MacInput(textSink).Apply(new("", "text", Text: macText));
+var chunks = textSink.Events.Where(item => item.Down).Select(item => item.Unicode!).ToArray();
+Check(string.Concat(chunks) == macText.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Replace('\n', '\r'),
+    "Mac Unicode chunks reconstruct Chinese, emoji, ZWJ sequences and exactly one break per CRLF");
+Check(chunks.All(chunk => chunk.Length <= 20 && !char.IsHighSurrogate(chunk[^1]) && !char.IsLowSurrogate(chunk[0])),
+    "Mac Unicode boundary never splits UTF-16 surrogate pairs");
+Check(textSink.Events.Count(item => item.Down && item.KeyCode == 0x24) == 3 && textSink.Events[^1].KeyCode != 0x24 && textSink.HeldKeys.Count == 0,
+    "Mac sends only requested line breaks and leaves no text key held");
+Check(string.Concat(MacInput.TextEvents(new string('文', 16000)).Where(item => item.Down).Select(item => item.Unicode)).Length == 16000,
+    "Mac maximum protocol text is not truncated by Unicode chunking");
+var partialTextSink = new RecordingMacSink { FailAtPost = 3 };
+var macSession = new ActionSession(new MacInput(partialTextSink));
+var partialTextAction = new ActionMessage(Guid.NewGuid().ToString("D"), "text", Text: macText);
+var partialTextAck = macSession.Execute(partialTextAction);
+Check(!partialTextAck.Ok && partialTextAck.Error!.StartsWith("input_partial:") && partialTextSink.HeldKeys.Count == 0,
+    "Mac text interruption reports uncertainty and releases the current Unicode key");
+var partialTextCount = partialTextSink.Events.Count;
+Check(!macSession.Execute(partialTextAction).Ok && partialTextSink.Events.Count == partialTextCount,
+    "Mac partially submitted text is never replayed for the same action ID");
+var revokedSink = new RecordingMacSink { RevokeAfterPost = 1 };
+var revokedMac = new MacInput(revokedSink);
+try { revokedMac.Apply(new("", "key", Key: "c", Modifiers: ["win"])); throw new Exception("FAIL: Mac permission revocation ignored"); }
+catch (InputInjectionException error)
+{
+    Check(error.Message.StartsWith("input_partial:") && revokedSink.Events.Count == 1 && !revokedMac.Available,
+        "Mac permission revocation during a shortcut stops further posts and reports uncertain input");
+}
+Console.WriteLine("Mac input checks use a recording sink; physical macOS input and TCC prompts are not exercised.");
 Console.WriteLine($"PASS: {passed} host checks. Windows physical input is not exercised by this runner.");
 
 sealed class FakeInput : IInputInjector
@@ -90,4 +234,40 @@ sealed class FakeInput : IInputInjector
     public bool Available => true;
     public void Apply(ActionMessage action) { Count++; if (Fail) throw new InputInjectionException("input_partial: injected prefix; delivery uncertain"); }
     public void ReleaseAll() { }
+}
+
+sealed class RecordingMacSink : IMacEventSink
+{
+    public string StatusCode { get; set; } = "ready";
+    public MacPoint CursorPosition { get; private set; } = new(100, 100);
+    public IReadOnlyList<MacRect> Displays { get; } = [new(-500, -200, 500, 500), new(0, 0, 1000, 800)];
+    public double MonotonicSeconds { get; set; }
+    public double DoubleClickInterval { get; init; } = .5;
+    public double DoubleClickDistance { get; init; } = 4;
+    public List<MacEvent> Events { get; } = [];
+    public HashSet<ushort> HeldKeys { get; } = [];
+    public HashSet<uint> HeldButtons { get; } = [];
+    public HashSet<ushort> PhysicalKeys { get; } = [];
+    public int FailAtPost { get; init; }
+    public int RevokeAfterPost { get; init; }
+    private int _posts;
+    public bool KeyIsDown(ushort key) => PhysicalKeys.Contains(key);
+    public bool ButtonIsDown(uint button) => false;
+    public void Post(MacEvent item)
+    {
+        Events.Add(item);
+        if (item.Kind == MacEventKind.Key)
+        {
+            if (item.Down) HeldKeys.Add(item.KeyCode); else HeldKeys.Remove(item.KeyCode);
+        }
+        if (item.Kind == MacEventKind.Mouse)
+        {
+            CursorPosition = item.Position;
+            if (item.MouseType is 1 or 3) HeldButtons.Add(item.Button);
+            if (item.MouseType is 2 or 4) HeldButtons.Remove(item.Button);
+        }
+        _posts++;
+        if (_posts == RevokeAfterPost) StatusCode = "accessibility_required";
+        if (_posts == FailAtPost) throw new InvalidOperationException("Simulated unknown event-post result.");
+    }
 }
