@@ -255,6 +255,15 @@ class NativeTextTests(unittest.TestCase):
             self.native.text("中")
         self.assertEqual(self.rows[8], (0x1004E00, 0x1004E00))
 
+    def test_mapping_replaced_during_install_is_not_used_or_erased(self):
+        def replaced(_display, code, _width, _values, _count):
+            self.rows[code] = (0xFFC9, 0xFFC9)  # Another client installs F12.
+        self.native.x.XChangeKeyboardMapping = replaced
+        with self.assertRaisesRegex(InputError, "input_partial"):
+            self.native.text("中")
+        self.assertEqual(self.calls, [])
+        self.assertEqual(self.rows[8], (0xFFC9, 0xFFC9))
+
     def test_absolute_scalar_limit_still_rejects_fast_text(self):
         with self.assertRaisesRegex(InputError, "text_too_long"):
             self.native.text("a" * 2049)

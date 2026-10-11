@@ -202,7 +202,11 @@ class X11Native:
             if installed:
                 self.sync()
                 applied = self.mapping()
-                expected = {code: row(applied, code) for code in installed}
+                for code, symbol in installed.items():
+                    observed = row(applied, code)
+                    if not observed or symbol not in observed or any(item not in (0, symbol) for item in observed):
+                        raise InputError("input_partial")
+                    expected[code] = observed
                 time.sleep(.1)
             for char, code in schedule:
                 if time.monotonic() >= deadline:
