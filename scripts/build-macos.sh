@@ -18,6 +18,11 @@ if [ "$#" -gt 1 ]; then
   exit 1
 fi
 runtime="osx-$architecture"
+signing_identity="${SOFATAP_SIGN_IDENTITY:--}"
+if [ "$signing_identity" != "-" ] && [ "$signing_identity" != "Developer ID Application: CHEKUSU INC. (FKSR2JD63B)" ]; then
+  echo "Use the CHEKUSU Developer ID Application identity for signed distribution." >&2
+  exit 1
+fi
 dotnet_cmd="${SOFATAP_DOTNET:-$repo_dir/.tools/dotnet/dotnet}"
 if [ ! -x "$dotnet_cmd" ]; then
   dotnet_cmd="$(command -v dotnet || true)"
@@ -26,7 +31,7 @@ if [ -z "$dotnet_cmd" ]; then
   echo "Install the .NET 10 SDK, or set SOFATAP_DOTNET to its executable." >&2
   exit 1
 fi
-for utility in python3 codesign ditto iconutil sips lipo; do
+for utility in python3 codesign ditto iconutil sips lipo xcrun; do
   if ! command -v "$utility" >/dev/null; then
     echo "Required build utility is missing: $utility" >&2
     exit 1
@@ -45,7 +50,7 @@ publish_dir="$build_dir/self-contained"
 mkdir -p "$build_dir"
 # Recreate only this architecture's generated publish directory.
 rm -rf "$publish_dir"
-mkdir -p "$publish_dir" "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+mkdir -p "$publish_dir" "$app_dir/Contents/MacOS" "$app_dir/Contents/Helpers" "$app_dir/Contents/Resources"
 
 "$dotnet_cmd" publish host/SofaTap.Host.csproj -c Release -r "$runtime" \
   --artifacts-path "$build_dir/intermediate" --self-contained true \
@@ -59,7 +64,9 @@ if [ "$(lipo -archs "$publish_dir/SofaTap")" != "$machine_arch" ]; then
   echo "Published executable does not match the requested architecture." >&2
   exit 1
 fi
-cp "$publish_dir/SofaTap" "$app_dir/Contents/MacOS/SofaTap"
+cp "$publish_dir/SofaTap" "$app_dir/Contents/Helpers/SofaTapHost"
+xcrun swiftc -parse-as-library -swift-version 5 -O -target "$machine_arch-apple-macosx15.0" \
+  desktop/macos/*.swift -o "$app_dir/Contents/MacOS/SofaTap"
 python3 - "$publish_dir" "$app_dir/Contents/Resources" <<'PY'
 import json
 from pathlib import Path
@@ -70,7 +77,7 @@ publish, resources = map(Path, sys.argv[1:])
 for item in publish.iterdir():
     if item.name == "SofaTap":
         continue
-    # This receiver serves its dashboard from code, with no static asset routes.
+    # The receiver exposes WSS only, with no static asset routes.
     # Non-code files cannot live in Contents/MacOS under strict bundle signing.
     if item.name != "SofaTap.staticwebassets.endpoints.json" or json.loads(item.read_text())["Endpoints"]:
         raise SystemExit("Review the macOS bundle location of new publish content: " + item.name)
@@ -103,7 +110,7 @@ info = {
     "CFBundleIconFile": "SofaTap.icns",
     "LSApplicationCategoryType": "public.app-category.utilities",
     "LSMinimumSystemVersion": "15.0",
-    "LSUIElement": True,
+    "LSUIElement": False,
     "NSHighResolutionCapable": True,
     "NSLocalNetworkUsageDescription": "Sofa Tap 通过家庭局域网接收你已配对的 iPhone 发来的鼠标和文字操作。",
     "NSHumanReadableCopyright": "Copyright © CHEKUSU INC. Sofa Tap is available under the MIT license.",
@@ -137,13 +144,16 @@ cp LICENSE THIRD-PARTY-NOTICES.md "$release_dir/"
 cp docs/MAC-START.md "$release_dir/开始使用.md"
 cp docs/MAC-START.md "$app_dir/Contents/Resources/开始使用.md"
 
-# Ad-hoc signing makes this a coherent local test bundle. It is not a Developer
-# ID signature, notarization, or an assertion that Gatekeeper trusts this build.
-codesign --force --sign - --identifier com.chekusu.sofatap.receiver \
-  --entitlements scripts/macos/Receiver.entitlements.plist "$app_dir"
-codesign --verify --strict --verbose=2 "$app_dir"
+# Sign nested code first; never rely on --deep to repair unknown contents.
+sign_flags=(--force --sign "$signing_identity" --options runtime)
+if [ "$signing_identity" != "-" ]; then sign_flags+=(--timestamp); fi
+codesign "${sign_flags[@]}" --identifier com.chekusu.sofatap.receiver.host \
+  --entitlements scripts/macos/Receiver.entitlements.plist "$app_dir/Contents/Helpers/SofaTapHost"
+codesign "${sign_flags[@]}" --identifier com.chekusu.sofatap.receiver "$app_dir/Contents/MacOS/SofaTap"
+codesign "${sign_flags[@]}" --identifier com.chekusu.sofatap.receiver "$app_dir"
+codesign --verify --deep --strict --verbose=2 "$app_dir"
 
-python3 - "$repo_dir" "$release_dir" "$runtime" "$dotnet_cmd" <<'PY'
+python3 - "$repo_dir" "$release_dir" "$runtime" "$dotnet_cmd" "$signing_identity" <<'PY'
 from datetime import datetime, timezone
 import hashlib
 import json
@@ -157,7 +167,8 @@ manifest = {
     "runtime": sys.argv[3],
     "bundleIdentifier": "com.chekusu.sofatap.receiver",
     "architectureCount": 1,
-    "signature": "ad-hoc",
+    "signature": "ad-hoc" if sys.argv[5] == "-" else "Developer ID Application: CHEKUSU INC. (FKSR2JD63B)",
+    "hardenedRuntime": True,
     "notarized": False,
     "minimumMacOS": "15.0",
     "sourceRevision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
@@ -165,16 +176,26 @@ manifest = {
     "sdkVersion": subprocess.check_output([sys.argv[4], "--version"], cwd=root, text=True).strip(),
     "builtAt": datetime.now(timezone.utc).isoformat(),
     "executableSHA256": hashlib.sha256(exe.read_bytes()).hexdigest(),
+    "backendSHA256": hashlib.sha256((release / "Sofa Tap Receiver.app/Contents/Helpers/SofaTapHost").read_bytes()).hexdigest(),
+    "pairingUI": "native AppKit and SwiftUI",
     "iconSource": "ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png",
     "physicalInputVerified": False,
 }
 (release / "BUILD-MANIFEST.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
 PY
 cp "$release_dir/BUILD-MANIFEST.json" "$build_dir/BUILD-MANIFEST.json"
+# An optional caller-owned directory preserves the exact signed bundle for notarization.
+if [ -n "${SOFATAP_MAC_STAGING:-}" ]; then
+  if [ -e "$SOFATAP_MAC_STAGING/$release_name" ]; then
+    echo "Not overwriting an existing preserved staging bundle." >&2; exit 1
+  fi
+  mkdir -p "$SOFATAP_MAC_STAGING"
+  ditto "$release_dir" "$SOFATAP_MAC_STAGING/$release_name"
+fi
 
 archive="$repo_dir/artifacts/SofaTap-macOS-$architecture.zip"
 rm -f "$archive"
 ditto -c -k --sequesterRsrc --keepParent "$release_dir" "$archive"
 cd "$repo_dir/artifacts"
 shasum -a 256 "SofaTap-macOS-$architecture.zip" > "SofaTap-macOS-$architecture.zip.sha256"
-echo "Built artifacts/SofaTap-macOS-$architecture.zip (ad-hoc signed; not notarized)"
+echo "Built artifacts/SofaTap-macOS-$architecture.zip (signed: $signing_identity; notarization is a separate verified step)"

@@ -2,7 +2,7 @@ using SofaTap;
 
 if (args.Contains("--help", StringComparer.Ordinal))
 {
-    Console.WriteLine("Sofa Tap receiver\n  --dry-run             Validate transport without injecting input\n  --no-browser          Do not open local pairing dashboard\n  --data-dir <path>     Store pairing credentials in a separate profile\n  --dashboard-port <n>  Local-only dashboard (default 53318)\n  --port <n>            TLS control endpoint (default 53319)");
+    Console.WriteLine("Sofa Tap receiver backend\nLaunch the native Sofa Tap desktop app to pair.\n  --native-ui          Private stdin/stdout bridge for the native desktop app\n  --dry-run            Validate transport without injecting input\n  --data-dir <path>    Store pairing credentials in a separate profile\n  --port <n>           TLS control endpoint (default 53319)");
     return;
 }
 try
@@ -21,18 +21,19 @@ try
         if (!int.TryParse(value, out var port) || port is < 1 or > 65535) throw new ArgumentException($"Invalid port for {flag}.");
         return port;
     }
+    var nativeUi = args.Contains("--native-ui", StringComparer.Ordinal);
+    if (!nativeUi || !Console.IsInputRedirected || !Console.IsOutputRedirected)
+        throw new InvalidOperationException("Open the native Sofa Tap desktop app. The backend requires its private input/output pipes.");
     var dryRun = args.Contains("--dry-run", StringComparer.Ordinal);
     if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !dryRun)
         throw new InvalidOperationException("Sofa Tap currently supports input on Windows and macOS. Linux input is planned; use --dry-run only for transport tests.");
     var options = new ReceiverOptions(dryRun, Value("--data-dir") ?? Credentials.DefaultDirectory,
-        Port("--dashboard-port", 53318), Port("--port", Port("--control-port", 53319)), !args.Contains("--no-browser", StringComparer.Ordinal));
-    if (options.ControlPort == options.DashboardPort) throw new ArgumentException("Dashboard and control ports must be different.");
+        Port("--port", Port("--control-port", 53319)));
     using var credentials = Credentials.LoadOrCreate(Path.GetFullPath(options.DataDirectory));
     IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput() : new WindowsInput();
     var server = new ReceiverServer(options, credentials, input);
     await using var app = server.Build();
-    Console.WriteLine($"Sofa Tap {(dryRun ? "DRY RUN: input disabled" : ReceiverPlatform.DisplayName + " receiver")}. Pair at http://localhost:{options.DashboardPort}/ on this computer. Press Ctrl+C to stop.");
-    try { await app.RunAsync(); }
+    try { await NativeDesktopBridge.RunAsync(app, server, dryRun); }
     finally { input.ReleaseAll(); }
 }
 catch (Exception error) when (error is ArgumentException or InvalidOperationException or IOException or FormatException or System.Text.Json.JsonException or System.Security.Cryptography.CryptographicException)

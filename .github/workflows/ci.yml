@@ -43,6 +43,22 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o "$RUNNER_TEMP/sofatap-receiver-tests"
           "$RUNNER_TEMP/sofatap-receiver-tests"
+      - name: Mac native-window protocol checks without launching a UI
+        shell: bash
+        run: |
+          xcrun swiftc -parse-as-library -swift-version 5 -target "$(uname -m)-apple-macosx15.0" \
+            -o "$RUNNER_TEMP/sofatap-desktop-protocol-tests" desktop/macos/ReceiverProtocol.swift \
+            desktop/macos/tests/ReceiverProtocolTests.swift
+          "$RUNNER_TEMP/sofatap-desktop-protocol-tests"
+      - name: Mac independent pipe readers with quiet and busy stderr
+        shell: bash
+        run: |
+          xcrun swiftc -parse-as-library -swift-version 6 -target "$(uname -m)-apple-macosx15.0" \
+            -o "$RUNNER_TEMP/sofatap-desktop-pipe-tests" desktop/macos/ReceiverProtocol.swift \
+            desktop/macos/ReceiverPipeReader.swift desktop/macos/tests/ReceiverPipeTests.swift
+          "$RUNNER_TEMP/sofatap-desktop-pipe-tests"
+      - name: Windows native-window protocol and owned-process checks without launching a UI
+        run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
       - name: Compile unprovisioned iPhone app without installation
         run: bash ios/scripts/build-manual.sh device
       - name: Build Mac distributions and verify signatures
@@ -65,3 +81,19 @@ jobs:
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
       - name: Compile self-contained Windows receiver without launching it
         run: dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci
+      - name: Windows native-window parser checks without launching a UI
+        run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
+      - name: Compile self-contained WinForms frontend without launching it
+        run: dotnet publish desktop/windows/SofaTap.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ui-ci
+
+  linux-native-protocol:
+    name: Linux · native shell protocol checks without GUI or input
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.13'
+      - name: GTK shell protocol and owned-process checks without importing GTK
+        run: PYTHONDONTWRITEBYTECODE=1 python3 -W error::ResourceWarning desktop/linux/check_protocol.py

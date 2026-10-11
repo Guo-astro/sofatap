@@ -12,6 +12,14 @@ void Reject(string body, string name)
     catch (Exception error) when (error is ProtocolException or JsonException or InvalidOperationException) { passed++; }
 }
 
+foreach (var command in new[] { "refresh", "requestAccess", "quit" })
+    Check(NativeDesktopBridge.ParseCommand(JsonSerializer.Serialize(new { type = command })) == command, "native command " + command);
+foreach (var invalid in new[] { "{}", "[]", "{\"type\":\"exec\"}", "{\"type\":\"quit\",\"extra\":1}", "{\"type\":\"quit\",\"type\":\"refresh\"}", "{\"type\":1}", "secret-input" })
+{
+    try { NativeDesktopBridge.ParseCommand(invalid); throw new Exception("Invalid native command accepted"); }
+    catch (InvalidDataException error) { Check(!error.Message.Contains(invalid), "native protocol rejects unknown commands without echoing data"); }
+}
+
 Check(WindowsInput.NativeInputSize == (IntPtr.Size == 8 ? 40 : 28), "native INPUT architecture layout");
 Check(WindowsInput.NormalizeWindowsNewlines("a\nb\r\nc\rd") == "a\rb\rc\rd", "Windows newline normalization preserves one paragraph break");
 Check(WindowsInput.NormalizeWindowsNewlines("hello👋") == "hello👋", "no appended Enter or changed surrogate pairs");

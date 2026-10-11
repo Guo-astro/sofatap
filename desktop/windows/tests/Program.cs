@@ -1,0 +1,124 @@
+using System.Diagnostics;
+using System.Text.Json;
+using SofaTap.Desktop;
+
+const string png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+string Snapshot(string image = png, string type = "state", int count = 1) => JsonSerializer.Serialize(new
+{
+    type, name = "Test computer", platform = "windows", inputStatus = "dry_run", dryRun = true, connected = false,
+    pairings = Enumerable.Range(0, count).Select(_ => new { host = "192.0.2.1", uri = "sofatap://test-only", qrPng = image })
+});
+var count = 0;
+void Check(bool condition, string name) { if (!condition) throw new Exception(name); count++; }
+void Reject(Action action, string name)
+{
+    try { action(); }
+    catch (Exception error) when (error is JsonException or InvalidDataException or InvalidOperationException or KeyNotFoundException or FormatException)
+    { count++; return; }
+    throw new Exception(name);
+}
+var state = NativeProtocol.Parse(Snapshot());
+Check(state.DryRun && !state.Connected && state.Pairings.Length == 1 && state.Pairings[0].Host == "192.0.2.1", "valid private pipe snapshot");
+Check(state.Pairings[0].Png.SequenceEqual(Convert.FromBase64String(png)), "PNG bytes preserved in memory");
+Check(!JsonSerializer.Serialize(state).Contains("sofatap://"), "URI not retained by UI model");
+Reject(() => NativeProtocol.Parse("not json"), "invalid JSON rejected");
+Reject(() => NativeProtocol.Parse(Snapshot(type: "other")), "unexpected message rejected");
+Reject(() => NativeProtocol.Parse(Snapshot(count: 33)), "pairing count capped");
+Reject(() => NativeProtocol.Parse(Snapshot(image: "not-png")), "invalid image rejected");
+Reject(() => NativeProtocol.Parse(new string('x', NativeProtocol.MaximumLineLength + 1)), "line size capped");
+var huge = Convert.FromBase64String(png);
+System.Buffers.Binary.BinaryPrimitives.WriteUInt32BigEndian(huge.AsSpan(16, 4), 65535);
+Reject(() => NativeProtocol.Parse(Snapshot(image: Convert.ToBase64String(huge))), "pixel allocation bounded before decoder");
+Reject(() => NativeProtocol.Parse(Snapshot().Replace("\"dryRun\":true", "\"dryRun\":\"true\"")), "boolean type checked");
+
+if (!OperatingSystem.IsWindows())
+{
+    // A disposable local pipe fixture, not a receiver or native-input test.
+    var directory = Path.Combine(Path.GetTempPath(), "sofatap-ui-pipe-" + Guid.NewGuid().ToString("N"));
+    Directory.CreateDirectory(directory);
+    try
+    {
+        var fixture = Path.Combine(directory, "backend");
+        await File.WriteAllTextAsync(fixture, "#!/usr/bin/env python3\nimport json,sys\nstate=json.loads(" + JsonSerializer.Serialize(Snapshot()) + ")\nprint(json.dumps(state),flush=True)\nfor line in sys.stdin:\n command=json.loads(line)['type']\n if command=='quit': break\n if command=='refresh':\n  state['connected']=True\n  print(json.dumps(state),flush=True)\n");
+        File.SetUnixFileMode(fixture, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        using var backend = new BackendProcess();
+        var initial = new TaskCompletionSource<ReceiverState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var refreshed = new TaskCompletionSource<ReceiverState>(TaskCreationOptions.RunContinuationsAsynchronously);
+        backend.StateReceived += value => { if (value.Connected) refreshed.TrySetResult(value); else initial.TrySetResult(value); };
+        backend.Start(fixture, []);
+        Check((await initial.Task.WaitAsync(TimeSpan.FromSeconds(5))).DryRun, "first pipe state received");
+        await backend.SendAsync("refresh");
+        Check((await refreshed.Task.WaitAsync(TimeSpan.FromSeconds(5))).Connected, "refresh command roundtrip");
+        await backend.StopAsync().WaitAsync(TimeSpan.FromSeconds(7));
+        Check(true, "quit stops owned backend gracefully");
+        await backend.StopAsync();
+        Check(true, "shutdown is repeatable");
+
+        foreach (var failure in new[] { "malformed", "eof", "oversized" })
+        {
+            var stopped = Path.Combine(directory, failure + ".stopped");
+            var failingFixture = Path.Combine(directory, "backend-" + failure);
+            await File.WriteAllTextAsync(failingFixture, "#!/usr/bin/env python3\nimport json,os,sys\n" +
+                (failure switch
+                {
+                    "malformed" => "print('not-json',flush=True)\n",
+                    "oversized" => "sys.stdout.write('x'*" + (NativeProtocol.MaximumLineLength + 1) + ");sys.stdout.flush()\n",
+                    _ => "os.close(1)\n"
+                }) +
+                "for line in sys.stdin:\n if json.loads(line)['type']=='quit':\n  open(" + JsonSerializer.Serialize(stopped) + ", 'w').close()\n  break\n");
+            File.SetUnixFileMode(failingFixture, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            using var failingBackend = new BackendProcess();
+            var failed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            failingBackend.Failed += () => failed.TrySetResult();
+            failingBackend.Start(failingFixture, []);
+            await failed.Task.WaitAsync(TimeSpan.FromSeconds(5));
+            var deadline = DateTime.UtcNow.AddSeconds(5);
+            while (!File.Exists(stopped) && DateTime.UtcNow < deadline) await Task.Delay(20);
+            Check(File.Exists(stopped), failure + " automatically requests owned backend shutdown");
+            await failingBackend.StopAsync().WaitAsync(TimeSpan.FromSeconds(7));
+        }
+
+        var blockedFixture = Path.Combine(directory, "blocked-backend");
+        var pidFile = Path.Combine(directory, "blocked.pid");
+        await File.WriteAllTextAsync(blockedFixture, "#!/usr/bin/env python3\nimport os,time\nopen(" +
+            JsonSerializer.Serialize(pidFile) + ", 'w').write(str(os.getpid()))\nprint(" +
+            JsonSerializer.Serialize(Snapshot()) + ",flush=True)\ntime.sleep(60)\n");
+        File.SetUnixFileMode(blockedFixture, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        using var blockedBackend = new BackendProcess();
+        var started = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        blockedBackend.StateReceived += _ => started.TrySetResult();
+        blockedBackend.Start(blockedFixture, []);
+        await started.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        using var owned = Process.GetProcessById(int.Parse(await File.ReadAllTextAsync(pidFile)));
+        var sent = 0;
+        var pump = Task.Run(async () =>
+        {
+            try { while (true) { await blockedBackend.SendAsync("refresh"); Interlocked.Increment(ref sent); } }
+            catch (Exception error) when (error is IOException or InvalidOperationException or OperationCanceledException) { }
+        });
+        try
+        {
+            // A stable command count while the child does not read proves the pipe is blocked.
+            var watch = Stopwatch.StartNew();
+            var stable = false;
+            while (watch.Elapsed < TimeSpan.FromSeconds(3))
+            {
+                var before = Volatile.Read(ref sent);
+                await Task.Delay(100);
+                if (before > 0 && before == Volatile.Read(ref sent) && !pump.IsCompleted) { stable = true; break; }
+            }
+            Check(stable, "fixture fills stdin pipe and leaves a writer blocked");
+            watch.Restart();
+            await blockedBackend.StopAsync().WaitAsync(TimeSpan.FromSeconds(9));
+            Check(owned.HasExited && watch.Elapsed < TimeSpan.FromSeconds(9), "whole shutdown bounds blocked writer and stops only owned backend");
+            await pump.WaitAsync(TimeSpan.FromSeconds(2));
+        }
+        finally
+        {
+            if (!owned.HasExited) { owned.Kill(entireProcessTree: true); await owned.WaitForExitAsync().WaitAsync(TimeSpan.FromSeconds(3)); }
+            await blockedBackend.StopAsync().WaitAsync(TimeSpan.FromSeconds(9));
+        }
+    }
+    finally { Directory.Delete(directory, recursive: true); }
+}
+Console.WriteLine($"Passed {count} native Windows UI protocol/lifecycle checks; no WinForms window or real input was launched.");

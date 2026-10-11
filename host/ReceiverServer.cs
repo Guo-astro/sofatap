@@ -1,32 +1,26 @@
-using System.Diagnostics;
 using System.Net;
 using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Encodings.Web;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
-using Microsoft.AspNetCore.Http.Features;
 using QRCoder;
 
 namespace SofaTap;
 
-public sealed record ReceiverOptions(bool DryRun, string DataDirectory, int DashboardPort = 53318, int ControlPort = 53319, bool OpenBrowser = true);
+public sealed record ReceiverOptions(bool DryRun, string DataDirectory, int ControlPort = 53319);
 
 public sealed class ReceiverServer(ReceiverOptions options, Credentials credentials, IInputInjector input)
 {
     private readonly SemaphoreSlim _controller = new(1, 1);
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
     private readonly byte[] _token = Encoding.ASCII.GetBytes(credentials.Token);
-    private readonly string _dashboardNonce = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
-    private Action? _stopApplication;
     private CancellationToken _applicationStopping;
     public WebApplication Build()
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { Args = [], ContentRootPath = AppContext.BaseDirectory });
         builder.Logging.ClearProviders();
-        builder.Logging.AddSimpleConsole(config => config.SingleLine = true);
         builder.Logging.SetMinimumLevel(LogLevel.Warning);
         builder.WebHost.ConfigureKestrel(server =>
         {
@@ -34,31 +28,13 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
             server.Limits.MaxRequestBodySize = 0;
             server.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(10);
             server.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30);
-            server.ListenLocalhost(options.DashboardPort, listen => listen.Protocols = HttpProtocols.Http1);
             server.ListenAnyIP(options.ControlPort, listen => { listen.Protocols = HttpProtocols.Http1; listen.UseHttps(credentials.Certificate); });
         });
         var app = builder.Build();
-        _stopApplication = app.Lifetime.StopApplication;
         _applicationStopping = app.Lifetime.ApplicationStopping;
         app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(10) });
         app.Run(HandleRequest);
         app.Lifetime.ApplicationStopping.Register(input.ReleaseAll);
-        if (options.OpenBrowser && (OperatingSystem.IsWindows() || OperatingSystem.IsMacOS()))
-            app.Lifetime.ApplicationStarted.Register(() =>
-            {
-                try
-                {
-                    var url = $"http://localhost:{options.DashboardPort}/";
-                    if (OperatingSystem.IsMacOS())
-                    {
-                        var start = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
-                        start.ArgumentList.Add(url);
-                        Process.Start(start)?.Dispose();
-                    }
-                    else Process.Start(new ProcessStartInfo(url) { UseShellExecute = true })?.Dispose();
-                }
-                catch { Console.WriteLine($"Open http://localhost:{options.DashboardPort}/ on this computer to pair."); }
-            });
         return app;
     }
     private async Task HandleRequest(HttpContext context)
@@ -66,32 +42,6 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         context.Response.Headers.CacheControl = "no-store";
         context.Response.Headers["X-Content-Type-Options"] = "nosniff";
         context.Response.Headers["Referrer-Policy"] = "no-referrer";
-        if (context.Connection.LocalPort == options.DashboardPort)
-        {
-            if (!IsLocalDashboardRequest(context)) { context.Response.StatusCode = 403; return; }
-            context.Response.Headers.ContentSecurityPolicy = "default-src 'none'; style-src 'unsafe-inline'; img-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'";
-            if (context.Request.Method == "POST" && context.Request.Path is var actionPath && (actionPath == "/quit" || actionPath == "/request-access"))
-            {
-                await HandleDashboardAction(context); return;
-            }
-            if (context.Request.Method != "GET") { context.Response.StatusCode = 405; return; }
-            if (context.Request.Path == "/")
-            {
-                context.Response.ContentType = "text/html; charset=utf-8";
-                await context.Response.WriteAsync(DashboardHtml()); return;
-            }
-            if (context.Request.Path == "/qr.svg")
-            {
-                var host = context.Request.Query["host"].ToString();
-                if (!LocalAddresses().Contains(host, StringComparer.Ordinal)) { context.Response.StatusCode = 400; return; }
-                using var generator = new QRCodeGenerator();
-                using var data = generator.CreateQrCode(PairingUrl(host), QRCodeGenerator.ECCLevel.Q);
-                using var code = new SvgQRCode(data);
-                context.Response.ContentType = "image/svg+xml";
-                await context.Response.WriteAsync(code.GetGraphic(6)); return;
-            }
-            context.Response.StatusCode = 404; return;
-        }
         if (context.Request.Path != "/control" || context.Request.Method != "GET") { context.Response.StatusCode = 404; return; }
         // Native iOS has no Origin. Reject all browser-originated WebSocket requests, including Origin: null.
         if (context.Request.Headers.ContainsKey("Origin")) { context.Response.StatusCode = 403; return; }
@@ -106,55 +56,6 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         catch (OperationCanceledException) { }
         catch (WebSocketException) { }
         finally { input.ReleaseAll(); _controller.Release(); }
-    }
-    private async Task HandleDashboardAction(HttpContext context)
-    {
-        // These controls are deliberately local-only and require both a browser Origin and
-        // a per-process nonce from the local page. A remote page cannot stop the receiver
-        // or repeatedly open macOS permission dialogs through localhost CSRF.
-        if (!context.Request.Headers.ContainsKey("Origin") || !context.Request.HasFormContentType)
-        { context.Response.StatusCode = 403; return; }
-        var size = context.Features.Get<IHttpMaxRequestBodySizeFeature>();
-        if (size is { IsReadOnly: false }) size.MaxRequestBodySize = 4096;
-        IFormCollection form;
-        try { form = await context.Request.ReadFormAsync(context.RequestAborted); }
-        catch (Exception error) when (error is InvalidDataException or Microsoft.AspNetCore.Http.BadHttpRequestException)
-        { context.Response.StatusCode = 400; return; }
-        var nonce = form["nonce"];
-        if (nonce.Count != 1 || nonce[0]?.Length != _dashboardNonce.Length ||
-            !CryptographicOperations.FixedTimeEquals(Encoding.UTF8.GetBytes(nonce[0]!), Encoding.ASCII.GetBytes(_dashboardNonce)))
-        { context.Response.StatusCode = 403; return; }
-        if (context.Request.Path == "/request-access")
-        {
-            if (!OperatingSystem.IsMacOS() || options.DryRun) { context.Response.StatusCode = 409; return; }
-            MacInput.RequestAccess();
-            try
-            {
-                var settings = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
-                settings.ArgumentList.Add("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility");
-                Process.Start(settings)?.Dispose();
-            }
-            catch { /* The page also describes the manual System Settings path. */ }
-            context.Response.Redirect("/");
-            return;
-        }
-        context.Response.ContentType = "text/html; charset=utf-8";
-        context.Response.OnCompleted(() => { _stopApplication?.Invoke(); return Task.CompletedTask; });
-        await context.Response.WriteAsync("<!doctype html><html lang='zh-CN'><meta charset='utf-8'><title>Sofa Tap</title><p>Sofa Tap 接收器已退出。下次使用时重新打开接收器。</p></html>");
-    }
-    private bool IsLocalDashboardRequest(HttpContext context)
-    {
-        var address = context.Connection.RemoteIpAddress;
-        if (address is null || !IPAddress.IsLoopback(address)) return false;
-        var host = context.Request.Host;
-        if (host.Port != options.DashboardPort || host.Host is not ("localhost" or "127.0.0.1" or "[::1]" or "::1")) return false;
-        if (context.Request.Headers.TryGetValue("Origin", out var origins))
-        {
-            if (origins.Count != 1 || !Uri.TryCreate(origins[0], UriKind.Absolute, out var origin) || origin.Scheme != "http"
-                || origin.Port != options.DashboardPort || origin.AbsolutePath != "/" || origin.UserInfo.Length != 0
-                || origin.Host is not ("localhost" or "127.0.0.1" or "[::1]" or "::1")) return false;
-        }
-        return true;
     }
     private bool Authorized(HttpRequest request)
     {
@@ -238,34 +139,23 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         catch (OperationCanceledException) { }
     }
     private string PairingUrl(string host) => $"sofatap://pair?host={Uri.EscapeDataString(host)}&port={options.ControlPort}&token={credentials.Token}&fingerprint={credentials.Fingerprint}";
-    private string DashboardHtml()
+    public object NativeState()
     {
-        var addresses = LocalAddresses();
-        var cards = string.Join("", addresses.Select(address => $"<section data-pairing-uri=\"{HtmlEncoder.Default.Encode(PairingUrl(address))}\"><h2>{HtmlEncoder.Default.Encode(address)}</h2><img width='330' height='330' alt='私密 iPhone 配对二维码' src='/qr.svg?host={address}'/><p>iPhone → 配对电脑 → 扫描二维码</p><details><summary>无法扫码？复制配对链接</summary><p>仅发送到自己的 iPhone，在“粘贴配对链接”中打开。链接可控制这台电脑，请勿公开。</p><textarea readonly rows='5' spellcheck='false' aria-label='私密配对链接'>{HtmlEncoder.Default.Encode(PairingUrl(address))}</textarea></details></section>"));
-        var statusCode = ReceiverPlatform.StatusCode(input, options.DryRun);
-        var status = ReceiverPlatform.StatusMessage(statusCode);
-        var access = OperatingSystem.IsMacOS() && !options.DryRun
-            ? $"<aside><h2>允许这台 Mac 接收操作</h2><p>首次使用请允许 Sofa Tap 使用辅助功能，并保持 Mac 已登录、屏幕已解锁。此权限让你在手机上点击、拖动和输入文字。</p><form method='post' action='/request-access'><input type='hidden' name='nonce' value='{_dashboardNonce}'/><button type='submit'>打开辅助功能授权</button></form><p>在系统设置 → 隐私与安全性 → 辅助功能中开启 Sofa Tap Receiver，回到这里刷新页面。已连接的 iPhone 会自动检查权限状态。</p></aside>"
-            : !options.DryRun ? "<aside><h2>允许手机连接</h2><p>在可信家用网络中，将 Windows 网络类型设为“专用”，并允许 Sofa Tap 通过专用网络的防火墙。桌面可用不表示手机网络已经连通。</p></aside>" : "";
-        var inputNote = OperatingSystem.IsMacOS()
-            ? "macOS 密码框、安全输入或未授权的应用可能拒绝模拟输入。文字提交到系统后，请在电脑画面确认内容。"
-            : "管理员程序和 Windows 安全桌面可能拒绝接收输入。";
-        return $$"""
-            <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-            <title>Sofa Tap · 配对 iPhone</title><style>
-            body{background:#111b1a;color:#f0f6ed;font:17px system-ui,sans-serif;margin:0;padding:32px 20px;line-height:1.5}main{max-width:1000px;margin:auto}h1{font-size:42px;margin:10px 0}h2{font-size:20px}small{color:#b6cec7}.status{color:#a7e3aa}.cards{display:flex;gap:24px;flex-wrap:wrap}section{background:#20312d;border-radius:20px;padding:24px;text-align:center;max-width:330px}aside{background:#20312d;border-radius:16px;padding:8px 22px 18px;margin:22px 0}button{border:0;border-radius:12px;padding:12px 18px;background:#b8f3d0;color:#0a0d11;font:inherit;cursor:pointer}details{text-align:left;max-width:330px;font-size:14px}summary{cursor:pointer}textarea{box-sizing:border-box;width:100%;background:#111b1a;color:#f0f6ed;border:1px solid #64877c;border-radius:8px;padding:10px;resize:vertical;font:12px ui-monospace,monospace}img{background:white;border-radius:10px;max-width:100%;height:auto}p{max-width:720px}code{font-size:15px}
-            </style><main><small>SOFA TAP / 电脑接收端</small><h1>配对你的 iPhone</h1><p class="status">{{HtmlEncoder.Default.Encode(status)}}</p>
-            <p>请让 iPhone 和电脑连接同一个家庭网络，再扫描电脑家庭网络地址下的二维码。若家庭网络地址改变，请重启 Sofa Tap 后重新扫码。二维码可授权操作电脑，请妥善保管。</p>
-            {{access}}<div class="cards">{{cards}}</div><p>操作电脑时请保持接收端运行。发送的文字会输入当前获得焦点的输入框。{{inputNote}}</p>
-            <p>超时或断开连接后，接收端会释放按住的鼠标按钮。如需撤销已配对的手机，请关闭 Sofa Tap，删除本机配对配置，再启动并扫描新的二维码。</p>
-            <form method="post" action="/quit"><input type="hidden" name="nonce" value="{{_dashboardNonce}}"/><button type="submit">退出接收器</button></form><p>关闭此网页不会退出接收器。</p>
-            <small>控制端口 {{options.ControlPort}} · 本机配对页端口 {{options.DashboardPort}} · iPhone 固定验证 TLS 证书 · 无云服务</small></main></html>
-            """;
+        var pairings = LocalAddresses().Select(address =>
+        {
+            var uri = PairingUrl(address);
+            using var data = QRCodeGenerator.GenerateQrCode(uri, QRCodeGenerator.ECCLevel.Q);
+            using var qr = new PngByteQRCode(data);
+            return new { host = address, uri, qrPng = Convert.ToBase64String(qr.GetGraphic(5)) };
+        }).ToArray();
+        return new { type = "state", name = Environment.MachineName, platform = ReceiverPlatform.Id,
+            inputStatus = ReceiverPlatform.StatusCode(input, options.DryRun), dryRun = options.DryRun,
+            connected = _controller.CurrentCount == 0, pairings };
     }
     private string[] LocalAddresses()
     {
         var certificateAddresses = credentials.CertificateIPv4.ToHashSet(StringComparer.Ordinal);
         var addresses = NetworkAddresses.LocalIPv4().Where(certificateAddresses.Contains).ToArray();
-        return addresses.Length > 0 ? addresses : ["127.0.0.1"];
+        return addresses;
     }
 }

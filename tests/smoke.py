@@ -5,12 +5,12 @@ Requires Python websockets. Does not print or retain tokens, pairing links or te
 """
 import asyncio
 import hashlib
-import html
 import json
 import os
 from pathlib import Path
-import re
-import signal
+import queue
+import threading
+import base64
 import socket
 import ssl
 import subprocess
@@ -50,41 +50,106 @@ def http_status(url, headers=None, data=None, method=None):
         return error.code, error.read()
 
 
-async def exercise(dashboard_port, control_port):
-    dashboard = f"http://127.0.0.1:{dashboard_port}/"
-    status, body = http_status(dashboard)
-    check("local dashboard reachable", status == 200)
-    page = body.decode()
-    links = re.findall(r'data-pairing-uri=[\"\x27]([^\"\x27]+)', page)
-    check("pairing advertised locally", bool(links))
-    fields = urllib.parse.parse_qs(urllib.parse.urlsplit(html.unescape(links[0])).query)
+def check_renewal_stdout(dotnet, assembly, temporary):
+    """A migrated/renewed profile must not put human diagnostics before native state JSON."""
+    fixture = Path(temporary) / "renewal-fixture"
+    fixture.mkdir()
+    (fixture / "Fixture.csproj").write_text('<Project Sdk="Microsoft.NET.Sdk"><PropertyGroup><OutputType>Exe</OutputType><TargetFramework>net10.0</TargetFramework><ImplicitUsings>enable</ImplicitUsings></PropertyGroup></Project>')
+    # Use the same .NET runtime as the receiver to create a deliberately old-style,
+    # overlong certificate. This has no Python crypto dependency and is never served:
+    # the receiver must replace it before listening. Windows storage remains DPAPI.
+    (fixture / "Program.cs").write_text(r'''
+using System.Runtime.InteropServices;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
+using System.Text.Json;
+using var rsa = RSA.Create(2048);
+var request = new CertificateRequest("CN=Sofa Tap Renewal Test", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
+using var certificate = request.CreateSelfSigned(DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddDays(730));
+var secret = new { Token = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32)).TrimEnd('=').Replace('+', '-').Replace('/', '_'),
+    Pfx = Convert.ToBase64String(certificate.Export(X509ContentType.Pfx, "")) };
+var clear = JsonSerializer.SerializeToUtf8Bytes(secret);
+Directory.CreateDirectory(args[0]);
+var path = Path.Combine(args[0], "pairing.dat");
+File.WriteAllBytes(path, OperatingSystem.IsWindows() ? Protect.Bytes(clear) : clear);
+if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite);
+CryptographicOperations.ZeroMemory(clear);
+static class Protect {
+    [StructLayout(LayoutKind.Sequential)] struct Blob { public int Length; public IntPtr Data; }
+    [DllImport("crypt32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    [return: MarshalAs(UnmanagedType.Bool)] static extern bool CryptProtectData(ref Blob input, string description, IntPtr entropy, IntPtr reserved, IntPtr prompt, int flags, out Blob output);
+    [DllImport("kernel32.dll")] static extern IntPtr LocalFree(IntPtr memory);
+    public static byte[] Bytes(byte[] clear) {
+        var input = new Blob { Length = clear.Length, Data = Marshal.AllocHGlobal(clear.Length) };
+        var output = new Blob();
+        try {
+            Marshal.Copy(clear, 0, input.Data, clear.Length);
+            if (!CryptProtectData(ref input, null, IntPtr.Zero, IntPtr.Zero, IntPtr.Zero, 1, out output)) throw new CryptographicException();
+            var result = new byte[output.Length]; Marshal.Copy(output.Data, result, 0, result.Length); return result;
+        } finally { Marshal.FreeHGlobal(input.Data); if (output.Data != IntPtr.Zero) LocalFree(output.Data); }
+    }
+}
+''')
+    build = subprocess.run([dotnet, "build", str(fixture / "Fixture.csproj"), "-c", "Release", "--nologo", "-v:q"],
+                           capture_output=True, timeout=60)
+    check("renewal fixture builds without third-party crypto", build.returncode == 0)
+    profile = Path(temporary) / "renewal-profile"
+    generated = subprocess.run([dotnet, str(fixture / "bin/Release/net10.0/Fixture.dll"), str(profile)], capture_output=True, timeout=15)
+    check("renewal fixture creates a legacy certificate profile", generated.returncode == 0)
+    previous = (profile / "pairing.dat").read_bytes()
+    with tempfile.TemporaryFile(mode="w+") as diagnostics:
+        process = subprocess.Popen([dotnet, str(assembly), "--native-ui", "--dry-run", "--data-dir", str(profile),
+                                    "--control-port", str(unused_port())], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                                   stderr=diagnostics, text=True)
+        frames = queue.Queue()
+        def read_first():
+            frames.put(process.stdout.readline())
+        reader = threading.Thread(target=read_first, daemon=True)
+        reader.start()
+        try:
+            first = frames.get(timeout=12)
+            try: state = json.loads(first)
+            except json.JSONDecodeError: state = {}
+            check("renewal first stdout line is native state JSON", state.get("type") == "state")
+            check("renewal produces fresh pairing identity", (profile / "pairing.dat").read_bytes() != previous)
+            process.stdin.write('{"type":"quit"}\n'); process.stdin.flush()
+            check("renewed native receiver quits normally", process.wait(timeout=5) == 0)
+        finally:
+            process.stdin.close()
+            try: process.wait(timeout=5)
+            except subprocess.TimeoutExpired: process.kill(); process.wait()
+            reader.join(timeout=2)
+            process.stdout.close()
+        diagnostics.seek(0)
+        text = diagnostics.read()
+        check("renewal diagnostic stays on stderr", "certificate renewed" in text)
+        check("renewal diagnostic contains no pairing secret", "sofatap://pair?" not in text and "fingerprint=" not in text)
+
+
+async def exercise(state, control_port, send_native, states):
+    check("native window state received", state.get("type") == "state" and state.get("dryRun") is True)
+    check("native state clearly disables input", state.get("inputStatus") == "dry_run")
+    check("pairing advertised only through private pipe", bool(state.get("pairings")))
+    pairing = state["pairings"][0]
+    fields = urllib.parse.parse_qs(urllib.parse.urlsplit(pairing["uri"]).query)
     token, fingerprint = fields["token"][0], fields["fingerprint"][0]
     advertised_host = fields["host"][0]
-    qr_status, qr_body = http_status(dashboard + "qr.svg?host=" + urllib.parse.quote(advertised_host))
-    check("local pairing QR rendered", qr_status == 200 and b"<svg" in qr_body)
-    check("dashboard marked dry run", "演练模式 · 不会操作电脑" in html.unescape(page))
-    fallback = re.findall(r'<textarea\b[^>]*\breadonly\b[^>]*>(.*?)</textarea>', page, re.S)
-    check("manual pairing fallback matches QR", bool(fallback) and html.unescape(fallback[0]) == html.unescape(links[0]))
-    check("dashboard DNS rebinding denied", http_status(dashboard, {"Host": f"evil.example:{dashboard_port}"})[0] == 403)
-    check("dashboard foreign origin denied", http_status(dashboard, {"Origin": "https://evil.example"})[0] == 403)
-    check("foreign QR host denied", http_status(dashboard + "qr.svg?host=evil.example")[0] == 400)
-
-    nonce_match = re.search(r'name="nonce" value="([0-9a-f]{64})"', page)
-    check("local action nonce present", nonce_match is not None)
-    nonce_body = urllib.parse.urlencode({"nonce": nonce_match[1]}).encode()
-    form_headers = {"Origin": dashboard.rstrip("/"), "Content-Type": "application/x-www-form-urlencoded"}
-    check("GET cannot quit receiver", http_status(dashboard + "quit")[0] == 404)
-    check("local action requires Origin", http_status(dashboard + "quit", {"Content-Type": form_headers["Content-Type"]}, nonce_body)[0] == 403)
-    check("foreign page cannot quit receiver", http_status(dashboard + "quit", {**form_headers, "Origin": "https://evil.example"}, nonce_body)[0] == 403)
-    check("local action requires correct nonce", http_status(dashboard + "quit", form_headers, b"nonce=wrong")[0] == 403)
-    check("dry-run cannot request macOS permission", http_status(dashboard + "request-access", form_headers, nonce_body)[0] == 409)
-    check("oversized local form rejected", http_status(dashboard + "quit", form_headers, nonce_body + b"&extra=" + b"x" * 4096)[0] in (400, 413))
-
+    check("native QR is a PNG", base64.b64decode(pairing["qrPng"]).startswith(b"\x89PNG\r\n\x1a\n"))
+    check("native host and pairing endpoint agree", advertised_host == pairing["host"] and int(fields["port"][0]) == control_port)
+    send_native("requestAccess") # dry-run must never request permission.
+    refreshed = states.get(timeout=4)
+    check("dry-run permission command remains dry-run", refreshed.get("inputStatus") == "dry_run")
     context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     context.check_hostname = False
     context.verify_mode = ssl.CERT_NONE
     url = f"wss://127.0.0.1:{control_port}/control"
     headers = {"Authorization": "Bearer " + token}
+    for path in ("/", "/qr.svg", "/quit", "/request-access"):
+        try:
+            urllib.request.urlopen(f"https://127.0.0.1:{control_port}" + path, context=context, timeout=2)
+            raise AssertionError("legacy web UI path must be absent")
+        except urllib.error.HTTPError as error:
+            check("no HTTP pairing or action endpoint " + path, error.code == 404)
 
     async def denied(name, additional_headers, code, origin=None):
         try:
@@ -188,46 +253,53 @@ async def exercise(dashboard_port, control_port):
 
     async with websockets.connect(url, ssl=context, additional_headers=headers, proxy=None) as ws:
         await ws.recv()
-        check("valid local quit accepted", http_status(dashboard + "quit", form_headers, nonce_body)[0] == 200)
+        send_native("quit")
         try:
             await asyncio.wait_for(ws.recv(), timeout=3)
             raise AssertionError("quit must disconnect the controller")
         except ConnectionClosed:
-            check("local quit promptly disconnects active controller", True)
+            check("native window quit promptly disconnects active controller", True)
 
 
 def main():
-    dashboard_port, control_port = unused_port(), unused_port()
+    control_port = unused_port()
     dotnet = os.environ.get("SOFATAP_DOTNET", str(ROOT / ".tools/dotnet/dotnet"))
     assembly = ROOT / "host/bin/Release/net10.0/SofaTap.dll"
     with tempfile.TemporaryDirectory(prefix="sofatap-smoke-") as temporary:
         log_path = Path(temporary) / "host.log"
-        with log_path.open("wb") as log:
-            process = subprocess.Popen([dotnet, str(assembly), "--dry-run", "--no-browser", "--data-dir", str(Path(temporary) / "profile"),
-                                        "--dashboard-port", str(dashboard_port), "--control-port", str(control_port)], stdout=log, stderr=log)
+        with log_path.open("w") as log:
+            process = subprocess.Popen([dotnet, str(assembly), "--native-ui", "--dry-run", "--data-dir", str(Path(temporary) / "profile"),
+                                        "--control-port", str(control_port)], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=log, text=True)
+            states = queue.Queue()
+            def pump():
+                for line in process.stdout:
+                    try: states.put(json.loads(line))
+                    except json.JSONDecodeError: states.put({"type": "invalid_stdout"})
+            reader = threading.Thread(target=pump, daemon=True)
+            reader.start()
+            def send_native(command):
+                process.stdin.write(json.dumps({"type": command}) + "\n")
+                process.stdin.flush()
             try:
-                for _ in range(80):
-                    if process.poll() is not None:
-                        raise RuntimeError("Dry-run host failed to start; inspect locally without publishing credentials.")
-                    try:
-                        if http_status(f"http://127.0.0.1:{dashboard_port}/")[0] == 200:
-                            break
-                    except OSError:
-                        pass
-                    time.sleep(0.1)
-                else:
-                    raise RuntimeError("Dry-run host startup timeout")
-                asyncio.run(exercise(dashboard_port, control_port))
-                check("local quit actually stops receiver", process.wait(timeout=5) == 0)
+                state = states.get(timeout=10)
+                asyncio.run(exercise(state, control_port, send_native, states))
+                check("native quit actually stops receiver", process.wait(timeout=5) == 0)
             finally:
-                if process.poll() is None:
-                    process.send_signal(signal.SIGINT)
-                try:
-                    process.wait(timeout=5)
+                process.stdin.close()
+                try: process.wait(timeout=5)
                 except subprocess.TimeoutExpired:
-                    process.kill()
-                    process.wait()
+                    process.kill(); process.wait()
+                reader.join(timeout=2)
+                process.stdout.close()
         check("host logs contain no pairing URL", "sofatap://pair?" not in log_path.read_text())
+        # Lost UI means lost control. Inherited pipe EOF must stop the backend without a quit frame.
+        with subprocess.Popen([dotnet, str(assembly), "--native-ui", "--dry-run", "--data-dir", str(Path(temporary) / "eof-profile"),
+                               "--control-port", str(unused_port())], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                              stderr=subprocess.DEVNULL, text=True) as detached:
+            check("EOF test starts native bridge", json.loads(detached.stdout.readline())["type"] == "state")
+            detached.stdin.close()
+            check("window pipe EOF stops backend", detached.wait(timeout=5) == 0)
+        check_renewal_stdout(dotnet, assembly, temporary)
     report = {"suite": "TLS and WebSocket integration", "mode": "dry-run, no OS input", "passed": RESULTS}
     (ROOT / "artifacts").mkdir(exist_ok=True)
     (ROOT / "artifacts/transport-tests.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))

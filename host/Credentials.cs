@@ -62,7 +62,7 @@ public sealed class Credentials : IDisposable
                     loaded.Dispose(); loaded = null;
                     // Certificate identity and bearer token rotate together after network drift.
                     secret = CreateSecret(); SaveSecret(path, secret);
-                    Console.WriteLine("Local network identity changed or certificate renewed. Scan the pairing QR again on the iPhone.");
+                    Console.Error.WriteLine("Local network identity changed or certificate renewed. Scan the pairing QR again on the iPhone.");
                 }
             }
             else { secret = CreateSecret(); SaveSecret(path, secret); }

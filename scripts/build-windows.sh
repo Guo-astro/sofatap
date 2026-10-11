@@ -10,50 +10,73 @@ if [ -z "$dotnet_cmd" ]; then
   echo "Install the .NET 10 SDK, or set SOFATAP_DOTNET to its executable." >&2
   exit 1
 fi
+build_dir="$repo_dir/artifacts/windows-native-build"
 release_dir="$repo_dir/artifacts/SofaTap-Windows-x64"
-mkdir -p "$release_dir"
+backend_dir="$build_dir/backend"
+frontend_dir="$build_dir/frontend"
+# These directories contain generated release files only.
+rm -rf "$release_dir" "$backend_dir" "$frontend_dir"
+mkdir -p "$release_dir" "$backend_dir" "$frontend_dir"
+version="$(python3 -c 'import xml.etree.ElementTree as ET; print(ET.parse("host/SofaTap.Host.csproj").findtext(".//Version"))')"
 "$dotnet_cmd" publish host/SofaTap.Host.csproj -c Release -r win-x64 \
-  --self-contained true -p:PublishSingleFile=true \
-  -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false \
-  -p:DebugType=None -p:DebugSymbols=false -o "$release_dir"
-if [ ! -f "$release_dir/SofaTap.exe" ]; then
-  echo "Publish did not produce the expected SofaTap.exe." >&2
+  --artifacts-path "$build_dir/backend-intermediate" --self-contained true \
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o "$backend_dir"
+"$dotnet_cmd" publish desktop/windows/SofaTap.Desktop.csproj -c Release -r win-x64 \
+  --artifacts-path "$build_dir/frontend-intermediate" --self-contained true \
+  -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
+  -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -p:Version="$version" -o "$frontend_dir"
+if [ ! -f "$backend_dir/SofaTap.exe" ] || [ ! -f "$frontend_dir/SofaTap.exe" ]; then
+  echo "Publish did not produce both receiver and native-window executables." >&2
   exit 1
 fi
+cp -R "$backend_dir/." "$release_dir/"
+mv "$release_dir/SofaTap.exe" "$release_dir/SofaTapHost.exe"
+cp -R "$frontend_dir/." "$release_dir/"
 cp LICENSE "$release_dir/LICENSE"
 cp THIRD-PARTY-NOTICES.md "$release_dir/THIRD-PARTY-NOTICES.md"
 # A self-contained executable embeds runtime code. Preserve notices from the
 # actual restored packages, including when the installed SDK selects a newer patch.
-python3 - "$repo_dir" "$release_dir" <<'PY'
+python3 - "$repo_dir" "$release_dir" "$build_dir" <<'PY'
 import json
 from pathlib import Path
 import re
 import shutil
 import sys
 
-root, release = map(Path, sys.argv[1:])
-assets = json.loads((root / "host/obj/project.assets.json").read_text())
-package_folders = [Path(folder) for folder in assets["packageFolders"]]
+root, release, build = map(Path, sys.argv[1:])
+asset_paths = [build / "backend-intermediate/obj/SofaTap.Host/project.assets.json",
+               build / "frontend-intermediate/obj/SofaTap.Desktop/project.assets.json"]
+package_folders = set()
 packages = {}
-for identity, metadata in assets["libraries"].items():
-    if metadata.get("type") != "package":
-        continue
-    name, version = identity.rsplit("/", 1)
-    if name.lower() == "microsoft.net.illink.tasks":
-        continue  # Build-time tool, not distributed receiver code.
-    packages[name.lower()] = version
-for framework in assets["project"]["frameworks"].values():
-    for dependency in framework.get("downloadDependencies", []):
-        name, version_range = dependency["name"].lower(), dependency["version"]
-        if not name.endswith(".win-x64"):
+def include(name, version):
+    name = name.lower()
+    if name in packages and packages[name] != version:
+        raise SystemExit("Receiver and UI resolve different versions of " + name)
+    packages[name] = version
+for asset_path in asset_paths:
+    assets = json.loads(asset_path.read_text())
+    package_folders.update(Path(folder) for folder in assets["packageFolders"])
+    for identity, metadata in assets["libraries"].items():
+        if metadata.get("type") != "package":
             continue
-        match = re.fullmatch(r"\[([^,\]]+),\s*([^\]]+)\]", version_range)
-        if not match or match[1] != match[2]:
-            raise SystemExit("Expected an exact runtime version for " + name)
-        packages[name] = match[1]
-required_runtimes = {"microsoft.netcore.app.runtime.win-x64", "microsoft.aspnetcore.app.runtime.win-x64", "microsoft.netcore.app.host.win-x64"}
+        name, version = identity.rsplit("/", 1)
+        if name.lower() == "microsoft.net.illink.tasks":
+            continue  # Build-time tool, not distributed receiver code.
+        include(name, version)
+    for framework in assets["project"]["frameworks"].values():
+        for dependency in framework.get("downloadDependencies", []):
+            name, version_range = dependency["name"].lower(), dependency["version"]
+            if not name.endswith(".win-x64"):
+                continue
+            match = re.fullmatch(r"\[([^,\]]+),\s*([^\]]+)\]", version_range)
+            if not match or match[1] != match[2]:
+                raise SystemExit("Expected an exact runtime version for " + name)
+            include(name, match[1])
+required_runtimes = {"microsoft.netcore.app.runtime.win-x64", "microsoft.aspnetcore.app.runtime.win-x64",
+                     "microsoft.netcore.app.host.win-x64", "microsoft.windowsdesktop.app.runtime.win-x64"}
 if not required_runtimes.issubset(packages):
-    raise SystemExit("Resolved Windows runtime packages are missing from the restore manifest.")
+    raise SystemExit("Resolved receiver/UI runtime packages are missing from the restore manifests.")
 licenses = release / "licenses"
 if licenses.exists():
     shutil.rmtree(licenses)

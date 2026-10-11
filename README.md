@@ -21,8 +21,9 @@ Sofa Tap 把 iPhone 变成 Windows 或 Mac 的触控板、空中鼠标和文字�
 - Windows 接收端通过 Win32 `SendInput` 注入鼠标、按键和完整 Unicode 文本，不自动追加回车。
 - Mac 接收端通过 Quartz 提交鼠标、拖拽、滚轮、快捷键和 Unicode 文字；在本机明确授予辅助功能权限后使用。手机“全选”自动切换为 Command+A。
 - 局域网 WSS/TLS、二维码配对、证书指纹校验；iPhone Keychain 和 Windows DPAPI 保存配对凭据；Mac 接收端使用仅当前用户可读的凭据文件。
+- 电脑端配对使用原生窗口：Mac AppKit/SwiftUI、Windows WinForms；Linux 提供 GTK3 演练窗口。二维码通过本机私有管道传递，接收端不提供网页配对界面。
 - 前后台切换保护、发送确认、草稿保留、断线禁止自动重放。
-- Windows x64 自包含可执行文件；Mac 提供 Apple Silicon 和 Intel 两份 `.app` 构建，均不需要另外安装 .NET。
+- Windows x64 自包含可执行文件；Mac 提供 Apple Silicon 和 Intel 两份原生 `.app` 构建，均不需要另外安装 .NET。
 
 第一版通过家庭局域网连接。蓝牙连接尚未实现。手机与电脑需要网络互通；客人 Wi-Fi 的设备隔离可能阻止连接。
 
@@ -32,20 +33,20 @@ Sofa Tap 把 iPhone 变成 Windows 或 Mac 的触控板、空中鼠标和文字�
 | --- | --- |
 | iPhone | iOS 17+ 原生控制器；可构建，完整实机验收待完成 |
 | Windows | 已发布 alpha 接收端；仍需实际桌面和手机联合验收 |
-| Mac | 源码已实现原生接收端与 macOS 15+ 双架构打包；开发构建，正式签名、公证和实机验收待完成 |
-| Linux | 后续计划；目前只能 `--dry-run` 验证传输，不能控制桌面 |
+| Mac | macOS 15+ 双架构原生接收端；签名、公证与实机状态以每次发布的验收回执为准 |
+| Linux | GTK3 原生配对窗口仅供 `--dry-run` 验证；桌面输入后端是后续计划，不能控制桌面 |
 
 Windows 和 Mac 共用配对、TLS 与输入协议，各自的系统输入后端实现 `IInputInjector`。Linux 后续将按 X11 / Wayland 的授权方式分别实现后端；目前没有把 Linux 模拟器或协议通过宣称为桌面支持。
 
 ## 开始使用
 
-Windows 已发布更名版本为 **`v0.1.1-alpha`**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`；可从 [发布页面](https://github.com/chekusu/sofatap/releases/tag/v0.1.1-alpha) 下载，也可以按下文从源码构建。解压并运行 `Start-SofaTap.cmd`，本机会打开配对页面。防火墙只允许接收端通过家庭的专用网络。
+Windows 已发布更名版本为 **`v0.1.1-alpha`**。Windows 预览包名称是 `SofaTap-Windows-x64.zip`，对应校验文件为 `SofaTap-Windows-x64.zip.sha256`；可从 [发布页面](https://github.com/chekusu/sofatap/releases/tag/v0.1.1-alpha) 下载，也可以按下文从源码构建。此历史版本仍使用浏览器。当前 0.3.0 源码构建中，解压并运行 `SofaTap.exe` 会显示 WinForms 原生配对窗口。防火墙只允许接收端通过家庭的专用网络。
 
 Mac 开发构建与使用步骤见 [Mac 启动说明](docs/MAC-START.md)。当前公开 release 的 `v0.1.1-alpha` 仍只有 Windows 包；Mac 请从当前源码构建。
 
 在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和连接的 iPhone，运行 App。真机安装需要有效开发签名、设备配对和手机上的开发者模式。仓库不包含开发账号、签名证书或 provisioning profile。
 
-手机扫描电脑页面里的二维码，或粘贴完整配对链接。连上后，在电视上找到目标输入框并点选，在手机文字页完成输入，再明确点发送。Typeless 的实际兼容性需要在真机上验证。
+手机扫描电脑原生窗口里的二维码，或粘贴完整配对链接。连上后，在电视上找到目标输入框并点选，在手机文字页完成输入，再明确点发送。Typeless 的实际兼容性需要在真机上验证。
 
 详细步骤见 [Windows 启动说明](docs/WINDOWS-START.md)、[Mac 启动说明](docs/MAC-START.md)、[iOS 构建说明](ios/README.md) 和 [实机验收清单](docs/ACCEPTANCE.md)。配对链接含有控制凭据，应保留在自己的设备上。
 
@@ -65,7 +66,7 @@ bash scripts/build-windows.sh
 
 如 SDK 在自定义位置，可将 `SOFATAP_DOTNET` 设为 `dotnet` 可执行文件路径。脚本还需要 Python 3，结果写入 `artifacts/SofaTap-Windows-x64.zip`。它按实际解析的 NuGet 版本保留 .NET、ASP.NET Core 和运行依赖的许可。
 
-Windows 开发者可以在 PowerShell 中构建本地测试用可执行文件：
+Windows 开发者可以在 PowerShell 中构建底层接收组件（普通用户应使用包含原生窗口的完整包）：
 
 ```powershell
 dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
@@ -80,7 +81,7 @@ bash scripts/build-macos.sh arm64
 bash scripts/build-macos.sh x64
 ```
 
-输出为 `artifacts/SofaTap-macOS-arm64.zip` 与 `artifacts/SofaTap-macOS-x64.zip`，包含本地 ad-hoc 签名的开发应用、许可和 SHA256；尚未完成 Developer ID 签名与公证。
+输出为 `artifacts/SofaTap-macOS-arm64.zip` 与 `artifacts/SofaTap-macOS-x64.zip`，包含应用、许可和 SHA256。默认使用 ad-hoc 开发签名；CHEKUSU Developer ID 分发签名和 Apple 公证流程见 [公证说明](docs/NOTARIZATION.md)。
 
 iPhone 用 Xcode 打开现成工程即可。`ios/project.yml` 是 XcodeGen 工程源；修改它后运行 `xcodegen generate --spec ios/project.yml`。备用直接编译方式见 [iOS 说明](ios/README.md)，设备编译成功不等于完成签名安装。
 
@@ -109,6 +110,7 @@ Host runner 使用模拟输入器。TLS/WebSocket 测试启动临时接收端并
 | --- | --- |
 | `ios/` | iPhone App、Xcode 工程和工程生成配置 |
 | `host/` | Windows / Mac 原生输入后端和共用接收协议 |
+| `desktop/` | Mac、Windows、Linux 的原生配对窗口 |
 | `tests/` | 协议、认证和输入边界检查 |
 | `PROTOCOL.md` | 两端通信协议 |
 | `docs/` | 安装和实机验收说明 |
