@@ -2,6 +2,8 @@
 
 This pipeline prepares a Developer ID signed, notarized ZIP of the macOS receiver. Do not describe a build as notarized or publish it as the completed macOS release until Apple returns `Accepted` and the receipt records successful stapling, Gatekeeper assessment and `stage: complete`. A signed build or a successful upload alone does not meet that gate.
 
+As of 2026-10-11, both architectures in [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha) meet this gate. Their immutable source revision is `8e6d0cea771b1e1b7879aff94bce437cb971298a`; see the [public verification record](verification/macos-0.3.0.md) for final ZIP hashes and the separately completed Apple Silicon/iPhone checks. Later documentation commits do not change the source revision of those binaries.
+
 This is separate from the iPhone App Store/TestFlight workflow. Run the commands on a Mac that already has CHEKUSU's Developer ID Application certificate **and its private key**, plus a working App Store Connect API profile stored by `asc` in the macOS Keychain. No private keys or signing credentials belong in this repository.
 
 The pipeline uses `asc notarization`, Apple's Notary API, and the existing Keychain profile. It does not request a password, export credentials, change Keychain trust, sign code, or create a certificate. Omitting `--profile` resolves ASC's current default stored profile once and uses that profile for the whole run. Credentials supplied through ASC environment variables are rejected to avoid using a different account accidentally. Local preflight confirms the stored profile exists; successful submission and status retrieval establish its current Notary API access.
@@ -60,7 +62,9 @@ Successful output contains:
 - `staple.txt`, `staple-validation.txt` and `gatekeeper.txt` for local verification output.
 - `submission.zip`, retained as the exact pre-stapling artifact sent to Apple.
 
-The receipt deliberately excludes raw ASC responses, upload credentials and notarization log URLs. An Apple acceptance receipt establishes Apple's notarization result; functional testing and macOS Accessibility permission remain separate requirements.
+These are local release-working materials. Distribute only the final notarized ZIP and its `.sha256`, together with a reviewed public verification summary. The final ZIP contains the app and macOS archive metadata; it does not include a build manifest, raw receipt, or local pairing configuration. Although the receipt excludes raw ASC responses, upload credentials and notarization log URLs, it contains local profile/path metadata and must not be published unchanged. Keep source manifests, original receipts, local logs and `submission.zip` out of release assets.
+
+An Apple acceptance receipt establishes Apple's notarization result; functional testing and macOS Accessibility permission remain separate requirements. The 0.3.0 build and fresh-extraction records retain `physicalInputVerified: false` because those packaging checks did not inject input. The later physical-device checks are recorded separately without modifying the packages.
 
 ## Resume without another upload
 

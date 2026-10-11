@@ -9,3 +9,7 @@ The user has authorized notifying Sandbank Dev after each logical change is vali
 If delivery fails, report the blocker and retry with `python3 scripts/notify-sandbank.py --retry`. Pending receipts stay in the Git directory and must not be committed or published. HTTP 200/202 confirms delivery only; require an authenticated Yobiru reply matching the sent message ID before saying the server synchronized. A 403 is a policy block: report it and do not change an allowlist without explicit user authorization.
 
 Ask the receiving agent to fetch and synchronize using fast-forward-only Git operations. Never instruct it to discard, reset, stash or overwrite its local work. Keep pairing tokens, QR codes, signing assets, credentials and private user data out of commits and messages.
+
+## Receiver tests on the shared Mac
+
+Use Yomado to place receiver acceptance-test windows on a virtual display before the next desktop test. Keep the user's normal displays and active work undisturbed. Do not make the virtual display primary or change the physical display arrangement. Verify the test windows and input target are isolated before sending real mouse or keyboard events; moving a window alone does not prove input isolation. If isolation cannot be verified, defer live input tests. Restore any test-window placement after testing.
