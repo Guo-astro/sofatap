@@ -153,6 +153,11 @@ def acceptance():
         assert clipboard.wait_for_text() == "clipboard must remain unchanged · 原文"
         assert native.mapping() == mapping_before
         checks += 2
+        result = request("apply", {"type": "text", "text": "中" * 2048}, expect_ok=False)
+        assert result["error"] == "text_too_long"
+        assert contents() == sample
+        assert native.mapping() == mapping_before
+        checks += 1
         request("apply", {"type": "key", "key": "a", "modifiers": ["ctrl"]})
         request("apply", {"type": "key", "key": "backspace", "modifiers": []})
         wait_for(lambda: contents() == "")

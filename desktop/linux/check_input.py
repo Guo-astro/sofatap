@@ -6,13 +6,14 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from types import SimpleNamespace
 import unittest
 import uuid
 from unittest.mock import patch
 
 from input_common import InputError, MAXIMUM_LINE, parse_request, validate_action
 from input_worker import UnavailableInput, choose_backend, handle_request
-from x11_input import X11Input, normalize_text
+from x11_input import X11Input, X11Native, normalize_text
 
 
 def action(kind, **fields):
@@ -185,6 +186,79 @@ class InputTests(unittest.TestCase):
         sample = "中文\n日本語 👋 café $()`"
         self.backend.apply(action("text", text=sample))
         self.assertEqual(self.native.events, [("text", sample)])
+
+
+class NativeTextTests(unittest.TestCase):
+    def setUp(self):
+        self.calls = []
+        self.rows = {8: (0, 0), 9: (0, 0), 10: (0, 0), 11: (97, 65)}
+        self.original = dict(self.rows)
+        self.native = X11Native.__new__(X11Native)
+        self.native.display = self.native.xdo_context = 1
+        self.native.mapping = lambda: (8, 4, 2, tuple(symbol for code in range(8, 12) for symbol in self.rows[code]))
+        self.native.sync = lambda: None
+        self.native.keycode = lambda name: {"enter": 36, "tab": 23}[name]
+        self.native.key = lambda code, down: self.calls.append(("key", code, down))
+        def mapping(_display, code, _width, values, _count):
+            self.rows[code] = tuple(values)
+            self.calls.append(("map", code, tuple(values)))
+        self.native.x = SimpleNamespace(XKeysymToKeycode=lambda _display, symbol: 11 if symbol < 256 else 0,
+                                        XChangeKeyboardMapping=mapping)
+        def text(_context, _window, value, delay):
+            self.calls.append(("text", value.decode("utf-8"), delay))
+            return 0
+        self.native.xdo = SimpleNamespace(xdo_enter_text_window=text)
+        self.sleep = patch("x11_input.time.sleep")
+        self.sleep.start()
+        self.addCleanup(self.sleep.stop)
+
+    def test_unmapped_unicode_has_stable_distinct_slots_for_whole_batch(self):
+        self.native.text("a中👋")
+        self.assertEqual(self.calls[:2], [("map", 8, (0x1004E2D, 0x1004E2D)), ("map", 9, (0x101F44B, 0x101F44B))])
+        self.assertEqual(self.calls[2:7], [("text", "a", 1000), ("key", 8, True), ("key", 8, False), ("key", 9, True), ("key", 9, False)])
+        self.assertEqual(self.rows, self.original)
+
+    def test_slow_text_is_rejected_before_any_native_event(self):
+        with self.assertRaisesRegex(InputError, "text_too_long"):
+            self.native.text("中" * 1801)
+        self.assertEqual(self.calls, [])
+
+    def test_estimated_budget_boundary_accepts(self):
+        self.native.text("中" * 1800)
+        self.assertEqual(len([call for call in self.calls if call[0] == "key"]), 3600)
+        self.assertEqual(self.rows, self.original)
+
+    def test_insufficient_mapping_capacity_rejects_before_mutation(self):
+        with self.assertRaisesRegex(InputError, "text_too_long"):
+            self.native.text("中文日本")
+        self.assertEqual(self.calls, [])
+
+    def test_newline_and_tab_are_explicit_keys(self):
+        self.native.text("a\r\n\t")
+        self.assertEqual(self.calls, [("text", "a", 1000), ("key", 36, True), ("key", 36, False), ("key", 23, True), ("key", 23, False)])
+
+    def test_failed_direct_key_is_released_and_mapping_restored(self):
+        def key(code, down):
+            self.calls.append(("key", code, down))
+            if down: raise InputError("input_partial")
+        self.native.key = key
+        with self.assertRaisesRegex(InputError, "input_partial"):
+            self.native.text("中")
+        self.assertIn(("key", 8, False), self.calls)
+        self.assertEqual(self.rows, self.original)
+
+    def test_concurrent_mapping_change_is_not_overwritten(self):
+        def key(code, down):
+            if down: self.rows[code] = (0x1004E00, 0x1004E00)
+        self.native.key = key
+        with self.assertRaisesRegex(InputError, "input_partial"):
+            self.native.text("中")
+        self.assertEqual(self.rows[8], (0x1004E00, 0x1004E00))
+
+    def test_absolute_scalar_limit_still_rejects_fast_text(self):
+        with self.assertRaisesRegex(InputError, "text_too_long"):
+            self.native.text("a" * 2049)
+        self.assertEqual(self.calls, [])
 
 
 class WorkerProcessTests(unittest.TestCase):

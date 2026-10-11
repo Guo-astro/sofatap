@@ -163,44 +163,82 @@ class X11Native:
         if not value:
             return
         before = self.mapping()
-        # libxdo needs an entirely unused keycode for non-keyboard Unicode.
         low, count, width, symbols = before
-        if not any(not any(symbols[i * width:(i + 1) * width]) for i in range(count - 1)):
-            raise InputError("unsupported_action")
+        unused = [low + index for index in range(count) if not any(symbols[index * width:(index + 1) * width])]
+        bindings = {}
+        schedule = []
+        for char in value:
+            if char in "\n\t":
+                schedule.append((None, self.keycode("enter" if char == "\n" else "tab")))
+                continue
+            symbol = ord(char) if ord(char) <= 255 else 0x01000000 | ord(char)
+            if self.x.XKeysymToKeycode(self.display, symbol):
+                schedule.append((char, None))
+            else:
+                if symbol not in bindings:
+                    if len(bindings) >= len(unused):
+                        raise InputError("text_too_long")
+                    bindings[symbol] = unused[len(bindings)]
+                schedule.append((None, bindings[symbol]))
+        # Reserve one second for X-server processing. Unicode uses fixed slots
+        # for the whole batch, so it does not need per-character mapping delays.
+        if len(schedule) * 1000 + (200_000 if bindings else 0) > 2_000_000:
+            raise InputError("text_too_long")
         deadline = time.monotonic() + 3
-        own_symbols = {ord(char) if ord(char) <= 255 else 0x01000000 | ord(char) for char in value}
+        installed, expected, held = {}, {}, set()
+
+        def row(mapping, code):
+            offset = (code - mapping[0]) * mapping[2]
+            return mapping[3][offset:offset + mapping[2]]
+
         try:
-            for char in value:
+            # Rebinding one scratch key for every character races GTK's
+            # MappingNotify cache. Assign every missing symbol its own unused
+            # code, and keep all those mappings stable until the batch is over.
+            for symbol, code in bindings.items():
+                installed[code] = symbol
+                values = (C.c_ulong * width)(*([symbol] * width))
+                self.x.XChangeKeyboardMapping(self.display, code, width, values, 1)
+            if installed:
+                self.sync()
+                applied = self.mapping()
+                expected = {code: row(applied, code) for code in installed}
+                time.sleep(.1)
+            for char, code in schedule:
                 if time.monotonic() >= deadline:
                     raise InputError("input_partial")
-                symbol = ord(char) if ord(char) <= 255 else 0x01000000 | ord(char)
-                # A scratch keycode must remain bound long enough for the
-                # destination's MappingNotify / key-event loop to observe it.
-                # Use libxdo's normal 12 ms delay for unmapped Unicode instead
-                # of clearing the scratch mapping after only 0.5 ms.
-                delay = 1000 if self.x.XKeysymToKeycode(self.display, symbol) else 12000
-                if self.xdo.xdo_enter_text_window(self.xdo_context, 0, char.encode("utf-8"), delay) != 0:
-                    raise InputError("input_partial")
-                self.sync()
+                if code is not None:
+                    held.add(code)
+                    self.key(code, True)
+                    self.key(code, False)
+                    held.discard(code)
+                    time.sleep(.001)
+                else:
+                    if self.xdo.xdo_enter_text_window(self.xdo_context, 0, char.encode("utf-8"), 1000) != 0:
+                        raise InputError("input_partial")
+                    self.sync()
         finally:
-            # Verify libxdo returned its scratch mapping. Do not overwrite
-            # other keycodes a user may have remapped concurrently.
-            after = self.mapping()
-            if before[:3] != after[:3]:
-                raise InputError("input_partial")
-            changed = False
-            for index in range(count):
-                original = symbols[index * width:(index + 1) * width]
-                current = after[3][index * width:(index + 1) * width]
-                if not any(original) and current != original:
-                    # A concurrently installed unrelated mapping belongs to
-                    # someone else. Never erase it in an error cleanup.
-                    if all(symbol == 0 or symbol in own_symbols for symbol in current):
-                        empty = (C.c_ulong * width)(*original)
-                        self.x.XChangeKeyboardMapping(self.display, low + index, width, empty, 1)
-                    changed = True
-            self.sync()
-            if changed:
+            cleanup_failed = False
+            for code in held:
+                try: self.key(code, False)
+                except Exception: cleanup_failed = True
+            if installed:
+                # Give the destination event loop time to consume the batch
+                # while its mapping remains valid; success still means system
+                # submission, not an acknowledgement from the destination app.
+                time.sleep(.1)
+                current = self.mapping()
+                for code, symbol in installed.items():
+                    observed = row(current, code)
+                    owned = observed == expected.get(code) if code in expected else all(item in (0, symbol) for item in observed)
+                    if not owned:
+                        cleanup_failed = True
+                        continue  # Do not erase a concurrent user's remapping.
+                    original = row(before, code)
+                    values = (C.c_ulong * width)(*original)
+                    self.x.XChangeKeyboardMapping(self.display, code, width, values, 1)
+                self.sync()
+            if cleanup_failed:
                 raise InputError("input_partial")
 
     def close(self):

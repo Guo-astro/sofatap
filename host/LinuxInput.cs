@@ -31,7 +31,7 @@ public sealed class LinuxInput : IInputInjector, IDisposable
             _worker = Process.Start(start);
             if (_worker is null) return;
             _ = DrainDiagnostics(_worker.StandardError);
-            Exchange("status");
+            Exchange("status", starting: true);
         }
         catch (Exception error) when (error is System.ComponentModel.Win32Exception or IOException or InvalidOperationException or InputInjectionException)
         { if (_worker is not null) StopWorker(); }
@@ -82,7 +82,7 @@ public sealed class LinuxInput : IInputInjector, IDisposable
             try { Exchange("releaseAll"); } catch (InputInjectionException) { }
         }
     }
-    private void Exchange(string type, ActionMessage? action = null)
+    private void Exchange(string type, ActionMessage? action = null, bool starting = false)
     {
         var id = Guid.NewGuid().ToString("D");
         var request = new Dictionary<string, object?> { ["id"] = id, ["type"] = type };
@@ -92,7 +92,10 @@ public sealed class LinuxInput : IInputInjector, IDisposable
         WorkerReply reply;
         try
         {
-            var budget = type == "apply" ? _timeout : TimeSpan.FromMilliseconds(Math.Min(_timeout.TotalMilliseconds, 2000));
+            // Give a cold Python/GI runtime time to load without relaxing
+            // subsequent input/status deadlines or ever replaying an action.
+            var budget = starting ? TimeSpan.FromSeconds(5)
+                : type == "apply" ? _timeout : TimeSpan.FromMilliseconds(Math.Min(_timeout.TotalMilliseconds, 2000));
             using var deadline = new CancellationTokenSource(budget);
             var worker = _worker ?? throw new IOException();
             worker.StandardInput.WriteLineAsync(line.AsMemory(), deadline.Token).GetAwaiter().GetResult();

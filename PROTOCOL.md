@@ -58,7 +58,7 @@ unknown status codes and can use a ready Linux receiver.
 
 Linux text is limited to 2048 Unicode scalar values per action (and the common
 16000 UTF-16-unit/64 KiB frame bounds). Overlong input is rejected before sending
-its first character. A desktop method failure or deadline after attempting input
+its first character. X11 also rejects a selection before input when temporary key-slot capacity or its preflight time budget is exceeded. A desktop method failure or deadline after attempting input
 is `input_partial`/unknown; no client should retry it automatically. An ACK means
 input was submitted, not that a target app received or saved it. Linux text uses
 X11 key events or Wayland Unicode keysyms, not clipboard replacement. Wayland
