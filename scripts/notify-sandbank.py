@@ -90,12 +90,24 @@ def yobiru_command():
             path = max(candidates, key=lambda item: item.stat().st_mtime) if candidates else None
     if path is None or not path.is_file():
         raise RuntimeError("Yobiru CLI was not found; set YOBIRU_CLI to its installed script")
+    path = path.resolve()
     if path.suffix == ".py":
         command = [sys.executable, str(path)]
-    elif os.name == "nt":
+    elif os.name == "nt" and path.suffix.lower() == ".exe":
         command = [str(path)]
     else:
-        command = ["sh", str(path)]
+        with path.open("rb") as launcher:
+            shebang = launcher.readline(512).strip()
+        if os.name == "nt" or not shebang.startswith(b"#!"):
+            raise RuntimeError("Unrecognized Yobiru launcher; select its .py entry point with YOBIRU_CLI")
+        if os.access(path, os.X_OK):
+            # Extensionless Python and shell launchers select their own interpreter.
+            command = [str(path)]
+        elif shebang in (b"#!/bin/sh", b"#!/usr/bin/sh", b"#!/usr/bin/env sh"):
+            # The official plugin also supports invoking its non-executable sh wrapper.
+            command = ["sh", str(path)]
+        else:
+            raise RuntimeError("Yobiru launcher is not executable; select its .py entry point with YOBIRU_CLI")
     if os.environ.get("YOBIRU_HOME"):
         command += ["--home", os.environ["YOBIRU_HOME"]]
     return command
