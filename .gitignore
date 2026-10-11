@@ -22,3 +22,6 @@ artifacts/
 *.xcresult/
 pairing.dat
 receiver.lock
+unlock-capability.dat
+login-service.json
+service.dat

@@ -73,9 +73,11 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
             code == "ready" && !options.DryRun && textFocus is not null
                 ? textFocus.Read() : new(TextFocusKind.Unknown), code == "ready" && !options.DryRun);
         var status = ReceiverPlatform.StatusCode(input, options.DryRun);
+        var unlock = UnlockCapabilityStore.Read(options.DataDirectory, credentials.Fingerprint,
+            OperatingSystem.IsWindows(), options.DryRun, status);
         await Send(socket, new { type = "hello", version = 1, name = Environment.MachineName,
             platform = ReceiverPlatform.Id, dryRun = options.DryRun, inputAvailable = status == "ready", inputStatus = status,
-            textFocus = Focus(status) }, lifetime.Token);
+            textFocus = Focus(status), unlock }, lifetime.Token);
         var session = new ActionSession(input);
         var buffer = new byte[Protocol.MaximumFrameBytes + 1];
         while (socket.State == WebSocketState.Open && !lifetime.IsCancellationRequested)

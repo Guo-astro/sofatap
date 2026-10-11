@@ -37,6 +37,7 @@ final class ControllerModel: ObservableObject {
     @Published private(set) var airMoving = false
     @Published var sensitivity = 1.0
     let demo: Bool
+    let unlock = ComputerUnlockController()
 
     private var lastSentDraft: String?
     private var sentSnapshot = ""
@@ -67,6 +68,7 @@ final class ControllerModel: ObservableObject {
         self.demo = demo
         self.pairing = demo ? nil : PairingStore.read()
         self.draft = demo ? "你好，帮我播放今晚想看的电影。" : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
+        unlock.setPairing(self.pairing)
         if demo { notice = "界面演示：按钮只展示反馈，没有连接或操作电脑。" }
         else if let marker = UserDefaults.standard.string(forKey: "textDeliveryMarker") {
             // A process kill must never turn a pending/accepted draft into an implicit retry.
@@ -116,8 +118,10 @@ final class ControllerModel: ObservableObject {
         do {
             let newPairing = try Pairing.parse(raw)
             try PairingStore.write(newPairing)
+            if let previous = pairing, previous != newPairing { unlock.forget(previous) }
             disconnect(message: "已保存新的配对。")
             pairing = newPairing
+            unlock.setPairing(newPairing)
             pairingError = nil
             connect()
         } catch {
@@ -127,16 +131,20 @@ final class ControllerModel: ObservableObject {
 
     func forgetPairing() {
         disconnect(message: "配对已移除。")
+        if let pairing { unlock.forget(pairing) }
         PairingStore.delete()
         pairing = nil
+        unlock.setPairing(nil)
     }
 
     func becameActive() {
+        unlock.becameActive()
         foreground = true
         if !demo, pairing != nil, !connected, !connecting { connect() }
     }
 
     func becameInactive() {
+        unlock.becameInactive()
         guard foreground else { return }
         foreground = false
         stopAirMouse()
@@ -268,6 +276,9 @@ final class ControllerModel: ObservableObject {
             receiverState = state
             inputAvailable = state.inputAvailable
             computerName = name
+            if state.platform == .windows, state.inputAvailable, !state.dryRun, let pairing {
+                unlock.receiveCapability(message["unlock"], pairing: pairing)
+            }
             notice = state.inputAvailable ? "已连接。先点选电脑上的输入框，即可发送文字。" : state.unavailableMessage
             startTimers()
             return true

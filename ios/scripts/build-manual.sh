@@ -34,8 +34,8 @@ source, output, platform, sdk = sys.argv[1:]
 data = plistlib.loads(Path(source).read_bytes())
 data.update({
     'CFBundleName': 'Sofatap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
-    'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.5.0',
-    'CFBundleVersion': '8', 'CFBundleSupportedPlatforms': [platform],
+    'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.6.0',
+    'CFBundleVersion': '9', 'CFBundleSupportedPlatforms': [platform],
     'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],
     'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}}
 })

@@ -30,6 +30,15 @@ jobs:
         run: python3 -m pip install websockets==16.0
       - name: Host checks with fake input
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+      - name: Windows login broker state and credential lifetime checks
+        run: dotnet run --project desktop/windows-login/Tests/Sofatap.Login.Tests.csproj -c Release
+      - name: iPhone unlock identity and challenge checks
+        shell: bash
+        run: |
+          xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+            ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
+            ios/tests/UnlockProtocolTests.swift -o "$RUNNER_TEMP/sofatap-unlock-tests"
+          "$RUNNER_TEMP/sofatap-unlock-tests"
       - name: TLS and WebSocket integration in dry-run mode
         shell: bash
         run: SOFATAP_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
@@ -84,6 +93,15 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Host checks with fake input
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+      - name: Windows login broker state and credential lifetime checks
+        run: dotnet run --project desktop/windows-login/Tests/Sofatap.Login.Tests.csproj -c Release
+      - name: Compile optional Windows login service without installing it
+        run: dotnet publish desktop/windows-login/Service/Sofatap.Login.Service.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-login/Service
+      - name: Compile optional native Credential Provider without registering it
+        run: |
+          cmake -S desktop/windows-login/Provider -B artifacts/windows-login/provider-build -A x64
+          cmake --build artifacts/windows-login/provider-build --config Release
+          ctest --test-dir artifacts/windows-login/provider-build -C Release --output-on-failure
       - name: Compile self-contained Windows receiver without launching it
         run: dotnet publish host/SofaTap.Host.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ci
       - name: Windows native-window parser checks without launching a UI

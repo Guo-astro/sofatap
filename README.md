@@ -20,17 +20,19 @@ Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn 
 - Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
 - Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Draft retention, send confirmation and no automatic replay help avoid accidental duplicate input after a disconnect.
 
-**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.5.0 (iPhone build 8) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.6.0 (iPhone build 9) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
 
 Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface, and keeps draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [dot-matrix preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
 
 The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. Detection never reads field contents; unsupported, read-only or protected targets do not trigger automatic input UI. Linux detection requires an optional AT-SPI bridge. Manual keyboard access remains available. See [focus detection and platform limits](docs/TEXT-FOCUS.md).
 
+**Experimental Face ID unlock:** the 0.6.0 source adds a device-only iPhone Keychain vault and an optional Windows login component for local or personal Microsoft account passwords. It requires explicit enrollment and administrator installation; ordinary pairing alone does not unlock Windows. Hello-only/passwordless settings may prevent password sign-in; Sofatap does not change those settings. Real Face ID and Windows sign-in acceptance are pending. See [setup, boundaries and verification](docs/FACE-ID-UNLOCK.md).
+
 ## Platform status
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.5.0 (8) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
+| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.6.0 (9) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
 | Windows | Native receiver released in 0.3.0. This version's desktop UI and physical iPhone integration still need acceptance testing. |
 | Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
 | Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
@@ -104,6 +106,7 @@ On macOS with .NET 10, Python 3 and Xcode installed:
 ```sh
 python3 -m pip install websockets==16.0
 dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+dotnet run --project desktop/windows-login/Tests/Sofatap.Login.Tests.csproj -c Release
 SOFATAP_DOTNET="$(command -v dotnet)" python3 tests/smoke.py
 swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-pairing-tests
 /tmp/sofatap-pairing-tests
@@ -117,7 +120,7 @@ bash ios/scripts/build-manual.sh device
 
 The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.5.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, particle feedback and Reduce Motion, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
+Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.6.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, particle feedback and Reduce Motion, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
 
 ## Repository layout
 

@@ -1,0 +1,4 @@
+LIBRARY SofatapLoginProvider
+EXPORTS
+DllGetClassObject PRIVATE
+DllCanUnloadNow PRIVATE

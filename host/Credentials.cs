@@ -111,7 +111,7 @@ public sealed class Credentials : IDisposable
     public void Dispose() { Certificate.Dispose(); _lock.Dispose(); }
     private sealed record Secret(string Token, string Pfx);
 
-    private static class Dpapi
+    internal static class Dpapi
     {
         [StructLayout(LayoutKind.Sequential)] private struct Blob { public int Size; public IntPtr Data; }
         public static byte[] Protect(byte[] bytes) => Transform(bytes, true);

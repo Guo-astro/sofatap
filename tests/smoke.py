@@ -185,6 +185,7 @@ async def exercise(state, control_port, send_native, states):
         check("dry run explicitly disables input", hello["type"] == "hello" and hello["version"] == 1 and hello["inputAvailable"] is False)
         expected_platform = "macos" if sys.platform == "darwin" else "windows" if sys.platform == "win32" else "linux"
         check("hello identifies platform and dry-run status", hello.get("platform") == expected_platform and hello.get("dryRun") is True and hello.get("inputStatus") == "dry_run")
+        check("dry run never advertises Windows unlock enrollment", "unlock" not in hello)
         check("dry run never reads or reports desktop text focus", hello.get("textFocus") == {"state": "unknown", "revision": 0})
         await denied("second controller denied", headers, 409)
 

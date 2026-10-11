@@ -1,6 +1,6 @@
 # Sofatap 实机验收
 
-适用于 0.5.0 开发源码（iPhone build 8）的单屏交互及原生接收端。公开下载仍是 Windows/Mac 0.3.0、Linux 0.4.0，不能用于验收新增功能。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与电脑的联合验收。共享 Mac 必须先按 AGENTS.md 用 Yomado 验证虚拟显示器与输入隔离。
+适用于 0.6.0 开发源码（iPhone build 9）的单屏交互及原生接收端。公开下载仍是 Windows/Mac 0.3.0、Linux 0.4.0，不能用于验收新增功能。以下是待执行的真实设备验收清单，不是已经通过的测试结果。模拟器和编译验证不能替代实际 iPhone 与电脑的联合验收。共享 Mac 必须先按 AGENTS.md 用 Yomado 验证虚拟显示器与输入隔离。
 
 先在测试桌面的文本编辑器里测试，再进入浏览器和日常软件。Mac 使用“文本编辑”，Windows 使用记事本，Linux 使用测试环境中的文本编辑器。测试不使用真实密码或私人内容。
 
@@ -72,3 +72,23 @@ still works. Portal permission alone does not establish AT-SPI availability.
 Microphone permissions, local recognition, Typeless and automatic keyboard
 behavior still require the physical iPhone; the historical 0.4.0 receiver checks
 do not cover these features.
+
+
+## Windows：可选 Face ID 登录组件
+
+以下全部为待执行的联合验收。先在可恢复的 Windows 测试环境使用可恢复的测试账户；密码只在 iPhone 的安全输入框中输入，不能发给 Codex、写进测试脚本或日志。保留系统密码登录方式并确认可用。详细设计见 [FACE-ID-UNLOCK.md](FACE-ID-UNLOCK.md)。
+
+| 项目 | 操作 | 通过标准 |
+| --- | --- | --- |
+| 安装与恢复 | 管理员安装可选组件，再停止服务、卸载组件 | 原有系统登录选项始终可用；卸载后服务、登录插件注册和专用防火墙规则移除 |
+| 支持范围 | 尝试本地账户、个人 Microsoft 账户和域账户 | 仅允许已绑定的受支持账户密码；不把 Windows Hello PIN 当成账户密码；不修改仅允许 Hello 登录或无密码设置 |
+| 首次启用 | 电脑解锁后正常配对，手机打开设备设置并保存测试账户密码 | 明确同意后，Face ID 验证并存入本机钥匙串；电脑端不持久保存密码 |
+| 正确密码 | 锁定 Windows，手机点击解锁并完成 Face ID | 同一电视控制台和指定账户真正回到桌面；手机收到 Windows 成功结果后才显示已解锁 |
+| 错误密码 | 保存故意错误的测试密码，完成一次 Face ID 解锁请求 | Windows 拒绝，手机显示失败；不自动重试，不影响原有登录 |
+| Face ID 取消与变化 | 取消验证、锁定生物识别、改变已登记面容 | 不发送密码；面容变化后重新设置，不退回手机密码来释放电脑密码 |
+| 中断与结果未知 | 提交前后切后台或断网，再返回 | 不自动重发；无法确认结果时不显示解锁成功；再次操作必须重新验证 Face ID |
+| 配对身份变化 | 更换接收器／服务身份或账户绑定，再重启手机 App | 原有密码不会交给新身份；必须明确重新启用 |
+| 开机登录 | 重启 Windows，保持普通用户接收器未启动 | 在 Windows 和网络服务已就绪后，通过已登记的独立登录组件测试；不声称支持 BitLocker／UEFI 预启动界面 |
+| 协议边界 | 错误凭据、过期／重复挑战、切换控制台、服务与插件重启 | 请求被拒绝或标记过期，不进入其他账户或会话，不回放旧密码 |
+
+分别记录源码 SHA、Windows 版本、测试账户类型、iPhone 构建、Face ID 实机结果、登录／锁屏结果与恢复结果。编译、HTTP 202、凭据序列化或服务在线不能替代真实登录证据。

@@ -9,14 +9,18 @@
 /* Begin PBXBuildFile section */
 		0C3B35855B50DA22F878C842 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F19D4B8423478A9CA42C50 /* PairingView.swift */; };
 		235031F88751C7AF87089F98 /* ControllerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */; };
+		282012F3931864B44AE6BDED /* UnlockCredentialVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */; };
 		2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895EB1B944638483C701ADDC /* TouchGestureState.swift */; };
 		390FF8AC98B4923D8FE0BD44 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 951A32A70DFF898858DD7CDD /* Assets.xcassets */; };
+		3D5EF8B303AB20CF62A7EAE4 /* UnlockProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */; };
 		62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */; };
 		62E055F9B738880A3F6FB68A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */; };
 		667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6898F264D24CA602D5304DA0 /* Pairing.swift */; };
+		68E7813DE872359DEE8A3E06 /* ComputerUnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */; };
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
 		993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2194963D13F182243533BEB /* SofaTapApp.swift */; };
 		9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */; };
+		A48C6B42061DF866CF421F83 /* ComputerUnlockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */; };
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
 		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
 /* End PBXBuildFile section */
@@ -24,17 +28,21 @@
 /* Begin PBXFileReference section */
 		073F44E198299E317E1E4D3D /* NativeControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeControls.swift; sourceTree = "<group>"; };
 		0FC98CB31D572AB388B6B719 /* SofaTap.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SofaTap.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCredentialVault.swift; sourceTree = "<group>"; };
 		1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictationController.swift; sourceTree = "<group>"; };
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchParticleRenderer.swift; sourceTree = "<group>"; };
+		5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockController.swift; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
+		85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockView.swift; sourceTree = "<group>"; };
 		8836BE62D39309B8AF525D9F /* ReceiverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverState.swift; sourceTree = "<group>"; };
 		895EB1B944638483C701ADDC /* TouchGestureState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGestureState.swift; sourceTree = "<group>"; };
 		951A32A70DFF898858DD7CDD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
+		B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockProtocol.swift; sourceTree = "<group>"; };
 		F559181B1DC8444C237039F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -42,11 +50,14 @@
 		48AD4029C135513A254E55C4 /* Core */ = {
 			isa = PBXGroup;
 			children = (
+				5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */,
 				7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */,
 				6898F264D24CA602D5304DA0 /* Pairing.swift */,
 				8836BE62D39309B8AF525D9F /* ReceiverState.swift */,
 				1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */,
 				895EB1B944638483C701ADDC /* TouchGestureState.swift */,
+				1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */,
+				B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -75,6 +86,7 @@
 		B49CA2B0F841DC5E1D5FA3DE /* Views */ = {
 			isa = PBXGroup;
 			children = (
+				85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */,
 				073F44E198299E317E1E4D3D /* NativeControls.swift */,
 				A8F19D4B8423478A9CA42C50 /* PairingView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
@@ -162,6 +174,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A48C6B42061DF866CF421F83 /* ComputerUnlockController.swift in Sources */,
+				68E7813DE872359DEE8A3E06 /* ComputerUnlockView.swift in Sources */,
 				235031F88751C7AF87089F98 /* ControllerModel.swift in Sources */,
 				C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */,
 				667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */,
@@ -172,6 +186,8 @@
 				9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */,
 				2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */,
 				62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */,
+				282012F3931864B44AE6BDED /* UnlockCredentialVault.swift in Sources */,
+				3D5EF8B303AB20CF62A7EAE4 /* UnlockProtocol.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -183,14 +199,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -203,14 +219,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.5.0;
+				MARKETING_VERSION = 0.6.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

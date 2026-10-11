@@ -37,3 +37,5 @@ sips -z 1024 1024 output/imagegen/sofatap-icons-2026-10-11/06-phone-sofa.png --o
 ```
 
 The source and BrandMark share SHA-256 `bab56f458fe7b76832788c4926b04a3574b3c09249372282a86922c8cfa9df05`. The historical `ios/tools/GenerateIcon.swift` generates the superseded sofa-only symbol and requires an explicit legacy flag plus output path; it is not the source for current branding.
+
+The 0.6.0 source adds experimental, opt-in Face ID unlock for Windows local or personal Microsoft account passwords through a separate login component. It is not a released or physically validated capability. Do not describe ordinary pairing, successful transport or Face ID alone as a successful Windows sign-in. See [Face ID unlock scope](FACE-ID-UNLOCK.md).

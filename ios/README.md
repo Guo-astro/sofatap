@@ -1,6 +1,6 @@
 # Sofatap iPhone controller
 
-Native SwiftUI app, iOS 17+, no third-party libraries. Development source: version 0.5.0, build 8. The published Windows/Mac 0.3.0 and Linux 0.4.0 receiver packages predate the new focus hints. Open `SofaTap.xcodeproj` in Xcode. Select your company's Apple development team and a connected iPhone to install. The repository contains no provisioning profiles or developer account identifiers. `project.yml` is the reproducible XcodeGen source; use `xcodegen generate --spec ios/project.yml` from the repository root after changing it.
+Native SwiftUI app, iOS 17+, no third-party libraries. Development source: version 0.6.0, build 9. The published Windows/Mac 0.3.0 and Linux 0.4.0 receiver packages predate the new focus hints. Open `SofaTap.xcodeproj` in Xcode. Select your company's Apple development team and a connected iPhone to install. The repository contains no provisioning profiles or developer account identifiers. `project.yml` is the reproducible XcodeGen source; use `xcodegen generate --spec ios/project.yml` from the repository root after changing it.
 
 The receiver's QR code or full `sofatap://pair?...` URI supplies the host, port, secret and leaf certificate fingerprint. Pairing credentials are stored in Keychain with `WhenUnlockedThisDeviceOnly`. Native WSS trusts only that exact host, port and certificate; redirects are rejected. Local-network ATS permission is scoped with `NSAllowsLocalNetworking`; there is no global ATS exemption.
 
@@ -34,3 +34,30 @@ The first prints an adhoc signed simulator `.app` path in a temporary staging di
 [View the offline layout](../docs/images/sofatap-single-screen.png) and [dot-matrix preview](../docs/images/sofatap-touch-effects.mp4). To reproduce the visual replay in the simulator, launch with `--demo --preview-effects`: the renderer plays three 8-second interaction cycles, then returns to the slow ambient field after 24 seconds. This simulator-only replay generates no synthetic touch events, controller actions or network events.
 
 Offline simulator screenshots and recordings demonstrate local UI and effects, not physical-device frame rate, touch latency or desktop input. Simulator compile, UI and TLS checks do not verify real iPhone LAN permissions, camera scanning, gesture timing and drag feel, microphone permissions/recognition, Typeless, automatic keyboard behavior or actual desktop input. The 0.5.0 interaction still needs physical iPhone acceptance on each supported desktop OS. Earlier 0.3.0 Mac and 0.4.0 Linux verification records do not establish acceptance of these new features. Shared-Mac receiver tests must follow the Yomado virtual-display and input-isolation requirements in `AGENTS.md`.
+
+
+## Experimental Face ID unlock (0.6.0 / build 9)
+
+The iPhone app contains a separate Face ID flow for Windows local-account passwords and password-bearing personal Microsoft accounts. It requires the opt-in Windows login service and Credential Provider; an ordinary or older receiver does not support lock-screen input. This has not yet passed physical Face ID or Windows sign-in acceptance.
+
+1. Unlock Windows locally, install/configure its experimental login component, then pair Sofatap through the receiver's native QR window. The phone accepts the login capability only over the existing pinned receiver connection.
+2. In Sofatap, tap the logo → **Face ID 解锁电脑**. Verify the computer and account, enter the account password indicated by the account type (local or Microsoft account, not a Hello PIN), and explicitly allow local storage. Face ID confirms enrollment.
+3. While the computer is locked, tap the lock/Face ID icon inside the touch surface, then **用 Face ID 解锁**. Each attempt obtains a new, short-lived challenge before requesting Face ID. A cached capability allows connecting to the login service before the ordinary receiver starts.
+4. Sofatap reports success only after the Windows login component confirms it. Cancellation or an uncertain response never resends the password; inspect the TV before explicitly starting another attempt. Use the same settings page to replace/remove the saved password.
+
+The password uses an independent, non-syncing iOS Keychain item with `kSecAttrAccessibleWhenPasscodeSetThisDeviceOnly` and `.biometryCurrentSet`; the ACL protects the actual password read. It is bound to the paired host/port/certificate/token, login-service certificate/device identity, exact Windows account SID, and password-provider kind. Each use creates a fresh `LAContext`, disables reuse and the passcode fallback, and invalidates the context afterward. Changing Face ID enrollment invalidates the password. Re-pairing or a detected service identity change removes the prior enrollment. The login capability itself is stored device-only in Keychain, never in text drafts or UserDefaults.
+
+Passwords use a dedicated secure keyboard field, without clipboard actions, dictation/composer integration, or autofill. After Face ID, the one-use request goes directly to the separately pinned HTTPS login service on TCP 53320. Backgrounding cancels authentication and any pending attempt; a system Face ID prompt becoming inactive does not cancel itself. The ordinary `/control` connection never receives a password, and there is no mouse/keyboard injection fallback. Owned temporary `Data` buffers are cleared; Swift, Foundation and Security may still create runtime copies, so this is not a guarantee that all process memory is zeroized.
+
+The capability keeps the Windows profile SAM alias (such as `outur`) for display, even for a Microsoft account. The Windows component obtains the Microsoft qualified sign-in identity directly from LogonUI after matching the enrolled SID; the phone does not choose or submit an account identity. Microsoft-account passwordless mode and the Windows setting that only allows Windows Hello sign-in make this password flow unavailable. Sofatap does not alter either setting.
+
+Powered-off wake, firmware/BitLocker pre-boot screens, domain/Entra accounts and Windows Hello PIN are not supported in this first integration. Keep a working local sign-in method while testing the login component.
+
+Protocol and binding checks (no real password, biometric prompt or desktop input):
+
+```sh
+xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+  ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
+  ios/tests/UnlockProtocolTests.swift -o /tmp/sofatap-unlock-protocol-tests
+/tmp/sofatap-unlock-protocol-tests
+```
