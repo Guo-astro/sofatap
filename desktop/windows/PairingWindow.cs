@@ -37,6 +37,8 @@ internal sealed class PairingWindow : Form
     private string? _copyUri;
     private bool _updating;
     private bool _layingOut;
+    private bool _layoutReady;
+    private bool _receivedInitialState;
     private bool _stopping;
     private bool _allowClose;
     private readonly Icon _brandIcon = LoadBrandIcon();
@@ -53,11 +55,17 @@ internal sealed class PairingWindow : Form
 
     // Offline rendering only: this constructor never attaches the backend-start event.
     internal PairingWindow(ReceiverState fixture) : this([], preview: true) { ApplyState(fixture); }
+    internal static PairingWindow CreatePendingPreview() => new([], preview: true);
 
     private PairingWindow(string[] arguments, bool preview)
     {
         _arguments = arguments;
         _preview = preview;
+        SuspendLayout();
+        // These are design dimensions at 96 DPI. WinForms scales the form once;
+        // LayoutContents then places children in the current device coordinates.
+        AutoScaleDimensions = new SizeF(96, 96);
+        AutoScaleMode = AutoScaleMode.Dpi;
         Text = "Sofatap";
         Icon = _brandIcon;
         ShowIcon = true;
@@ -67,7 +75,6 @@ internal sealed class PairingWindow : Form
         Font = new Font("Segoe UI", 10.5f);
         BackColor = MintCalm.Canvas;
         ForeColor = MintCalm.Text;
-        AutoScaleMode = AutoScaleMode.Dpi;
         DoubleBuffered = true;
         _headline.Font = new Font(Font.FontFamily, 23, FontStyle.Bold);
         _helper.Font = Font;
@@ -94,6 +101,8 @@ internal sealed class PairingWindow : Form
             Shown += (_, _) => StartBackend();
         }
         FormClosing += ClosingAsync;
+        _layoutReady = true;
+        ResumeLayout(performLayout: true);
         LayoutContents();
     }
 
@@ -115,13 +124,14 @@ internal sealed class PairingWindow : Form
 
     private void LayoutContents()
     {
-        if (_layingOut || IsDisposed || _scroll.ClientSize.Width == 0) return;
+        if (!_layoutReady || _layingOut || IsDisposed || _scroll.ClientSize.Width == 0) return;
         _layingOut = true;
         try
         {
-            var outer = S(24);
-            // 264 points fits the 224-point QR and both card insets, including a vertical scrollbar at minimum width.
-            var width = Math.Max(S(264), Math.Min(S(424), _scroll.ClientSize.Width - outer * 2));
+            var outer = Math.Min(S(24), _scroll.ClientSize.Width / 12);
+            // Never impose a content width larger than the viewport, including
+            // when Windows clamps a high-DPI window to a small work area.
+            var width = Math.Max(1, Math.Min(S(424), _scroll.ClientSize.Width - outer * 2));
             var y = S(24);
             var statusWidth = Math.Min(width, _status.GetPreferredSize(new Size(width, 0)).Width);
             var statusHeight = _status.GetPreferredSize(new Size(statusWidth, 0)).Height;
@@ -133,9 +143,9 @@ internal sealed class PairingWindow : Form
             var helperHeight = LabelHeight(_helper, width, 24);
             _helper.SetBounds(0, y, width, helperHeight);
             y += helperHeight + S(18);
-            var inset = S(20);
+            var inset = Math.Min(S(20), width / 12);
             var innerWidth = width - inset * 2;
-            var qrSize = S(224);
+            var qrSize = Math.Min(S(224), innerWidth);
             var cardY = S(20);
             _qr.SetBounds((width - qrSize) / 2, cardY, qrSize, qrSize);
             cardY += qrSize + S(16);
@@ -168,8 +178,8 @@ internal sealed class PairingWindow : Form
             var privacyHeight = LabelHeight(_privacyHint, width, 20);
             _privacyHint.SetBounds(0, y, width, privacyHeight);
             y += privacyHeight + S(18);
-            var buttonWidth = S(100);
-            var buttonGap = S(20);
+            var buttonGap = Math.Min(S(20), width / 12);
+            var buttonWidth = Math.Min(S(100), (width - buttonGap) / 2);
             _refresh.SetBounds((width - buttonWidth * 2 - buttonGap) / 2, y, buttonWidth, S(36));
             _quit.SetBounds(_refresh.Right + buttonGap, y, buttonWidth, S(36));
             y += S(36) + S(24);
@@ -181,8 +191,38 @@ internal sealed class PairingWindow : Form
                 _scroll.AutoScrollPosition.Y);
         }
         finally { _layingOut = false; }
-        var availableWidth = Math.Max(S(264), Math.Min(S(424), _scroll.ClientSize.Width - S(48)));
+        var availableWidth = Math.Max(1, Math.Min(S(424), _scroll.ClientSize.Width - Math.Min(S(24), _scroll.ClientSize.Width / 12) * 2));
         if (_content.Width != availableWidth) LayoutContents();
+    }
+
+    protected override void OnLayout(LayoutEventArgs e)
+    {
+        // ContainerControl performs automatic scaling in its layout pass. A
+        // final manual pass must follow it, not run only during handle creation.
+        base.OnLayout(e);
+        LayoutContents();
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        if (!_preview)
+        {
+            var workArea = Screen.FromControl(this).WorkingArea;
+            MinimumSize = new Size(Math.Min(MinimumSize.Width, workArea.Width), Math.Min(MinimumSize.Height, workArea.Height));
+            Size = new Size(Math.Min(Width, workArea.Width), Math.Min(Height, workArea.Height));
+            Location = new Point(workArea.Left + (workArea.Width - Width) / 2,
+                workArea.Top + (workArea.Height - Height) / 2);
+        }
+        LayoutContents();
+    }
+
+    protected override void OnShown(EventArgs e)
+    {
+        base.OnShown(e);
+        // Quit is initially the only enabled tab stop. Native initial focus can
+        // scroll it into view; pairing must instead open at the complete QR.
+        _scroll.AutoScrollPosition = Point.Empty;
     }
 
     protected override void OnHandleCreated(EventArgs e)
@@ -245,6 +285,11 @@ internal sealed class PairingWindow : Form
         _refresh.Enabled = true;
         RenderQr();
         LayoutContents();
+        if (!_receivedInitialState)
+        {
+            _receivedInitialState = true;
+            _scroll.AutoScrollPosition = Point.Empty;
+        }
     }
 
     private void RenderQr()
@@ -355,6 +400,14 @@ internal sealed class PairingWindow : Form
     internal bool PreviewCopyEnabled => _preview && _copy.Enabled;
     internal bool PreviewCanScroll => _preview && _scroll.VerticalScroll.Visible;
     internal bool PreviewHasHorizontalScroll => _preview && _scroll.HorizontalScroll.Visible;
+    internal Rectangle PreviewQrViewportBounds => new(_scroll.PointToClient(_qr.PointToScreen(Point.Empty)), _qr.Size);
+    internal Size PreviewViewportSize => _scroll.ClientSize;
+    internal Point PreviewScrollPosition => _scroll.AutoScrollPosition;
+    internal void ApplyPreviewState(ReceiverState state)
+    {
+        if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");
+        ApplyState(state);
+    }
     internal void ScrollPreviewToBottom()
     {
         if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");

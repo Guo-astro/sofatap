@@ -1,19 +1,26 @@
 using System.Drawing.Imaging;
+using System.Text.Json;
 using QRCoder;
 using SofaTap.Desktop;
 
 internal static class Program
 {
+    private static readonly List<LayoutReceipt> Layouts = [];
+
     [STAThread]
     private static void Main(string[] args)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("WinForms rendering requires Windows.");
-        if (args.Length > 1) throw new ArgumentException("Pass only the screenshot output directory.");
-        // Stable logical dimensions for CI. The production app remains PerMonitorV2.
-        Application.SetHighDpiMode(HighDpiMode.DpiUnaware);
+        var stable96 = args.Contains("--stable-96");
+        var paths = args.Where(argument => argument != "--stable-96").ToArray();
+        if (paths.Length > 1 || paths.Any(path => path.StartsWith("--", StringComparison.Ordinal)))
+            throw new ArgumentException("Pass the screenshot output directory and optional --stable-96.");
+        // Match production by default: an unaware fixture conceals an unscaled startup form.
+        var dpiMode = stable96 ? HighDpiMode.DpiUnaware : HighDpiMode.PerMonitorV2;
+        Require(Application.SetHighDpiMode(dpiMode), "The fixture must establish its DPI mode before creating a native handle.");
         Application.EnableVisualStyles();
         Application.SetCompatibleTextRenderingDefault(false);
-        var output = Path.GetFullPath(args.FirstOrDefault() ?? "artifacts/mint-calm");
+        var output = Path.GetFullPath(paths.FirstOrDefault() ?? "artifacts/mint-calm");
         Directory.CreateDirectory(output);
 
         // An ordinary QR with a clearly non-pairing payload. No real token, identity or server exists.
@@ -24,44 +31,109 @@ internal static class Program
         var demoLink = $"sofatap://pair?host={host}&port=53319&token={new string('D', 43)}&fingerprint={new string('0', 64)}";
         var state = new ReceiverState("客厅电脑", "windows", "ready", false, false, [new PairingImage(host, png, demoLink)]);
 
-        using (var window = OpenFixture(state, new Size(472, 730)))
+        // Do not replace the constructor's size here: that would hide startup-size regressions.
+        using (var window = OpenPendingFixture())
         {
+            CheckLayout(window, "pending-startup", requireQrVisible: true);
+            window.ApplyPreviewState(state);
+            Settle(window);
             Require(window.PreviewHasQr && window.PreviewCopyEnabled, "Ready fixture must have a QR and available Copy action.");
+            CheckLayout(window, "ready-startup", requireQrVisible: true);
             Capture(window, Path.Combine(output, "windows-ready.png"));
             window.ShowPreviewFailure();
-            Application.DoEvents();
+            Settle(window);
             Require(!window.PreviewHasQr && !window.PreviewCopyEnabled, "A failure must clear the stale QR and disable Copy.");
+            CheckLayout(window, "failure", requireQrVisible: true);
             Capture(window, Path.Combine(output, "windows-failure.png"));
+            window.ApplyPreviewState(state);
+            Settle(window);
+            CheckLayout(window, "ready-after-failure", requireQrVisible: true);
         }
-        using (var window = OpenFixture(state with { InputStatus = "accessibility_required" }, new Size(472, 730)))
-            Capture(window, Path.Combine(output, "windows-permission.png"));
-        using (var window = OpenFixture(state with { Name = "客厅电脑 · Living Room Computer with a long device name" }, new Size(334, 510)))
+        using (var window = OpenFixture(state with { InputStatus = "accessibility_required" }))
         {
+            CheckLayout(window, "permission", requireQrVisible: true);
+            Capture(window, Path.Combine(output, "windows-permission.png"));
+        }
+        using (var window = OpenFixture(state with { Name = "客厅电脑 · Living Room Computer with a long device name" }))
+        {
+            ResizeLogical(window, new Size(334, 510));
             Require(window.PreviewCanScroll, "A short, narrow window must keep overflow reachable by scrolling.");
-            Require(!window.PreviewHasHorizontalScroll, "The minimum-width fixture must not need horizontal scrolling.");
+            CheckLayout(window, "narrow", requireQrVisible: true);
             Capture(window, Path.Combine(output, "windows-narrow.png"));
             window.ScrollPreviewToBottom();
-            Application.DoEvents();
+            Settle(window);
+            Require(window.PreviewScrollPosition.Y < 0, "The short fixture must actually scroll to its footer.");
+            CheckLayout(window, "narrow-scrolled", requireQrVisible: false);
             Capture(window, Path.Combine(output, "windows-narrow-scrolled.png"));
+
+            // Resize back and forth in the actual current DPI, including while initially scrolled.
+            foreach (var size in new[] { new Size(680, 800), new Size(350, 560), new Size(472, 730), new Size(334, 510), new Size(472, 730) })
+            {
+                ResizeLogical(window, size);
+                CheckLayout(window, $"resize-{size.Width}x{size.Height}", requireQrVisible: false);
+            }
         }
-        using (var window = OpenFixture(state with { Pairings = [new PairingImage(host, png)] }, new Size(472, 730)))
+        using (var window = OpenFixture(state with { Pairings = [new PairingImage(host, png)] }))
+        {
             Require(window.PreviewHasQr && !window.PreviewCopyEnabled, "QR-only snapshots must render with Copy disabled.");
-        Console.WriteLine("Rendered five synthetic WinForms fixtures; no backend, listener, clipboard write or desktop input was started.");
+            CheckLayout(window, "qr-only", requireQrVisible: true);
+        }
+        File.WriteAllText(Path.Combine(output, "windows-layout.json"), JsonSerializer.Serialize(new
+        {
+            dpiMode = dpiMode.ToString(),
+            scope = "Native off-screen fixtures at the current display DPI; no monitor switch or physical input acceptance.",
+            layouts = Layouts
+        }, new JsonSerializerOptions { WriteIndented = true }));
+        Console.WriteLine($"Rendered five synthetic WinForms fixtures in {dpiMode}; verified {Layouts.Count} layouts at DPI {string.Join(", ", Layouts.Select(layout => layout.Dpi).Distinct())}. No backend, listener, clipboard write or desktop input was started.");
     }
 
-    private static PairingWindow OpenFixture(ReceiverState state, Size clientSize)
+    private static PairingWindow OpenPendingFixture() => OpenWindow(PairingWindow.CreatePendingPreview());
+
+    private static PairingWindow OpenFixture(ReceiverState state) => OpenWindow(new PairingWindow(state));
+
+    private static PairingWindow OpenWindow(PairingWindow window)
     {
-        var window = new PairingWindow(state)
-        {
-            ShowInTaskbar = false, StartPosition = FormStartPosition.Manual,
-            Location = new Point(-32000, -32000), ClientSize = clientSize
-        };
+        window.ShowInTaskbar = false;
+        window.StartPosition = FormStartPosition.Manual;
+        window.Location = new Point(-32000, -32000);
         // Create actual native handles off-screen, without activation; Shown has no backend handler in fixture mode.
         window.Show();
-        Application.DoEvents();
-        window.PerformLayout();
+        Settle(window);
         return window;
     }
+
+    private static void ResizeLogical(PairingWindow window, Size size)
+    {
+        window.ClientSize = new Size((int)Math.Round(size.Width * window.DeviceDpi / 96d), (int)Math.Round(size.Height * window.DeviceDpi / 96d));
+        Settle(window);
+    }
+
+    private static void Settle(PairingWindow window)
+    {
+        Application.DoEvents();
+        window.PerformLayout();
+        Application.DoEvents();
+    }
+
+    private static void CheckLayout(PairingWindow window, string name, bool requireQrVisible)
+    {
+        var viewport = window.PreviewViewportSize;
+        var qr = window.PreviewQrViewportBounds;
+        var scroll = window.PreviewScrollPosition;
+        Require(!window.PreviewHasHorizontalScroll && scroll.X == 0, $"{name}: no horizontal scrolling is needed at {window.DeviceDpi} DPI.");
+        Require(qr.Width > 0 && qr.Width == qr.Height, $"{name}: QR must remain square.");
+        Require(qr.Left >= 0 && qr.Right <= viewport.Width, $"{name}: QR and its quiet zone must fit the viewport width.");
+        if (requireQrVisible)
+        {
+            Require(scroll.Y == 0, $"{name}: startup/state changes must not unexpectedly jump down the page.");
+            Require(qr.Top >= 0 && qr.Bottom <= viewport.Height, $"{name}: the complete QR must be visible at {window.DeviceDpi} DPI.");
+        }
+        Layouts.Add(new LayoutReceipt(name, window.DeviceDpi, window.ClientSize, viewport, qr, scroll,
+            window.PreviewHasHorizontalScroll, window.PreviewCanScroll));
+    }
+
+    private sealed record LayoutReceipt(string Name, int Dpi, Size ClientSize, Size ViewportSize,
+        Rectangle QrBounds, Point ScrollPosition, bool HorizontalScroll, bool VerticalScroll);
 
     private static void Capture(PairingWindow window, string path)
     {
