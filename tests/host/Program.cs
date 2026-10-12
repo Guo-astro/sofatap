@@ -7,6 +7,7 @@ void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " +
 LinuxInputChecks.Run(Check);
 TextFocusChecks.Run(Check);
 UnlockCapabilityChecks.Run(Check);
+WindowsTextInputChecks.Run(Check);
 
 var focusTracker = new TextFocusTracker();
 Check(focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), false) == new TextFocusMetadata("unknown", 0), "unavailable desktop never exposes a focused field");

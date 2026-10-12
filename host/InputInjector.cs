@@ -86,15 +86,12 @@ public sealed class WindowsInput : IInputInjector
                     Submit(keyEvents.ToArray());
                     break;
                 case "text":
-                    // SendInput consumes UTF-16 code units; do not enumerate runes or split surrogate pairs.
-                    var textUnits = NormalizeWindowsNewlines(action.Text!);
-                    var textEvents = new Native.Input[textUnits.Length * 2];
-                    for (var index = 0; index < textUnits.Length; index++)
-                    {
-                        textEvents[index * 2] = UnicodeEvent(textUnits[index], false);
-                        textEvents[index * 2 + 1] = UnicodeEvent(textUnits[index], true);
-                    }
-                    Submit(textEvents);
+                    // An embedded newline is a real Return key. Do not combine it with a held
+                    // physical modifier or release a Return key that belongs to the user.
+                    if (action.Text!.IndexOfAny(['\r', '\n']) >= 0 &&
+                        new[] { 0x0D, 0x10, 0x11, 0x12, 0x5B, 0x5C }.Any(key => (Native.GetAsyncKeyState(key) & 0x8000) != 0))
+                        throw new InputInjectionException("input_busy: Release Enter and the physical modifier keys, then try again.");
+                    Submit(BuildTextEvents(action.Text));
                     break;
             }
         }
@@ -123,7 +120,7 @@ public sealed class WindowsInput : IInputInjector
         _held.Clear();
         throw new InputInjectionException($"{(accepted > 0 ? "input_partial" : "input_failed")}: Windows accepted {accepted} of {events.Length} input events (error {error}). {(accepted > 0 ? "Delivery is partial." : "No input events were accepted.")} Focus a normal desktop app; administrator apps and secure desktop may reject input (UIPI). Do not resend text automatically.");
     }
-    private static Native.Input[] BuildFailureReleases(Native.Input[] attempted, int accepted, IEnumerable<string> held)
+    internal static Native.Input[] BuildFailureReleases(Native.Input[] attempted, int accepted, IEnumerable<string> held)
     {
         var keys = new Dictionary<(ushort Key, ushort Scan, uint Flags), Native.Input>();
         var buttons = held.ToHashSet(StringComparer.Ordinal);
@@ -162,10 +159,25 @@ public sealed class WindowsInput : IInputInjector
     private static Native.Input UnicodeEvent(char unit, bool up) => new()
     { Type = Keyboard, Union = new Native.InputUnion { Keyboard = new() { Scan = unit, Flags = Unicode | (up ? KeyUp : 0) } } };
 
+    // Pure event construction: RichEdit can ignore a Unicode CR (VK_PACKET), so line
+    // breaks use VK_RETURN. Ordinary text still preserves every UTF-16 code unit.
+    internal static Native.Input[] BuildTextEvents(string text)
+    {
+        var units = NormalizeWindowsNewlines(text);
+        var events = new Native.Input[units.Length * 2];
+        for (var index = 0; index < units.Length; index++)
+        {
+            var newline = units[index] == '\r';
+            events[index * 2] = newline ? KeyEvent("enter", false) : UnicodeEvent(units[index], false);
+            events[index * 2 + 1] = newline ? KeyEvent("enter", true) : UnicodeEvent(units[index], true);
+        }
+        return events;
+    }
+
     public static string NormalizeWindowsNewlines(string text) => text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\n', '\r');
 
     public static int NativeInputSize => Marshal.SizeOf<Native.Input>();
-    private static class Native
+    internal static class Native
     {
         [StructLayout(LayoutKind.Sequential)] public struct Input { public uint Type; public InputUnion Union; }
         [StructLayout(LayoutKind.Explicit)] public struct InputUnion
