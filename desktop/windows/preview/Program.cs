@@ -129,7 +129,8 @@ internal static class Program
         var viewport = window.PreviewViewportSize;
         var qr = window.PreviewQrViewportBounds;
         var scroll = window.PreviewScrollPosition;
-        Require(!window.PreviewHasHorizontalScroll && scroll.X == 0, $"{name}: no horizontal scrolling is needed at {window.DeviceDpi} DPI.");
+        Require(!window.PreviewHasHorizontalScroll && scroll.X == 0,
+            $"{name}: no horizontal scrolling is needed at {window.DeviceDpi} DPI. Client={window.ClientSize}, viewport={viewport}, QR={qr}, scroll={scroll}.");
         Require(qr.Width > 0 && qr.Width == qr.Height, $"{name}: QR must remain square.");
         Require(qr.Left >= 0 && qr.Right <= viewport.Width, $"{name}: QR and its quiet zone must fit the viewport width.");
         if (requireQrVisible)

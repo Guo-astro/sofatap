@@ -9,7 +9,8 @@ internal sealed class PairingWindow : Form
     private readonly string[] _arguments;
     private readonly bool _preview;
     private readonly Panel _scroll = new() { Dock = DockStyle.Fill, AutoScroll = true, BackColor = MintCalm.Canvas };
-    private readonly Panel _content = new() { BackColor = MintCalm.Canvas };
+    private readonly Panel _content = new() { Dock = DockStyle.Top, BackColor = MintCalm.Canvas };
+    private readonly Panel _column = new() { BackColor = MintCalm.Canvas };
     private readonly StatusBadge _status = new() { Text = "正在准备配对" };
     private readonly Label _headline = TextLabel("扫码，坐回沙发", MintCalm.Text);
     private readonly Label _helper = TextLabel("在 iPhone 上打开 Sofatap，扫描二维码", MintCalm.Muted);
@@ -85,7 +86,8 @@ internal sealed class PairingWindow : Form
         _status.Font = new Font(Font.FontFamily, 9.5f);
         _networkHint.Font = _privacyHint.Font = new Font(Font.FontFamily, 9.5f);
         _card.Controls.AddRange([_qr, _machine, _addresses, _copy]);
-        _content.Controls.AddRange([_status, _headline, _helper, _card, _networkHint, _privacyHint, _refresh, _quit]);
+        _column.Controls.AddRange([_status, _headline, _helper, _card, _networkHint, _privacyHint, _refresh, _quit]);
+        _content.Controls.Add(_column);
         _scroll.Controls.Add(_content);
         Controls.Add(_scroll);
         _scroll.ClientSizeChanged += (_, _) => LayoutContents();
@@ -183,16 +185,16 @@ internal sealed class PairingWindow : Form
             _refresh.SetBounds((width - buttonWidth * 2 - buttonGap) / 2, y, buttonWidth, S(36));
             _quit.SetBounds(_refresh.Right + buttonGap, y, buttonWidth, S(36));
             y += S(36) + S(24);
-            _content.Size = new Size(width, y);
-            // The content's own bounds provide its width. Reserving a full viewport width here
-            // would cause an unnecessary horizontal scrollbar when the vertical one appears.
+            // A top-docked scroll child follows the viewport width. Keeping the
+            // centered column inside it prevents WinForms from using an old
+            // child X offset as horizontal overflow during a resize.
+            _column.SetBounds(Math.Max(outer, (_scroll.ClientSize.Width - width) / 2), 0, width, y);
+            _content.Height = y;
             _scroll.AutoScrollMinSize = new Size(0, y);
-            _content.Location = new Point(Math.Max(outer, (_scroll.ClientSize.Width - width) / 2) + _scroll.AutoScrollPosition.X,
-                _scroll.AutoScrollPosition.Y);
         }
         finally { _layingOut = false; }
         var availableWidth = Math.Max(1, Math.Min(S(424), _scroll.ClientSize.Width - Math.Min(S(24), _scroll.ClientSize.Width / 12) * 2));
-        if (_content.Width != availableWidth) LayoutContents();
+        if (_column.Width != availableWidth) LayoutContents();
     }
 
     protected override void OnLayout(LayoutEventArgs e)
