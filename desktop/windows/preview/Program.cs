@@ -78,13 +78,22 @@ internal static class Program
             Require(window.PreviewHasQr && !window.PreviewCopyEnabled, "QR-only snapshots must render with Copy disabled.");
             CheckLayout(window, "qr-only", requireQrVisible: true);
         }
+        foreach (var workArea in new[] { Screen.PrimaryScreen!.WorkingArea.Size, new Size(1920, 1040), new Size(1280, 680) })
+        {
+            using var window = OpenFixture(state);
+            window.FitPreviewToWorkArea(workArea);
+            Settle(window);
+            Require(window.Width <= workArea.Width && window.Height <= workArea.Height, "The initial window must fit its work area.");
+            CheckLayout(window, $"work-area-{workArea.Width}x{workArea.Height}", requireQrVisible: true);
+            Capture(window, Path.Combine(output, $"windows-work-area-{workArea.Width}x{workArea.Height}.png"));
+        }
         File.WriteAllText(Path.Combine(output, "windows-layout.json"), JsonSerializer.Serialize(new
         {
             dpiMode = dpiMode.ToString(),
             scope = "Native off-screen fixtures at the current display DPI; no monitor switch or physical input acceptance.",
             layouts = Layouts
         }, new JsonSerializerOptions { WriteIndented = true }));
-        Console.WriteLine($"Rendered five synthetic WinForms fixtures in {dpiMode}; verified {Layouts.Count} layouts at DPI {string.Join(", ", Layouts.Select(layout => layout.Dpi).Distinct())}. No backend, listener, clipboard write or desktop input was started.");
+        Console.WriteLine($"Rendered synthetic WinForms fixtures in {dpiMode}; verified {Layouts.Count} layouts at DPI {string.Join(", ", Layouts.Select(layout => layout.Dpi).Distinct())}. No backend, listener, clipboard write or desktop input was started.");
     }
 
     private static PairingWindow OpenPendingFixture() => OpenWindow(PairingWindow.CreatePendingPreview());

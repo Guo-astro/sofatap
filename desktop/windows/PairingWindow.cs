@@ -145,7 +145,7 @@ internal sealed class PairingWindow : Form
             y += helperHeight + S(18);
             var inset = Math.Min(S(20), width / 12);
             var innerWidth = width - inset * 2;
-            var qrSize = Math.Min(S(224), innerWidth);
+            var qrSize = Math.Max(1, Math.Min(Math.Min(S(224), innerWidth), _scroll.ClientSize.Height - y - S(40)));
             var cardY = S(20);
             _qr.SetBounds((width - qrSize) / 2, cardY, qrSize, qrSize);
             cardY += qrSize + S(16);
@@ -209,12 +209,17 @@ internal sealed class PairingWindow : Form
         if (!_preview)
         {
             var workArea = Screen.FromControl(this).WorkingArea;
-            MinimumSize = new Size(Math.Min(MinimumSize.Width, workArea.Width), Math.Min(MinimumSize.Height, workArea.Height));
-            Size = new Size(Math.Min(Width, workArea.Width), Math.Min(Height, workArea.Height));
+            FitWindowToWorkArea(workArea.Size);
             Location = new Point(workArea.Left + (workArea.Width - Width) / 2,
                 workArea.Top + (workArea.Height - Height) / 2);
         }
         LayoutContents();
+    }
+
+    private void FitWindowToWorkArea(Size workArea)
+    {
+        MinimumSize = new Size(Math.Min(MinimumSize.Width, workArea.Width), Math.Min(MinimumSize.Height, workArea.Height));
+        Size = new Size(Math.Min(Width, workArea.Width), Math.Min(Height, workArea.Height));
     }
 
     protected override void OnShown(EventArgs e)
@@ -403,6 +408,11 @@ internal sealed class PairingWindow : Form
     internal Rectangle PreviewQrViewportBounds => new(_scroll.PointToClient(_qr.PointToScreen(Point.Empty)), _qr.Size);
     internal Size PreviewViewportSize => _scroll.ClientSize;
     internal Point PreviewScrollPosition => _scroll.AutoScrollPosition;
+    internal void FitPreviewToWorkArea(Size workArea)
+    {
+        if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");
+        FitWindowToWorkArea(workArea);
+    }
     internal void ApplyPreviewState(ReceiverState state)
     {
         if (!_preview) throw new InvalidOperationException("Fixtures are available only in preview mode.");

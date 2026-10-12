@@ -12,6 +12,8 @@ The QR encodes **SOFATAP UI PREVIEW - DEMO ONLY - NOT A PAIRING CODE**, padded t
 
 Assertions cover the constructor's default window size, the pending-to-ready startup transition, the complete QR being visible without horizontal scrolling, stale QR/Copy clearing on failure, QR-only compatibility, short/narrow layouts, and repeated resizing after scrolling. The harness does not override the startup size; doing so would hide a missing DPI baseline in the production constructor. `windows-layout.json` records the actual DPI, viewport and QR bounds, scroll position and scrollbar visibility for each checked state.
 
+Additional `windows-work-area-*.png` fixtures exercise the same initial size limit used by production against the actual primary work area and 1920×1040 / 1280×680 physical-pixel limits. The QR also fits the available height when a high-DPI window cannot show the entire form at once. These fixtures change only their own off-screen windows, never the display settings.
+
 Run it on a machine already configured to the display scaling being checked (for example 125%, 150%, 200% or 300%). The harness does not change display settings or send synthetic `WM_DPICHANGED` messages: those messages alone do not reproduce the operating system's per-monitor child notifications and native font metrics. A run at 96 DPI establishes only the 100% result; it is not evidence for higher scaling settings.
 
 For optional comparison with earlier fixed-96-DPI images:
