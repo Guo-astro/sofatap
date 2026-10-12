@@ -39,6 +39,15 @@ internal sealed class PairingWindow : Form
     private bool _layingOut;
     private bool _stopping;
     private bool _allowClose;
+    private readonly Icon _brandIcon = LoadBrandIcon();
+
+    private static Icon LoadBrandIcon()
+    {
+        using var stream = typeof(PairingWindow).Assembly.GetManifestResourceStream("Sofatap.AppIcon")
+            ?? throw new InvalidOperationException("The Sofatap app icon is missing from this build.");
+        using var icon = new Icon(stream);
+        return (Icon)icon.Clone();
+    }
 
     internal PairingWindow(string[] arguments) : this(arguments, preview: false) { }
 
@@ -50,7 +59,8 @@ internal sealed class PairingWindow : Form
         _arguments = arguments;
         _preview = preview;
         Text = "Sofatap";
-        ShowIcon = false;
+        Icon = _brandIcon;
+        ShowIcon = true;
         StartPosition = FormStartPosition.CenterScreen;
         ClientSize = new Size(472, 730);
         MinimumSize = new Size(350, 440);
@@ -353,7 +363,7 @@ internal sealed class PairingWindow : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _copyFeedback.Dispose(); _backend.Dispose(); }
+        if (disposing) { _copyFeedback.Dispose(); _backend.Dispose(); _brandIcon.Dispose(); }
         base.Dispose(disposing);
     }
 }

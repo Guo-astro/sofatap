@@ -310,6 +310,14 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
         def __init__(self):
             super().__init__(title="Sofatap")
             self.set_name("sofatap-receiver")
+            # Packaged builds and source previews share the approved iPhone artwork.
+            # Set it directly as well as in the desktop entry for portable launches.
+            root = Path(__file__).resolve().parents[2]
+            icon = root / "sofatap.png"
+            if not icon.is_file():
+                icon = root / "ios/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png"
+            if icon.is_file():
+                self.set_icon_from_file(str(icon))
             Gtk.StyleContext.add_provider_for_screen(self.get_screen(), provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
             self.set_default_size(470, 700)
             self.set_position(Gtk.WindowPosition.CENTER)

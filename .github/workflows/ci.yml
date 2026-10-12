@@ -118,6 +118,10 @@ jobs:
           dotnet-version: '10.0.x'
       - name: Host checks with fake input
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+      - name: Recording harness checks with Windows file sharing
+        run: dotnet run --project tests/device-harness/SofaTap.DeviceHarness.csproj -c Release -- --self-test
+      - name: Windows Schannel TLS and authenticated recording transport
+        run: dotnet run --project tests/device-harness/SofaTap.DeviceHarness.csproj -c Release -- --transport-check
       - name: Windows login broker state and credential lifetime checks
         run: dotnet run --project desktop/windows-login/Tests/Sofatap.Login.Tests.csproj -c Release
       - name: Compile optional Windows login service without installing it

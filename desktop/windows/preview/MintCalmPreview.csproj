@@ -8,8 +8,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <AssemblyName>Sofatap.MintCalmPreview</AssemblyName>
+    <ApplicationIcon>../Assets/SofaTap.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../Assets/SofaTap.ico" LogicalName="Sofatap.AppIcon" />
     <Compile Include="../PairingWindow.cs" Link="PairingWindow.cs" />
     <Compile Include="../MintCalmControls.cs" Link="MintCalmControls.cs" />
     <Compile Include="../NativeProtocol.cs" Link="NativeProtocol.cs" />

@@ -18,6 +18,13 @@ internal static class SelfTests
     }
     private static string DirectoryPath() => Path.Combine(Path.GetTempPath(), "sofatap-device-harness-" + Guid.NewGuid().ToString("N"));
     private static JsonDocument State(string path) => JsonDocument.Parse(File.ReadAllText(Path.Combine(path, "state.json")));
+    private static string Events(string path)
+    {
+        // Windows readers must share the writer that remains open for the run.
+        using var stream = new FileStream(Path.Combine(path, "events.jsonl"), FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+        using var reader = new StreamReader(stream);
+        return reader.ReadToEnd();
+    }
     public static void Run()
     {
         var path = DirectoryPath();
@@ -51,10 +58,11 @@ internal static class SelfTests
                 Check(record.Focus().Kind == TextFocusKind.Other, "non-field synthetic state reported");
                 PrivateFiles.WriteJson(Path.Combine(path, "control.json"), new { focus = "text", revision = "bad" });
                 Check(record.Focus().Kind == TextFocusKind.Other, "malformed focus revision is ignored without disrupting transport");
-                var before = File.ReadAllText(Path.Combine(path, "events.jsonl"));
+                var before = Events(path);
                 try { record.Apply(new("10", "text", Text: "sofatap://pair?token=private")); throw new InvalidOperationException(); }
-                catch (InputInjectionException) { Check(File.ReadAllText(Path.Combine(path, "events.jsonl")) == before, "pairing material rejected before event log"); }
-                foreach (var line in File.ReadLines(Path.Combine(path, "events.jsonl"))) using (JsonDocument.Parse(line)) { }
+                catch (InputInjectionException) { Check(Events(path) == before, "pairing material rejected before event log"); }
+                using (var lines = new StringReader(Events(path)))
+                    while (lines.ReadLine() is { } line) using (JsonDocument.Parse(line)) { }
                 Check(true, "every event is a complete JSON line");
                 if (!OperatingSystem.IsWindows())
                 {
@@ -117,7 +125,7 @@ internal static class SelfTests
                 await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Test complete", timeout.Token);
                 await app.StopAsync(timeout.Token);
                 using (var state = State(path)) Check(state.RootElement.GetProperty("buttons").GetArrayLength() == 0, "socket close releases recording drag");
-                var logs = File.ReadAllText(Path.Combine(path, "events.jsonl")) + File.ReadAllText(Path.Combine(path, "state.json"));
+                var logs = Events(path) + File.ReadAllText(Path.Combine(path, "state.json"));
                 Check(!logs.Contains(credentials.Token) && !logs.Contains(credentials.Fingerprint) && !logs.Contains("sofatap://"), "recording evidence contains no live pairing credentials");
                 Console.WriteLine($"PASS {passed} production TLS/recording checks; desktop input remains untested.");
             }

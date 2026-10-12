@@ -10,8 +10,12 @@
     <Version>0.6.0</Version>
     <Product>Sofatap</Product>
     <AssemblyTitle>Sofatap Receiver</AssemblyTitle>
+    <ApplicationIcon>Assets/SofaTap.ico</ApplicationIcon>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <DefaultItemExcludes>$(DefaultItemExcludes);tests/**;preview/**</DefaultItemExcludes>
   </PropertyGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="Assets/SofaTap.ico" LogicalName="Sofatap.AppIcon" />
+  </ItemGroup>
 </Project>

@@ -72,6 +72,9 @@ public sealed class Credentials : IDisposable
         catch { fileLock.Dispose(); throw; }
     }
     private static X509Certificate2 LoadCertificate(Secret secret) => X509CertificateLoader.LoadPkcs12(Convert.FromBase64String(secret.Pfx), "",
+        // Schannel needs a named key container for server TLS. Keep it in this
+        // user's store and let certificate disposal remove it (no PersistKeySet).
+        OperatingSystem.IsWindows() ? X509KeyStorageFlags.UserKeySet :
         (OperatingSystem.IsMacOS() ? X509KeyStorageFlags.DefaultKeySet : X509KeyStorageFlags.EphemeralKeySet) | X509KeyStorageFlags.Exportable);
     private static Secret CreateSecret()
     {
