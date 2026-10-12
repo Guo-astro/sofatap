@@ -61,7 +61,7 @@ enum PairingError: LocalizedError {
     case invalid, storeFailed
     var errorDescription: String? {
         switch self {
-        case .invalid: return "配对链接不完整。请复制 Windows 窗口里的完整 sofatap://pair 链接，或重新扫描二维码。"
+        case .invalid: return "配对链接不完整。请复制电脑接收器窗口里的完整 sofatap://pair 链接，或重新扫描二维码。"
         case .storeFailed: return "无法将配对安全保存到钥匙串，请重试。"
         }
     }

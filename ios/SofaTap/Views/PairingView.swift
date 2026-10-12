@@ -18,7 +18,7 @@ struct PairingView: View {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("连接你的客厅电脑")
                             .font(.system(size: 27, weight: .semibold))
-                        Text("在 Windows 或 Mac 上打开 Sofatap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
+                        Text("在电脑上打开 Sofatap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。")
                             .font(.system(size: 15)).foregroundStyle(Palette.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -55,7 +55,7 @@ struct PairingView: View {
                         VStack(alignment: .leading, spacing: 10) {
                             Label("已配对的电脑", systemImage: "checkmark.shield")
                                 .font(.system(size: 14, weight: .medium))
-                            Text("\(pairing.host):\(pairing.port)")
+                            Text(verbatim: "\(pairing.host):\(pairing.port)")
                                 .font(.system(size: 13, design: .monospaced)).foregroundStyle(Palette.muted)
                             Button("移除配对", role: .destructive) { forgetAlert = true }
                                 .font(.system(size: 13, weight: .medium))
