@@ -12,6 +12,12 @@ Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn 
 
 [Releases](https://github.com/chekusu/sofatap/releases) · [Issues](https://github.com/chekusu/sofatap/issues) · [MIT license](LICENSE)
 
+## Watch the film
+
+[![Watch the Sofatap film: an iPhone controls the computer on the TV with gestures, keyboard input and voice dictation](https://sofatap.app/media/sofatap-demo-poster-en.jpg)](https://sofatap.app/#video)
+
+A one-minute tour of pointer gestures, typing on the phone keyboard and voice dictation, all from the sofa. [Watch the film on sofatap.app](https://sofatap.app/#video) or download the captioned MP4: [English](https://sofatap.app/exports/sofatap-promo-en.mp4) · [Simplified Chinese](https://sofatap.app/exports/sofatap-promo-zh-cn.mp4).
+
 ## What you can do
 
 - One rounded touch surface contains the logo, QR scanner, microphone and keyboard controls. A gently flowing dot matrix fills the surface; touch warps nearby dots and taps send ripples through it. There is no on-surface instruction text. Reduce Motion keeps the grid static with simpler touch feedback.

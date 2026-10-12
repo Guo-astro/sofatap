@@ -12,6 +12,12 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 [下载版本](https://github.com/chekusu/sofatap/releases) · [问题反馈](https://github.com/chekusu/sofatap/issues) · [MIT 许可](LICENSE)
 
+## 宣传视频
+
+[![观看 Sofatap 宣传视频：用 iPhone 的手势、键盘输入和语音听写操作电视上的电脑](https://sofatap.app/media/sofatap-demo-poster-zh-cn.jpg)](https://sofatap.app/zh/#video)
+
+一分钟短片：手势指针、手机键盘打字、语音听写，坐在沙发上就能完成。[在 sofatap.app 观看宣传视频](https://sofatap.app/zh/#video)，或下载带字幕的 MP4：[简体中文](https://sofatap.app/exports/sofatap-promo-zh-cn.mp4) · [英文](https://sofatap.app/exports/sofatap-promo-en.mp4)。
+
 ## 可以做什么
 
 - 一个大圆角触控区域，容纳 logo、扫码、麦克风和键盘入口。背景铺满缓慢流动的点阵，触摸会使附近点阵弯曲、偏移，点击产生涟漪。触控面不放说明文字；开启「减弱动态效果」后点阵保持静止，触摸反馈简化。

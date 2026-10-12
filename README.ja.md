@@ -12,6 +12,12 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 [リリース](https://github.com/chekusu/sofatap/releases) · [Issue](https://github.com/chekusu/sofatap/issues) · [MIT ライセンス](LICENSE)
 
+## 紹介動画
+
+[![Sofatap の紹介動画を見る：ジェスチャー、キーボード入力、音声入力で、テレビにつないだパソコンを iPhone から操作](https://sofatap.app/media/sofatap-demo-poster-ja.jpg)](https://sofatap.app/ja/#video)
+
+ジェスチャーでのポインタ操作、iPhone のキーボード入力、音声入力をソファから試せる 1 分の紹介動画です。[sofatap.app で紹介動画を見る](https://sofatap.app/ja/#video)（日本語ナレーション・字幕）。字幕付き MP4 のダウンロード：[英語版](https://sofatap.app/exports/sofatap-promo-en.mp4) · [簡体字中国語版](https://sofatap.app/exports/sofatap-promo-zh-cn.mp4)。
+
 ## できること
 
 - 大きな角丸のタッチ面に、ロゴ、QR スキャン、マイク、キーボードの操作をまとめています。背景全体にゆっくり動くドットの格子を表示し、触れた場所の近くがゆがみ、タップで波紋が広がります。タッチ面には説明文を置きません。「視差効果を減らす」が有効な場合は、格子を静止させて簡単な反応だけを表示します。
