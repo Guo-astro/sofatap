@@ -37,18 +37,35 @@ cp LICENSE "$release_dir/LICENSE"
 cp THIRD-PARTY-NOTICES.md "$release_dir/THIRD-PARTY-NOTICES.md"
 # A self-contained executable embeds runtime code. Preserve notices from the
 # actual restored packages, including when the installed SDK selects a newer patch.
+# Native Windows SDKs can provide the host from packs/, without a NuGet restore entry.
+"$dotnet_cmd" msbuild host/SofaTap.Host.csproj -t:ResolveFrameworkReferences \
+  -p:RuntimeIdentifier=win-x64 -p:SelfContained=true -p:PublishSingleFile=true \
+  -p:UseArtifactsOutput=true -p:ArtifactsPath="$build_dir/backend-intermediate" \
+  -getItem:ResolvedSingleFileHostPack > "$build_dir/backend-host-pack.json"
+"$dotnet_cmd" msbuild desktop/windows/SofaTap.Desktop.csproj -t:ResolveFrameworkReferences \
+  -p:RuntimeIdentifier=win-x64 -p:SelfContained=true -p:PublishSingleFile=true \
+  -p:UseArtifactsOutput=true -p:ArtifactsPath="$build_dir/frontend-intermediate" \
+  -getItem:ResolvedSingleFileHostPack > "$build_dir/frontend-host-pack.json"
 python3 - "$repo_dir" "$release_dir" "$build_dir" <<'PY'
+import hashlib
+import io
 import json
 from pathlib import Path
 import re
 import shutil
 import sys
+import urllib.request
+import xml.etree.ElementTree as ET
+import zipfile
 
 root, release, build = map(Path, sys.argv[1:])
 asset_paths = [build / "backend-intermediate/obj/SofaTap.Host/project.assets.json",
                build / "frontend-intermediate/obj/SofaTap.Desktop/project.assets.json"]
 package_folders = set()
 packages = {}
+host_name = "microsoft.netcore.app.host.win-x64"
+host_locations = []
+document_names = {"license", "license.txt", "license.md", "third-party-notices.txt", "thirdpartynotices.txt", "notice", "notice.txt"}
 def include(name, version):
     name = name.lower()
     if name in packages and packages[name] != version:
@@ -73,6 +90,21 @@ for asset_path in asset_paths:
             if not match or match[1] != match[2]:
                 raise SystemExit("Expected an exact runtime version for " + name)
             include(name, match[1])
+for component in ("backend", "frontend"):
+    hosts = json.loads((build / (component + "-host-pack.json")).read_text(encoding="utf-8-sig"))["Items"]["ResolvedSingleFileHostPack"]
+    if len(hosts) != 1 or hosts[0].get("RuntimeIdentifier") != "win-x64":
+        raise SystemExit("Expected exactly one resolved Windows single-file host for " + component)
+    host = hosts[0]
+    version = host.get("NuGetPackageVersion", "")
+    package = Path(host["PackageDirectory"])
+    if (host.get("NuGetPackageId", "").lower() != host_name
+            or not re.fullmatch(r"\d+\.\d+\.\d+(?:[-+][A-Za-z0-9.-]+)?", version)
+            or package.name != version or package.parent.name.lower() != host_name
+            or host.get("PathInPackage", "").replace("\\", "/") != "runtimes/win-x64/native/singlefilehost.exe"
+            or Path(host["Path"]).resolve() != (package / "runtimes/win-x64/native/singlefilehost.exe").resolve()):
+        raise SystemExit("Resolved host package has an unexpected identity for " + component)
+    include(host_name, version)
+    host_locations.append(package)
 required_runtimes = {"microsoft.netcore.app.runtime.win-x64", "microsoft.aspnetcore.app.runtime.win-x64",
                      "microsoft.netcore.app.host.win-x64", "microsoft.windowsdesktop.app.runtime.win-x64"}
 if not required_runtimes.issubset(packages):
@@ -84,19 +116,58 @@ licenses.mkdir()
 resolved = []
 for name, version in sorted(packages.items()):
     package = next((folder / name / version for folder in package_folders if (folder / name / version).is_dir()), None)
-    if package is None:
+    if package is None and name != host_name:
         raise SystemExit("Resolved package is missing from the cache: " + name)
     destination = licenses / ("qrcoder" if name == "qrcoder" else name)
     destination.mkdir()
-    documents = [file for file in package.iterdir() if file.is_file() and file.name.lower() in {"license", "license.txt", "license.md", "third-party-notices.txt", "thirdpartynotices.txt", "notice", "notice.txt"}]
+    documents = [file for file in package.iterdir() if file.is_file() and file.name.lower() in document_names] if package else []
+    host_documents = {}
+    if name == host_name:
+        # A package-cache copy is a restored NuGet artifact. If only the SDK pack
+        # exists, fetch the exact official package; never substitute another version
+        # or skip notices. Compare the SDK's actual native hosts before using them.
+        url = f"https://api.nuget.org/v3-flatcontainer/{name}/{version}/{name}.{version}.nupkg"
+        archive = None
+        if package is None:
+            with urllib.request.urlopen(url, timeout=45) as response:
+                payload = response.read(64 * 1024 * 1024 + 1)
+            if len(payload) > 64 * 1024 * 1024:
+                raise SystemExit("Resolved host package exceeds the download limit")
+            archive = zipfile.ZipFile(io.BytesIO(payload))
+            specs = [item for item in archive.namelist() if item.lower() == name + ".nuspec"]
+            if len(specs) != 1:
+                raise SystemExit("Downloaded host package is missing its exact NuGet manifest")
+            metadata = ET.fromstring(archive.read(specs[0]))
+            if (metadata.findtext("{*}metadata/{*}id") or "").lower() != name or metadata.findtext("{*}metadata/{*}version") != version:
+                raise SystemExit("Downloaded host package identity does not match MSBuild")
+            host_documents = {item: archive.read(item) for item in archive.namelist()
+                              if "/" not in item and item.lower() in document_names}
+        hashes = {}
+        for binary in ("apphost.exe", "singlefilehost.exe"):
+            relative = "runtimes/win-x64/native/" + binary
+            expected = (package / relative).read_bytes() if package else archive.read(relative)
+            digest = hashlib.sha256(expected).hexdigest()
+            for location in host_locations:
+                if hashlib.sha256((location / relative).read_bytes()).hexdigest() != digest:
+                    raise SystemExit("Resolved SDK host differs from its matching NuGet package: " + binary)
+            hashes[binary] = digest
+        if archive:
+            archive.close()
+        (destination / "PROVENANCE.json").write_text(json.dumps({
+            "package": name, "version": version, "officialPackage": url,
+            "licenseSource": "NuGet cache" if package else "official NuGet download",
+            "verifiedNativeHostSHA256": hashes,
+        }, indent=2) + "\n", encoding="utf-8")
     if name == "qrcoder" and version == "1.7.0":
         # This package declares MIT but omits the license file. Preserve the
         # original text retrieved from its exact upstream source commit.
         documents.append(root / "licenses/qrcoder/LICENSE.txt")
-    if not any(file.name.lower().startswith("license") for file in documents):
+    if not any(file.name.lower().startswith("license") for file in documents) and not any(name.lower().startswith("license") for name in host_documents):
         raise SystemExit("No license text found for shipped package: " + name + " " + version)
     for document in documents:
         shutil.copyfile(document, destination / document.name)
+    for document, content in host_documents.items():
+        (destination / document).write_bytes(content)
     resolved.append(name + " " + version)
 (licenses / "RESOLVED-PACKAGES.txt").write_text("Resolved package licenses included in this release:\n" + "\n".join(resolved) + "\n", encoding="utf-8")
 print("Included license documents for " + str(len(resolved)) + " resolved packages.")

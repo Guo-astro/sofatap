@@ -104,6 +104,8 @@ jobs:
         run: |
           bash scripts/build-macos.sh arm64
           bash scripts/build-macos.sh x64
+      - name: Windows packaging provenance and license checks
+        run: python3 tests/windows_packaging.py
       - name: Build Windows distribution and include licenses
         run: bash scripts/build-windows.sh
 
