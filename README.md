@@ -27,7 +27,7 @@ A one-minute tour of pointer gestures, typing on the phone keyboard and voice di
 - The three desktop receivers share the selected **Mint Calm (暮色薄荷)** design: charcoal background, pale mint actions and a clear white QR area. See the [design specification](docs/RECEIVER-DESIGN.md); this work is in development source, not the earlier downloads below.
 - Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Live input pauses on conflicting desktop edits or a lost connection; it never automatically replays uncertain edits.
 
-**This is an alpha preview.** Live text editing is in the 0.7.0 (iPhone build 10) development source on `main`; the downloads below are earlier alpha releases. The [0.6.0 scoped Windows record](docs/verification/2026-10-13-iphone-input.md) covers real iPhone gestures, microphone dictation and explicit text sending. It does not establish acceptance of the new real-time editing path, Mac live editing, Typeless or every target application. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+**This is an alpha preview.** Live text editing is in the 0.7.0 (iPhone build 10) development source on `main`; the downloads below are earlier alpha releases. [Scoped 0.7.0 iPhone-to-Windows checks](docs/verification/realtime-input-0.7.0.md) passed existing-text import, multilingual/emoji/newline append, keyboard deletion, Select All and deletion to empty in a native RichEdit field. Live speech and further cases remain pending. The [0.6.0 record](docs/verification/2026-10-13-iphone-input.md) separately covers gestures, microphone dictation and explicit text sending. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
 
 Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface. Supported fields open as live editors; other fields keep draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [dot-matrix preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
 
@@ -39,8 +39,8 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Scoped 0.6.0 iPhone-to-Windows gesture, microphone and explicit-send checks are recorded above; 0.7.0 live editing still needs physical-device acceptance. |
-| Windows | Native receiver released in 0.3.0. Development source adds live editing for native Edit/RichEdit controls; the new path requires isolated phone-to-Windows acceptance. |
+| iPhone | iOS 17+. Physical 0.7.0 (10) live import, append, deletion and selection passed in a Windows RichEdit fixture; live speech and broader coverage remain pending. |
+| Windows | Native receiver released in 0.3.0. Development source supports native Edit/RichEdit live editing; scoped physical RichEdit keyboard checks passed, with further device cases pending. |
 | Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
 | Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
 
@@ -129,7 +129,7 @@ bash ios/scripts/build-manual.sh device
 
 The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-Build, protocol, virtual-desktop and physical-device checks establish different things. The new 0.7.0 live path still requires physical keyboard/deletion/selection, revising speech, conflict and reconnect acceptance. Earlier gesture and explicit-send checks do not establish this path or coverage of Typeless and every target application.
+Build, protocol, virtual-desktop and physical-device checks establish different things. The [0.7.0 physical record](docs/verification/realtime-input-0.7.0.md) confirms RichEdit import, append, deletion and selection. Live speech, plain Edit, middle-of-text replacement, conflicts, reconnects, Mac live editing, Typeless and additional applications remain outside that completed scope.
 
 ## Repository layout
 

@@ -1,6 +1,6 @@
 # Sofatap 实机验收
 
-适用于 0.7.0 开发源码（iPhone build 10）的实时编辑及既有单屏交互。公开下载仍是 Windows/Mac 0.3.0、Linux 0.4.0，不能用于验收新增功能。以下是测试清单，不是本轮实时编辑已通过的结果。[0.6.0 限定 Windows 验收](verification/2026-10-13-iphone-input.md)已覆盖真实 iPhone 手势、麦克风与明确发送；新实时编辑需要单独验收。模拟器和编译不能代替真机。共享 Mac 必须先按 AGENTS.md 用 Yomado 验证虚拟显示器与输入隔离。
+适用于 0.7.0 开发源码（iPhone build 10）的实时编辑及既有单屏交互。公开下载仍是 Windows/Mac 0.3.0、Linux 0.4.0，不能用于验收新增功能。以下是验收标准清单，不表示全部通过。[0.7.0 真机到 Windows 记录](verification/realtime-input-0.7.0.md)已确认 RichEdit 导入、追加、键盘删除、全选及清空，实时语音与其他项目仍待完成。[0.6.0 记录](verification/2026-10-13-iphone-input.md)另有手势、麦克风与明确发送结果。模拟器和编译不能代替真机。共享 Mac 必须先按 AGENTS.md 用 Yomado 验证虚拟显示器与输入隔离。
 
 先在测试桌面的文本编辑器里测试，再进入浏览器和日常软件。Mac 使用“文本编辑”，Windows 使用记事本，Linux 使用测试环境中的文本编辑器。测试不使用真实密码或私人内容。
 

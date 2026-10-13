@@ -27,7 +27,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 - 三端接收器采用已选定的**暮色薄荷**设计：深灰底色、薄荷绿操作按钮与清晰的白底二维码。参见[设计规格](docs/RECEIVER-DESIGN.md)；此次更新位于开发源码，下方旧版下载尚未包含。
 - 通过家庭局域网连接，使用 WSS/TLS、证书指纹校验和本地配对凭据。电脑上的修改与当前编辑冲突或连接中断时，实时输入会暂停；结果不确定的编辑不会自动重放。
 
-**当前是 alpha 预览版。** 实时文字编辑位于 `main` 的 0.7.0 开发源码（iPhone build 10）中，下方下载仍是先前 alpha 版本。[0.6.0 Windows 限定验收记录](docs/verification/2026-10-13-iphone-input.md)包含真实 iPhone 手势、麦克风听写和明确发送文字；它不代表新的实时编辑、Mac 实时编辑、Typeless 或所有应用已验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
+**当前是 alpha 预览版。** 实时文字编辑位于 `main` 的 0.7.0 开发源码（iPhone build 10）中，下方下载仍是先前 alpha 版本。[0.7.0 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
 点击 logo 查看连接详情和手势帮助。需要输入时，编辑区才出现在触控区域下方；受支持的输入框直接实时编辑，其他输入框保留草稿检查与明确发送。[查看离线模拟器界面](docs/images/sofatap-single-screen.png)与[点阵动效预览](docs/images/sofatap-touch-effects.mp4)。这些仅展示本地渲染，不代表真实 iPhone 输入或性能已验证。
 
@@ -39,8 +39,8 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。0.6.0 到 Windows 的限定手势、麦克风和明确发送验收见上方记录；0.7.0 实时编辑仍需真机验收。 |
-| Windows | 0.3.0 原生接收端已发布。开发源码新增原生 Edit/RichEdit 的实时编辑，新路径仍需隔离环境中的手机联合验收。 |
+| iPhone | iOS 17+。0.7.0 (10) 已通过 Windows RichEdit 测试字段的真实导入、追加、删除和选区同步；实时语音及更多场景仍待验收。 |
+| Windows | 0.3.0 原生接收端已发布。开发源码支持原生 Edit/RichEdit 实时编辑；限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。 |
 | Mac | macOS 15+。Apple Silicon 和 Intel 包均已公证；Apple Silicon 完成部分真机验收，Intel 输入待实测。 |
 | Linux | 0.4.0 GTK3 原生接收端已发布；X11 输入通过隔离桌面检查。Wayland portal 为实验支持；真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
 
@@ -129,7 +129,7 @@ bash ios/scripts/build-manual.sh device
 
 Host runner 使用模拟输入器。TLS/WebSocket 检查以 `--dry-run` 启动临时接收端，不向系统注入输入。最后一项编译未配置签名的 ARM64 iOS App，不安装到手机。CI 还执行各平台构建和隔离 Linux 桌面检查；相关命令见 [Linux 说明](desktop/linux/README.md#lifecycle-and-checks)。
 
-构建、协议、虚拟桌面和物理设备检查分别证明不同层面的行为。0.7.0 的实时路径仍需实机验证打字、删除、选区、语音修正、冲突及重连。此前手势和明确发送的结果不代表实时路径、Typeless 或所有目标应用已验收。
+构建、协议、虚拟桌面和物理设备检查分别证明不同层面的行为。[0.7.0 真机记录](docs/verification/realtime-input-0.7.0.md)确认 RichEdit 导入、追加、删除和选区同步。实时语音、普通 Edit、文字中段替换、冲突、重连、Mac 实时编辑、Typeless 及更多应用尚不在已完成范围内。
 
 ## 源码目录
 

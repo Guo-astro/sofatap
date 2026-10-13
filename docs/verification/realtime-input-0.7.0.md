@@ -60,35 +60,59 @@ Mac run is specific to Unix file permissions. These native integration results
 exercise real Windows controls, but do not represent physical keyboard or
 microphone actions on the iPhone.
 
-## Physical acceptance boundary
+## Physical iPhone-to-Windows acceptance
 
-The resident test iPhone was upgraded in place to 0.7.0 (10), and the Windows
-frontend and backend were upgraded to 0.7.0 at the implementation commit above.
-Existing pairing was retained. The phone reconnected automatically, opened the
-keyboard and imported the fixture's existing Chinese text, emoji, line break and
-selection; the live status appeared without a Send button.
+The resident test iPhone runs 0.7.0 (10), with Windows frontend and backend 0.7.0
+at implementation commit `01b8990d30e070e07edf4ba039ebfc832df272bd`.
+Existing pairing was retained. Tests use a dedicated native RichEdit fixture on
+Windows, viewed through RDP on the non-primary Yomado virtual display. The Mac
+viewer is read-only: phone input goes directly to Windows, with no Mac keyboard
+or mouse injection and no physical display topology change.
 
-Physical editing and microphone acceptance are **pending**. Before sending edits,
-a fresh visual check found a Windows firewall permission prompt from the host
-test runner obscuring the fixture. Native foreground-window checks alone had
-reported the fixture as ready. The test was paused without sending phone edits
-or changing firewall rules. After explicit authorization to cancel the prompt,
-the computer-use tool rejected a click scoped to the fixture because the button
-belonged to Windows Security. Its supported window API also failed to bind the
-observed system window. No cancel or permission-grant click executed. Physical
-editing and microphone testing therefore remain blocked on dismissal of the
-system prompt. Both mobile test devices were returned to their home screens and
-released; the unused voice playback server was stopped. The RDP viewer and
-physical displays were left in place.
+The earlier firewall-prompt blocker was resolved at 06:09:46 UTC on 2026-10-13:
+the authorized **Cancel** action was performed by a real Sofatap phone click.
+No firewall permission was granted. The fixture was visibly unobstructed before
+editing resumed; foreground-window metadata alone was not treated as sufficient.
 
-Use the resident test iPhone and dedicated Windows Edit/RichEdit fixture only.
-The Windows RDP viewer must remain on the non-primary Yomado virtual display,
-with physical display topology unchanged. Test input travels directly to the
-Windows receiver; Mac foreground keyboard/mouse injection is not part of this
-test. Verify Windows field contents and selections after each action, including
-already-existing text, Unicode, selection-only changes, deletion, partial speech,
-focus conflicts and reconnect behavior. Also confirm the visible target is free
-of system prompts or overlays; native foreground identity alone is insufficient.
+The phone imported the existing synthetic text `已有文字 🛋️\n第二行` (12 UTF-16
+units) and its selection. It displayed live editing without a Send button. The
+following real phone actions were confirmed by Windows screenshots and separate
+native fixture text/selection events:
+
+| UTC | Phone action | Native RichEdit result |
+| --- | --- | --- |
+| 06:11:19 | Append ` · Sofatap\n中文・日本語 🛋️` | Exact 33-unit text; caret at 33, no selection |
+| 06:11:55 | Tap the iOS keyboard Delete key once | Complete trailing 🛋️ removed (three UTF-16 units); 30 units remain |
+| 06:12:15 | Use the phone's Select All control | Native selection starts at 0 and covers all 30 units |
+| 06:12:36 | Tap the iOS keyboard Delete key | Empty native field; selection 0 + 0 |
+
+No Send action was needed for any of these edits. This confirms import, append,
+multilingual/emoji/newline preservation, real keyboard deletion, selection-only
+synchronization and deletion to empty in this RichEdit fixture.
+
+The run stopped before live microphone acceptance. A read-only RDP capture had
+selected the Windows App connection manager; after restoring the RDP capture,
+the receiver window was visibly covering the fixture. Fresh native state at
+06:32:53 UTC confirmed that the fixture was not foreground and neither its
+empty RichEdit nor plain Edit field had focus. The Windows helper's automatic
+approval review rejected both `get_window` and `activate_window` with
+`Computer Use was not approved to use livetextfixture`. No target-focus click,
+input attempt or workaround followed. No microphone test or iPad reference-audio
+playback was started in this run.
+
+Cleanup was confirmed at 06:33:49 UTC: both test devices were returned to their
+home screens, the owned reference-audio server was stopped, and the device lease
+was released. A fresh Yomado check confirmed the Windows RDP window remained on
+the non-primary virtual display and the physical displays retained their original
+resolution and primary-display assignment. No Mac keyboard/mouse events, window
+moves or display-configuration changes were performed.
+
+Physical microphone/live-speech, the separate plain Edit field, replacement in
+the middle of text, conflict and reconnect cases remain pending in this round.
+The earlier Windows native integration driver covers some of these mechanisms,
+but is not a physical iPhone test. Mac live editing has not had a device test;
+Linux and unsupported browser/custom controls retain fallback sending. This
+scoped result does not establish compatibility with all desktop applications.
 
 Do not publish pairing credentials, QR images, private device identifiers or raw
 field logs. See [protocol and content lifetime](../../PROTOCOL.md) for how the live
