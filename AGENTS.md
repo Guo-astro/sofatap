@@ -2,6 +2,17 @@
 
 Sofatap is maintained in the public `chekusu/sofatap` GitHub repository. Keep product development here and coordinate the Sandbank Dev copy through Yobiru. GitHub is the sole source distribution channel: send repository/branch/commit references, not source archives or source-file attachments, through Yobiru.
 
+## Product scope and development order
+
+Keep the two core functions separate:
+
+- **Free manual remote:** the user directly controls a computer or TV with the phone touch surface, mouse gestures and text input. Existing keyboard and speech-to-text dictation are basic input, not paid autonomous operation.
+- **Paid voice automation:** the user states a goal and Sofatap plans, executes and verifies a sequence of actions. Build this for Windows, macOS and Linux first, then extend it to televisions.
+
+The next feature priority is **free manual TV control**, ahead of integrating the paid agent runtime. After that, implement paid desktop automation, followed by paid TV automation. See `docs/ROADMAP.md`. Keep first-release maintenance and acceptance work distinct from this feature sequence.
+
+Treat TV mouse/pointer control as a real capability to verify. Directional focus navigation is a separate capability and must not be described as equivalent mouse support. Do not claim every TV model or application is supported before device-level acceptance. Manual control must not silently start an AI task, require a model account or depend on paid inference.
+
 ## Standing synchronization instruction
 
 The user has authorized notifying Sandbank Dev after each logical change is validated, committed and successfully pushed to GitHub. Use `python3 scripts/notify-sandbank.py --push` to publish the current clean branch and send that notification, or omit `--push` after an independently completed push. The script verifies the exact remote branch and full commit SHA before sending. Set `SOFATAP_SYNC_TARGET=sandbank-dev/AGENT` only when the intended agent is known; otherwise the default is `sandbank-dev`.

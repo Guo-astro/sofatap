@@ -2,7 +2,7 @@
 
 ## The phone is the touchpad
 
-The main iPhone screen is one large rounded touch surface. The logo and QR-scanning control sit inside its top edge; the microphone and left-hand keyboard control sit inside its bottom edge. The resting surface has no instructional text or separate mouse-arrow graphic. Connection and recording states use icons with accessible labels. Tapping the logo opens connection details and gesture help; the QR control opens the pairing sheet. The five desktop visual proposals remain unselected; this phone interaction change does not select a receiver theme.
+The main iPhone screen is one large rounded touch surface. The logo and QR-scanning control sit inside its top edge; the microphone and left-hand keyboard control sit inside its bottom edge. The resting surface has no instructional text or separate mouse-arrow graphic. Connection and recording states use icons with accessible labels. Tapping the logo opens connection details and gesture help; the QR control opens the pairing sheet. Desktop receivers use the approved Mint Calm design described in [receiver design](RECEIVER-DESIGN.md).
 
 - Slide one finger to move the computer pointer.
 - Tap once for a left click. Delivery waits briefly for the double-tap decision so a right click never includes an accidental left click.
@@ -30,9 +30,15 @@ Background focus detection uses native accessibility metadata and does not read 
 
 Live editing is the default where supported. A focus, text or selection conflict, disconnection or uncertain write pauses it and never causes automatic replay. The user checks the computer and explicitly reopens editing. Native replacements touch only the changed span; surrounding text and formatting are preserved. This is distinct from a promise of compatibility with every input field.
 
-## Future voice-controlled computer actions
+## Free TV control is the next feature
 
-The intended next stage is a standalone computer-use service: spoken command → intent/planning → explicitly authorized observation and bounded mouse/keyboard execution → progress or clarification on the phone. It must run as part of Sofatap's own product, independently of Codex. The current app and receiver already communicate directly; Codex is a development tool, not their runtime.
+The [product roadmap](ROADMAP.md) separates free manual control from paid voice automation. Extend the manual touch surface to televisions before integrating an agent runtime. Verify genuine pointer movement, click and scrolling where the TV exposes them. Directional focus navigation is a different capability; expose that mode honestly on TVs that only support remote keys. TV right-click, held-button dragging, text editing and power behavior require their own capability checks and hardware acceptance.
+
+Keyboard input and speech-to-text dictation remain basic input features. A microphone used to enter words must never implicitly start an automated task or require a Pro subscription.
+
+## Later paid voice-controlled computer actions
+
+After free TV control, the paid feature is a standalone computer-use service: spoken command → intent/planning → explicitly authorized observation and bounded mouse/keyboard execution → progress or clarification on the phone. Qualify Windows, macOS and Linux first; paid TV automation follows the desktop version. It must run as part of Sofatap's own product, independently of Codex. The current app and receiver already communicate directly; Codex is a development tool, not their runtime.
 
 The [October 13 architecture research](research/natural-language-pro.md) evaluates pi-durable, Cua Driver and DeepSeek for an optional paid tier, including recovery, platform limits and qualification gates. It is a proposal, not an enabled feature.
 

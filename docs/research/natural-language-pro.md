@@ -4,7 +4,9 @@ Research date: **2026-10-13, Asia/Tokyo**. Status: **architecture proposal**, no
 
 ## Recommendation
 
-Proceed with a bounded prototype combining **pi-durable for task orchestration, Cua Driver for local desktop observation/actions, and DeepSeek Flash for language and visual decisions**. This can run independently of Codex. Keep the manual remote and live dictation as their own mode.
+This research is for the **paid voice-automation feature**, scheduled after the next free manual TV-control feature. The user's [product roadmap](../ROADMAP.md) takes precedence over the prototype sequence below: free TV remote first, paid Windows/macOS/Linux automation second, paid TV automation third. Manual mouse control, keyboard input and speech-to-text dictation remain separate basic features.
+
+When the paid desktop stage begins, evaluate a bounded prototype combining **pi-durable for task orchestration, Cua Driver for local desktop observation/actions, and DeepSeek Flash for language and visual decisions**. This can run independently of Codex. It is not a dependency for free TV control.
 
 The premium outcome should be: **say what you want, let the computer complete several steps, and take over whenever needed**. Examples to qualify include opening an installed game, searching for a trailer and entering full screen, or opening a chosen local video. Success means the requested application reaches the desired state, not just that a sequence of clicks was delivered.
 
@@ -130,11 +132,11 @@ The proposed mode changes Sofatap's current local-only data contract: approved a
 
 DeepSeek's Open Platform terms allow downstream applications, require key protection and downstream data disclosures, and contain broad output-reliance language in section 8.1. Clarify commercial autonomous-action and API data-processing terms before a paid launch. The reviewed public policy does not establish an API-specific zero-retention/no-training guarantee for Sofatap screenshots; `store:false` is not such a guarantee. Sources: [Open Platform terms](https://cdn.deepseek.com/policies/en-US/deepseek-open-platform-terms-of-service.html), [privacy policy](https://cdn.deepseek.com/policies/en-US/deepseek-privacy-policy.html?locale=en_US).
 
-## Next implementation gates
+## Paid desktop implementation gates, after free TV control
 
 1. **Provider/driver spike:** pin release artifacts, package the desktop worker, and complete observe → plan → one reversible action → native readback in isolated Windows, Mac and Linux X11 fixtures. Verify actual tool/image/reasoning round trips, cancellation and usage reporting. No paid beta claim yet.
 2. **Continuous task prototype:** qualify three short living-room scenarios per OS, then a fixed corpus of 20 tasks × five runs per supported platform. Include Chinese, Japanese and English goals, a mid-task correction, mixed DPI and a changed window. Count a task only when its final state is independently verified.
 3. **Recovery and refusal:** inject crashes before/after mutation and before/after receipt persistence, lost responses, restart with pending approval, two simultaneous jobs, manual takeover, missing permissions, lock/sleep/RDP disconnect and malicious page text. Unknown outcomes pause; no stale or duplicate mutation is acceptable in this suite.
 4. **Private alpha to paid beta:** proposed gate is at least 95/100 complete tasks on each advertised platform, zero wrong-target or duplicated consequential actions in the fixed suite, measured p50/p95 latency and cost, working Stop/recovery, signed installers, permission onboarding and subscription lifecycle checks. This threshold is a release proposal, not a safety guarantee or achieved result. Wayland enters only after its own compositor-specific qualification.
 
-Keep recorded dependency SHAs, model identifier/date, supported app/OS versions and reproducible outcome checks with each evaluation. The first engineering task is the bounded spike; a broad “operate any application” promise would outrun the evidence.
+Keep recorded dependency SHAs, model identifier/date, supported app/OS versions and reproducible outcome checks with each evaluation. The first engineering task within the later paid desktop stage is the bounded spike; a broad “operate any application” promise would outrun the evidence. This does not replace the current free TV-control milestone.
