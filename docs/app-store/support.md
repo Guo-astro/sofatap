@@ -6,7 +6,7 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 
 ## Install the receiver
 
-[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) is compatible with iPhone 1.0 (14). It includes native pairing, the current Sofatap icon and live editing for supported Windows/Mac fields. Linux and unsupported fields use review-and-send. All five packages and their SHA256 files are public; read the release notes for validation limits.
+[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) is compatible with iPhone 1.0 (15). It includes native pairing, the current Sofatap icon and live editing for supported Windows/Mac fields. Linux and unsupported fields use review-and-send. All five packages and their SHA256 files are public; read the release notes for validation limits.
 
 | Computer | Download | Installation guide |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 | Mac, macOS 15+ | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | Both packages are signed and notarized. Place `Sofatap Receiver.app` in Applications, open it normally, and grant it Accessibility permission. [Mac permission guide](../MAC-START.md); older examples there use the historical app name. |
 | Linux | [x64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | [Linux setup and dependencies](../../desktop/linux/README.md). X11 is the initial desktop path; Wayland is experimental and depends on the desktop's RemoteDesktop portal. |
 
-The iPhone **1.0 (14)** build has completed Apple processing (`VALID`) and is available to invited Sofatap Team internal TestFlight testers (`IN_BETA_TESTING`). Build 12 remains **Waiting for Review** for external testing. Apple rejected build 14's submission because another build of the same version is already in review; build 14 remains `READY_FOR_BETA_SUBMISSION` and must be submitted after build 12's review finishes. The [public TestFlight invitation](https://testflight.apple.com/join/e6MuKx9S), configured for up to 100 testers, is not open for installation yet. See the [release record](../verification/testflight-1.0-14.md). Final-build physical installation and input acceptance remain separate from build processing.
+The iPhone **1.0 (15)** build has completed Apple processing (`VALID`) and is available to invited Sofatap Team internal TestFlight testers (`IN_BETA_TESTING`). Build 12 remains **Waiting for Review** for external testing. Apple rejected build 15's submission because another build of the same version is already in review; build 15 remains `READY_FOR_BETA_SUBMISSION` and must be submitted after build 12's review finishes. The [public TestFlight invitation](https://testflight.apple.com/join/e6MuKx9S), configured for up to 100 testers, is not open for installation yet. See the [release record](../verification/testflight-1.0-15.md). Final-build physical installation and input acceptance remain separate from build processing.
 
 The ordinary receiver requires an unlocked, interactive desktop. A Windows Remote Desktop session and the desktop shown on a TV can be different sessions. Sofatap does not unlock the computer or enter a Windows sign-in PIN in this release.
 
@@ -22,13 +22,13 @@ The ordinary receiver requires an unlocked, interactive desktop. A Windows Remot
 
 1. Open the receiver on the computer and choose a home-network address reachable by the phone.
 2. Connect the iPhone to the same home network. A wired computer is fine; guest Wi-Fi client isolation may prevent access.
-3. In builds 13–14, tap the top-left device selector and choose **Computer** under **Add Device**, then scan the receiver code or paste the complete pairing link. In the build 15 source, choose **Scan QR Code** instead. The camera appears above the platform information; computers and Android/Google TV use the same scanner without a device-type choice. Build 12 uses the top-right QR icon.
+3. In build 15, tap the top-left device selector and choose **Scan QR Code** under **Add Device**, then scan the receiver code or paste the complete pairing link. The camera appears above the platform information; computers and Android/Google TV use the same scanner without a device-type choice. Builds 13–14 first choose **Computer** under **Add Device**; build 12 uses the top-right QR icon.
 4. Allow Local Network access on the phone. If it was denied, enable it for Sofatap in Settings.
 5. Check the connection indicator, then look at the computer screen while controlling it.
 
 Build 15 identifies the connection type automatically and displays any platform/name supplied by the code. After the authenticated connection succeeds, keep the suggested name or save a new one. You can rename it later in My Devices; this changes only the name on your iPhone. LG webOS still requires manual IP entry and approval on the TV. Android/Google TV requires its development receiver and remains experimental, with no qualified physical TV model or third-party TV app.
 
-The build 15 phone source accepts the original four-field desktop codes from receiver 0.7.0 beta.1. New desktop receiver source emits six-field codes with `platform` and `name`, which require iPhone build 15 or newer. Updated receiver binaries have not been released; current receiver downloads remain compatible with the new phone. Platform/name labels do not replace certificate and pairing-credential checks.
+The build 15 phone app accepts the original four-field desktop codes from receiver 0.7.0 beta.1. New desktop receiver source emits six-field codes with `platform` and `name`, which require iPhone build 15 or newer. Updated receiver binaries have not been released; current receiver downloads remain compatible with the new phone. Platform/name labels do not replace certificate and pairing-credential checks.
 
 ## Gestures and text
 
