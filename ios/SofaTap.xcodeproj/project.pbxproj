@@ -18,10 +18,12 @@
 		667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6898F264D24CA602D5304DA0 /* Pairing.swift */; };
 		68E7813DE872359DEE8A3E06 /* ComputerUnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */; };
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
+		9434097D51E493B438C2FCE6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 09B7623BA020963D10FF6660 /* Localizable.strings */; };
 		993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2194963D13F182243533BEB /* SofaTapApp.swift */; };
 		9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */; };
 		A48C6B42061DF866CF421F83 /* ComputerUnlockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */; };
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
+		D9564E7710C99F8C4C4A87C8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */; };
 		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
 /* End PBXBuildFile section */
 
@@ -31,14 +33,18 @@
 		1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCredentialVault.swift; sourceTree = "<group>"; };
 		1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictationController.swift; sourceTree = "<group>"; };
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
+		2EEF117295FCDC44389DDD7D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		40B40E5AEC58118F1B61EC02 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchParticleRenderer.swift; sourceTree = "<group>"; };
 		5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockController.swift; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
+		7F5ECAB455CACBBB8E77ECB5 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockView.swift; sourceTree = "<group>"; };
 		8836BE62D39309B8AF525D9F /* ReceiverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverState.swift; sourceTree = "<group>"; };
 		895EB1B944638483C701ADDC /* TouchGestureState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGestureState.swift; sourceTree = "<group>"; };
+		8AF3ED072085CFD8C1ADEB26 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
 		951A32A70DFF898858DD7CDD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
@@ -67,6 +73,8 @@
 			children = (
 				951A32A70DFF898858DD7CDD /* Assets.xcassets */,
 				F559181B1DC8444C237039F4 /* Info.plist */,
+				1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */,
+				09B7623BA020963D10FF6660 /* Localizable.strings */,
 				3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */,
 				B2194963D13F182243533BEB /* SofaTapApp.swift */,
 				48AD4029C135513A254E55C4 /* Core */,
@@ -145,6 +153,7 @@
 			knownRegions = (
 				Base,
 				en,
+				"zh-Hans",
 			);
 			mainGroup = AF4772458D0325C5499334E5;
 			minimizedProjectReferenceProxies = 1;
@@ -163,6 +172,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				390FF8AC98B4923D8FE0BD44 /* Assets.xcassets in Resources */,
+				D9564E7710C99F8C4C4A87C8 /* InfoPlist.strings in Resources */,
+				9434097D51E493B438C2FCE6 /* Localizable.strings in Resources */,
 				62E055F9B738880A3F6FB68A /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -193,20 +204,41 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXVariantGroup section */
+		09B7623BA020963D10FF6660 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2EEF117295FCDC44389DDD7D /* en */,
+				8AF3ED072085CFD8C1ADEB26 /* zh-Hans */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+		1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				7F5ECAB455CACBBB8E77ECB5 /* en */,
+				40B40E5AEC58118F1B61EC02 /* zh-Hans */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
 		3D321BF962541109911F8D2B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;
@@ -219,14 +251,14 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 0.7.0;
+				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.chekusu.sofatap;
 				SDKROOT = iphoneos;
 				SUPPORTS_MACCATALYST = NO;

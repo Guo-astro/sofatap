@@ -69,14 +69,14 @@ final class SpeechDictationController: NSObject, ObservableObject {
             guard value == AVAudioSession.InterruptionType.began.rawValue else { return }
             Task { @MainActor [weak self] in
                 guard let self, self.state == .recording || self.state == .finishing else { return }
-                self.fail("语音输入已中断。已识别的文字仍在草稿中，可重新点击麦克风。")
+                self.fail(String(localized: "语音输入已中断。已识别的文字仍在草稿中，可重新点击麦克风。"))
             }
         })
         observers.append(center.addObserver(forName: AVAudioSession.mediaServicesWereResetNotification,
                                             object: nil, queue: .main) { [weak self] _ in
             Task { @MainActor [weak self] in
                 guard let self, self.state != .idle else { return }
-                self.fail("麦克风暂时不可用。请重试，或使用键盘 / Typeless 输入。")
+                self.fail(String(localized: "麦克风暂时不可用。请重试，或使用键盘 / Typeless 输入。"))
             }
         })
         observers.append(center.addObserver(forName: AVAudioSession.routeChangeNotification,
@@ -85,7 +85,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
             guard reason == AVAudioSession.RouteChangeReason.oldDeviceUnavailable.rawValue else { return }
             Task { @MainActor [weak self] in
                 guard let self, self.state == .recording else { return }
-                self.fail("麦克风已断开。已识别的文字仍在草稿中，可重新点击麦克风。")
+                self.fail(String(localized: "麦克风已断开。已识别的文字仍在草稿中，可重新点击麦克风。"))
             }
         })
     }
@@ -112,19 +112,19 @@ final class SpeechDictationController: NSObject, ObservableObject {
         state = .requestingPermission
 
         guard let speech = SFSpeechRecognizer(locale: locale), speech.supportsOnDeviceRecognition else {
-            fail("此语言或设备暂不支持本机语音识别。请使用键盘 / Typeless 输入。")
+            fail(String(localized: "此语言或设备暂不支持本机语音识别。请使用键盘 / Typeless 输入。"))
             return
         }
         let authorization = await Self.speechAuthorization()
         guard isCurrent(token) else { return }
         guard authorization == .authorized else {
-            fail("请在 iPhone 设置中允许 Sofatap 使用语音识别，或使用键盘 / Typeless 输入。")
+            fail(String(localized: "请在 iPhone 设置中允许 Sofatap 使用语音识别，或使用键盘 / Typeless 输入。"))
             return
         }
         let microphoneAllowed = await Self.microphoneAuthorization()
         guard isCurrent(token) else { return }
         guard microphoneAllowed else {
-            fail("请在 iPhone 设置中允许 Sofatap 使用麦克风，或使用键盘 / Typeless 输入。")
+            fail(String(localized: "请在 iPhone 设置中允许 Sofatap 使用麦克风，或使用键盘 / Typeless 输入。"))
             return
         }
         // A permission completion can arrive just before its sheet disappears.
@@ -138,7 +138,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
         guard isCurrent(token) else { return }
         guard UIApplication.shared.applicationState == .active else { cancel(); return }
         guard speech.isAvailable, speech.supportsOnDeviceRecognition else {
-            fail("本机语音识别暂不可用。请使用键盘 / Typeless 输入，稍后重试。")
+            fail(String(localized: "本机语音识别暂不可用。请使用键盘 / Typeless 输入，稍后重试。"))
             return
         }
 
@@ -165,7 +165,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
                         self.complete()
                     } else if failed {
                         if self.state == .finishing { self.complete() }
-                        else { self.fail("本机语音识别已停止。已识别的文字仍在草稿中，可重试或使用键盘 / Typeless。") }
+                        else { self.fail(String(localized: "本机语音识别已停止。已识别的文字仍在草稿中，可重试或使用键盘 / Typeless。")) }
                     }
                 }
             }
@@ -179,7 +179,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
                 self.stop()
             }
         } catch {
-            fail("无法启动麦克风。请重试，或使用键盘 / Typeless 输入。")
+            fail(String(localized: "无法启动麦克风。请重试，或使用键盘 / Typeless 输入。"))
         }
     }
 
@@ -263,7 +263,7 @@ extension SpeechDictationController: SFSpeechRecognizerDelegate {
         Task { @MainActor [weak self] in
             guard let self, self.recognizer === speechRecognizer,
                   self.state == .recording || self.state == .finishing else { return }
-            self.fail("本机语音识别暂不可用。已识别的文字仍在草稿中，可使用键盘 / Typeless。")
+            self.fail(String(localized: "本机语音识别暂不可用。已识别的文字仍在草稿中，可使用键盘 / Typeless。"))
         }
     }
 }

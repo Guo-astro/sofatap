@@ -156,7 +156,7 @@ final class ComputerUnlockController: ObservableObject {
         if let pairing {
             guard UnlockCapabilityStore.delete(for: pairing),
                   vault.remove(for: pairing, knownBinding: savedBinding) else {
-                state = .failed("旧版解锁记录尚未删除。请解锁 iPhone 后重试。")
+                state = .failed(String(localized: "旧版解锁记录尚未删除。请解锁 iPhone 后重试。"))
                 return
             }
         }

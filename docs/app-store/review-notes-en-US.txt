@@ -1,0 +1,29 @@
+Sofatap is an input remote for a user-owned computer on a home network. It does not stream the computer's screen, host cloud computers, offer a software store, or require a Sofatap account. This release has no in-app purchases or subscription. No login credentials are needed for review.
+
+REQUIRED EQUIPMENT
+An iPhone running iOS 17 or later and an awake, unlocked computer on the same reachable local network. Install the matching desktop receiver from:
+https://github.com/chekusu/sofatap/releases
+Setup guide:
+https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
+
+Windows: extract the complete receiver ZIP, run SofaTap.exe, and allow its backend on a trusted private network if prompted. Do not disable the firewall.
+Mac: download the notarized package for the Mac's processor, move the app to Applications, and grant Accessibility permission to the receiver in System Settings. The Mac receiver requires macOS 15 or later.
+
+PAIRING
+1. Open the receiver's native window on the computer. Choose its reachable local-network address.
+2. Open Sofatap on the iPhone and tap the QR icon at the upper right of the touch surface.
+3. Scan the receiver QR code. Allow Camera and Local Network access when requested. A complete pairing link can be pasted instead of scanning.
+4. Return to the touch surface. Tap the logo to inspect connection status or gesture help.
+
+FUNCTIONAL TEST
+1. Open a blank text document on the computer. Slide on the phone to move the pointer. One tap is a left click; two successive taps are a right click. Hold still for 0.3 seconds, then move to drag; lift to release. Two fingers scroll.
+2. Focus a normal, writable text field on the computer and tap the phone's keyboard icon. A compatible receiver and native field use live editing: the existing field text is imported, and typing, Backspace, selection and deletion synchronize automatically. Unsupported fields and older receivers use a review-and-send draft. No extra Enter or submit action is appended.
+3. Tap the microphone and allow Microphone and Speech access. On supported devices/languages, dictation runs on the iPhone. Tap again to stop. If local recognition is unavailable, use the keyboard. Recognized text follows the live or review-and-send mode shown by the editor.
+
+PRIVACY AND LIMITS
+Pairing credentials are stored in iPhone Keychain. Input travels directly over certificate-pinned TLS. Built-in dictation does not upload audio or silently use cloud recognition. A live editing session transfers the supported field's full text and selection between the user's devices. It cannot start in protected or read-only fields. The ordinary receiver cannot operate the Windows login screen, elevated permission prompts or other unavailable desktops. Backgrounding the phone app stops capture and disconnects control.
+
+This release does not provide AI computer operation, direct smart-TV control, Bluetooth transport or saved-PIN computer unlocking.
+
+Privacy policy:
+https://github.com/chekusu/sofatap/blob/main/PRIVACY.md

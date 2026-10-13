@@ -10,7 +10,7 @@ struct NativeDraftEditor: UIViewRepresentable {
     var onEdit: ((String, NSRange, Bool) -> Void)? = nil
     var preservesFocusWhileLoading = false
     var liveEditing = false
-    var editorAccessibilityLabel: String { liveEditing ? "与电脑实时同步的文字和选区" : "要发送到电脑的文字草稿" }
+    var editorAccessibilityLabel: String { liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿") }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> UITextView {
@@ -28,7 +28,7 @@ struct NativeDraftEditor: UIViewRepresentable {
         view.accessibilityIdentifier = "textDraft"
         let toolbar = UIToolbar()
         toolbar.items = [UIBarButtonItem(systemItem: .flexibleSpace),
-                         UIBarButtonItem(title: "收起键盘", style: .done, target: context.coordinator, action: #selector(Coordinator.done))]
+                         UIBarButtonItem(title: String(localized: "收起键盘"), style: .done, target: context.coordinator, action: #selector(Coordinator.done))]
         toolbar.sizeToFit()
         view.inputAccessoryView = toolbar
         context.coordinator.textView = view
@@ -190,8 +190,8 @@ struct TouchSurface: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isMultipleTouchEnabled = true
         view.isAccessibilityElement = true
-        view.accessibilityLabel = "电脑触控板"
-        view.accessibilityHint = "滑动移动光标；轻点左键；连续轻点两下右键；按住零点三秒拖动；双指滑动滚动"
+        view.accessibilityLabel = String(localized: "电脑触控板")
+        view.accessibilityHint = String(localized: "滑动移动光标；轻点左键；连续轻点两下右键；按住零点三秒拖动；双指滑动滚动")
         view.accessibilityIdentifier = "touchpad"
         view.configure(self)
         return view
@@ -214,8 +214,8 @@ struct TouchSurface: UIViewRepresentable {
             NotificationCenter.default.addObserver(self, selector: #selector(inactive), name: UIApplication.willResignActiveNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(becameActive), name: UIApplication.didBecomeActiveNotification, object: nil)
             accessibilityCustomActions = [
-                UIAccessibilityCustomAction(name: "左键单击", target: self, selector: #selector(accessibleLeftClick)),
-                UIAccessibilityCustomAction(name: "右键单击", target: self, selector: #selector(accessibleRightClick))
+                UIAccessibilityCustomAction(name: String(localized: "左键单击"), target: self, selector: #selector(accessibleLeftClick)),
+                UIAccessibilityCustomAction(name: String(localized: "右键单击"), target: self, selector: #selector(accessibleRightClick))
             ]
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }

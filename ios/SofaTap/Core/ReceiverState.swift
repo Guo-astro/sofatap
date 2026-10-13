@@ -22,28 +22,28 @@ struct ReceiverState: Equatable {
     var commandModifier: String { platform == .macos ? "win" : "ctrl" }
     var unavailableTitle: String {
         switch status {
-        case .dry_run: return "演练接收器 · 不会操作电脑"
-        case .accessibility_required: return "Mac 等待辅助功能授权"
-        case .desktop_unavailable: return "请登录并解锁电脑"
-        case .permission_required, .permission_denied: return "Linux 等待桌面控制授权"
-        case .permission_pending: return "请确认 Linux 系统授权"
-        case .unsupported_session: return "当前 Linux 桌面尚不支持控制"
-        case .dependency_missing: return "Linux 接收器缺少系统组件"
-        case .input_unavailable: return "电脑输入组件已停止"
-        default: return "电脑暂时无法接受操作"
+        case .dry_run: return String(localized: "演练接收器 · 不会操作电脑")
+        case .accessibility_required: return String(localized: "Mac 等待辅助功能授权")
+        case .desktop_unavailable: return String(localized: "请登录并解锁电脑")
+        case .permission_required, .permission_denied: return String(localized: "Linux 等待桌面控制授权")
+        case .permission_pending: return String(localized: "请确认 Linux 系统授权")
+        case .unsupported_session: return String(localized: "当前 Linux 桌面尚不支持控制")
+        case .dependency_missing: return String(localized: "Linux 接收器缺少系统组件")
+        case .input_unavailable: return String(localized: "电脑输入组件已停止")
+        default: return String(localized: "电脑暂时无法接受操作")
         }
     }
     var unavailableMessage: String {
         switch status {
-        case .dry_run: return "接收器正在演练模式，鼠标和文字操作已停用。"
-        case .accessibility_required: return "请在 Mac 接收器页面打开辅助功能授权，并在系统设置中允许 Sofatap。"
-        case .desktop_unavailable: return "请登录并解锁电脑，保持桌面打开；连接会自动检查状态。"
-        case .permission_required, .permission_denied: return "请在 Linux 接收器点允许控制桌面，再完成系统授权。"
-        case .permission_pending: return "请在 Linux 原生系统窗口中确认；完成后会自动检查状态。"
-        case .unsupported_session: return "请查看 Linux 接收器说明，确认桌面提供受支持的 X11 或 Wayland 远程控制接口。"
-        case .dependency_missing: return "请按 Linux 接收器说明安装所需组件，再重新打开接收器。"
-        case .input_unavailable: return "请查看电脑接收器，重新授权或重启后再连接；不要自动重发文字。"
-        default: return "接收器已连接，但输入尚不可用。请查看电脑接收器页面。"
+        case .dry_run: return String(localized: "接收器正在演练模式，鼠标和文字操作已停用。")
+        case .accessibility_required: return String(localized: "请在 Mac 接收器页面打开辅助功能授权，并在系统设置中允许 Sofatap。")
+        case .desktop_unavailable: return String(localized: "请登录并解锁电脑，保持桌面打开；连接会自动检查状态。")
+        case .permission_required, .permission_denied: return String(localized: "请在 Linux 接收器点允许控制桌面，再完成系统授权。")
+        case .permission_pending: return String(localized: "请在 Linux 原生系统窗口中确认；完成后会自动检查状态。")
+        case .unsupported_session: return String(localized: "请查看 Linux 接收器说明，确认桌面提供受支持的 X11 或 Wayland 远程控制接口。")
+        case .dependency_missing: return String(localized: "请按 Linux 接收器说明安装所需组件，再重新打开接收器。")
+        case .input_unavailable: return String(localized: "请查看电脑接收器，重新授权或重启后再连接；不要自动重发文字。")
+        default: return String(localized: "接收器已连接，但输入尚不可用。请查看电脑接收器页面。")
         }
     }
 

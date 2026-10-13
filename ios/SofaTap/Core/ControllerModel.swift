@@ -19,8 +19,8 @@ final class ControllerModel: ObservableObject {
     @Published private(set) var connecting = false
     @Published private(set) var inputAvailable = false
     @Published private(set) var receiverState = ReceiverState()
-    @Published private(set) var computerName = "客厅电脑"
-    @Published var notice = "配对一次，坐下来就能控制电脑。"
+    @Published private(set) var computerName = String(localized: "客厅电脑")
+    @Published var notice = String(localized: "配对一次，坐下来就能控制电脑。")
     @Published var pairingError: String?
     @Published var draft: String {
         didSet {
@@ -109,9 +109,9 @@ final class ControllerModel: ObservableObject {
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
         self.demo = demo
         self.pairing = demo ? nil : PairingStore.read()
-        self.draft = demo ? "你好，帮我播放今晚想看的电影。" : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
+        self.draft = demo ? String(localized: "你好，帮我播放今晚想看的电影。") : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
         unlock.setPairing(self.pairing)
-        if demo { notice = "界面演示：按钮只展示反馈，没有连接或操作电脑。" }
+        if demo { notice = String(localized: "界面演示：按钮只展示反馈，没有连接或操作电脑。") }
         else if let marker = UserDefaults.standard.string(forKey: "textDeliveryMarker") {
             // A process kill must never turn a pending/accepted draft into an implicit retry.
             if marker == "sent", UserDefaults.standard.string(forKey: "sentDraftDigest") == digest(draft) {
@@ -130,15 +130,15 @@ final class ControllerModel: ObservableObject {
     var remoteTextFocus: RemoteTextFocus { controlAvailable ? receiverState.textFocus : .unknown }
     var focusRevision: Int { receiverState.focusRevision }
     var statusTitle: String {
-        if demo { return "界面演示" }
-        if connecting { return "正在安全连接…" }
+        if demo { return String(localized: "界面演示") }
+        if connecting { return String(localized: "正在安全连接…") }
         if connected { return inputAvailable ? computerName : receiverState.unavailableTitle }
-        return pairing == nil ? "尚未配对电脑" : "已配对 · 未连接"
+        return pairing == nil ? String(localized: "尚未配对电脑") : String(localized: "已配对 · 未连接")
     }
     var statusSubtitle: String {
-        if demo { return "未连接电脑 · SIMULATOR DEMO" }
-        if let pairing { return "\(pairing.host):\(pairing.port) · 证书固定" }
-        return "iPhone 和电脑连接同一家庭网络"
+        if demo { return String(localized: "未连接电脑 · SIMULATOR DEMO") }
+        if let pairing { return String(localized: "\(pairing.host):\(pairing.port) · 证书固定") }
+        return String(localized: "iPhone 和电脑连接同一家庭网络")
     }
     var draftLength: Int { draft.utf16.count }
     var draftWithinLimit: Bool { draftLength <= 16_000 }
@@ -149,12 +149,12 @@ final class ControllerModel: ObservableObject {
     var editorLoading: Bool { liveTextStatus == .starting }
     var liveTextDescription: String {
         switch liveTextStatus {
-        case .idle: return "点键盘或麦克风，开始同步当前输入框。"
-        case .starting: return "正在读取电脑当前输入框…"
-        case .active: return "已实时同步 · 退格、选区和全选也会同步。"
-        case .syncing: return "正在实时同步…"
-        case .unsupported: return "这个输入框不支持实时编辑，请确认后发送。"
-        case .paused: return "同步已暂停，手机文字已保留。检查电脑后重新读取输入框。"
+        case .idle: return String(localized: "点键盘或麦克风，开始同步当前输入框。")
+        case .starting: return String(localized: "正在读取电脑当前输入框…")
+        case .active: return String(localized: "已实时同步 · 退格、选区和全选也会同步。")
+        case .syncing: return String(localized: "正在实时同步…")
+        case .unsupported: return String(localized: "这个输入框不支持实时编辑，请确认后发送。")
+        case .paused: return String(localized: "同步已暂停，手机文字已保留。检查电脑后重新读取输入框。")
         }
     }
     var canSendText: Bool {
@@ -163,14 +163,14 @@ final class ControllerModel: ObservableObject {
     }
     var textStatus: String {
         if usesLiveText { return liveTextDescription }
-        if composing { return "正在输入或听写，完成后再发送。" }
-        if !draftWithinLimit { return "文字超过 16,000 字符限制，请拆成几段发送。" }
+        if composing { return String(localized: "正在输入或听写，完成后再发送。") }
+        if !draftWithinLimit { return String(localized: "文字超过 16,000 字符限制，请拆成几段发送。") }
         switch textDelivery {
-        case .ready: return liveTextStatus == .unsupported ? liveTextDescription : "先点电脑里的输入框，再发送整段文字。"
-        case .sending: return "等待电脑确认… 请勿重复发送。"
-        case .sent: return "已向电脑系统提交文字；请在屏幕上确认内容。"
-        case .rejected(let error): return "未被电脑接受：\(error)"
-        case .uncertain: return "发送结果不完整或未确认，文字可能已输入。请先查看电脑屏幕，避免重复。"
+        case .ready: return liveTextStatus == .unsupported ? liveTextDescription : String(localized: "先点电脑里的输入框，再发送整段文字。")
+        case .sending: return String(localized: "等待电脑确认… 请勿重复发送。")
+        case .sent: return String(localized: "已向电脑系统提交文字；请在屏幕上确认内容。")
+        case .rejected(let error): return String(localized: "未被电脑接受：\(error)")
+        case .uncertain: return String(localized: "发送结果不完整或未确认，文字可能已输入。请先查看电脑屏幕，避免重复。")
         }
     }
 
@@ -179,7 +179,7 @@ final class ControllerModel: ObservableObject {
             let newPairing = try Pairing.parse(raw)
             try PairingStore.write(newPairing)
             if let previous = pairing, previous != newPairing { unlock.forget(previous) }
-            disconnect(message: "已保存新的配对。")
+            disconnect(message: String(localized: "已保存新的配对。"))
             pairing = newPairing
             unlock.setPairing(newPairing)
             pairingError = nil
@@ -190,7 +190,7 @@ final class ControllerModel: ObservableObject {
     }
 
     func forgetPairing() {
-        disconnect(message: "配对已移除。")
+        disconnect(message: String(localized: "配对已移除。"))
         if let pairing { unlock.forget(pairing) }
         PairingStore.delete()
         pairing = nil
@@ -209,7 +209,7 @@ final class ControllerModel: ObservableObject {
         foreground = false
         stopAirMouse()
         if demo { dragging = false; return }
-        disconnect(message: "切回 App 会重新连接；草稿已留在手机上。")
+        disconnect(message: String(localized: "切回 App 会重新连接；草稿已留在手机上。"))
     }
 
     // A system permission sheet makes the app inactive without backgrounding it.
@@ -228,7 +228,7 @@ final class ControllerModel: ObservableObject {
         connecting = true
         inputAvailable = false
         receiverState = ReceiverState()
-        notice = "正在验证电脑证书与配对凭据…"
+        notice = String(localized: "正在验证电脑证书与配对凭据…")
         let delegate = PinnedSessionDelegate(pairing: pairing)
         sessionDelegate = delegate
         let configuration = URLSessionConfiguration.ephemeral
@@ -249,11 +249,11 @@ final class ControllerModel: ObservableObject {
         helloTimeout = Task { [weak self] in
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, self.generation == currentGeneration, !self.connected else { return }
-            self.disconnect(message: "连接超时。请检查电脑接收器、家庭网络与本地网络权限。")
+            self.disconnect(message: String(localized: "连接超时。请检查电脑接收器、家庭网络与本地网络权限。"))
         }
     }
 
-    func disconnect(message: String = "已断开连接。") {
+    func disconnect(message: String = String(localized: "已断开连接。")) {
         invalidateLiveText(pause: liveTextSession != nil || liveTextStatus == .starting)
         stopAirMouse()
         motionTimer?.invalidate()
@@ -302,10 +302,10 @@ final class ControllerModel: ObservableObject {
                     let diagnostic = self.sessionDelegate?.rejectionReason
                     let failureMessage = diagnostic.map { reason in
                         reason == "TLS_VERIFY_-67901"
-                        ? "电脑证书有效期超出 iOS 限制（\(reason)）。请更新电脑接收器并重新配对。"
-                        : "电脑证书校验失败（\(reason)）。请检查电脑接收器的证书并重新配对。"
+                        ? String(localized: "电脑证书有效期超出 iOS 限制（\(reason)）。请更新电脑接收器并重新配对。")
+                        : String(localized: "电脑证书校验失败（\(reason)）。请检查电脑接收器的证书并重新配对。")
                     }
-                    self.disconnect(message: failureMessage ?? "连接中断。请检查接收器；未确认的文字不会自动重发。")
+                    self.disconnect(message: failureMessage ?? String(localized: "连接中断。请检查接收器；未确认的文字不会自动重发。"))
                 case .success(let message):
                     let data: Data?
                     switch message {
@@ -316,7 +316,7 @@ final class ControllerModel: ObservableObject {
                     guard let data, data.count <= 65_536,
                           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           self.handle(object) else {
-                        self.disconnect(message: "接收器协议不匹配，请更新手机和电脑两端。")
+                        self.disconnect(message: String(localized: "接收器协议不匹配，请更新手机和电脑两端。"))
                         return
                     }
                     self.receiveNext(task, generation: currentGeneration)
@@ -341,7 +341,7 @@ final class ControllerModel: ObservableObject {
             computerName = name
             // The retired account-password capability is deliberately ignored.
             // Windows Hello PIN support requires a separate verified protocol.
-            notice = state.inputAvailable ? "已连接。先点选电脑上的输入框，即可发送文字。" : state.unavailableMessage
+            notice = state.inputAvailable ? String(localized: "已连接。先点选电脑上的输入框，即可发送文字。") : state.unavailableMessage
             startTimers()
             return true
         case "ack":
@@ -355,7 +355,7 @@ final class ControllerModel: ObservableObject {
                     stopAirMouse()
                     if dragging { setDragging(false) }
                 }
-                if availabilityChanged { notice = inputAvailable ? "电脑已就绪，可以继续控制。" : state.unavailableMessage }
+                if availabilityChanged { notice = inputAvailable ? String(localized: "电脑已就绪，可以继续控制。") : state.unavailableMessage }
             }
             if ok { item.completion?(.accepted(message)) }
             else {
@@ -364,14 +364,14 @@ final class ControllerModel: ObservableObject {
                 let code = rawCode.flatMap { value -> String? in
                     let allowed = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"]
                     return allowed.contains(value) ? value : nil
-                } ?? "操作未完成"
+                } ?? String(localized: "操作未完成")
                 // A failed injection can have typed a prefix. Unknown errors are conservative.
                 let definitelyRejected = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"].contains(rawCode ?? "")
                 if item.type == "text" && !definitelyRejected {
-                    notice = "电脑未完整确认操作，文字可能已经部分输入。请先查看电脑屏幕。"
+                    notice = String(localized: "电脑未完整确认操作，文字可能已经部分输入。请先查看电脑屏幕。")
                     item.completion?(.uncertain)
                 } else {
-                    notice = "电脑未接受操作：\(code)"
+                    notice = String(localized: "电脑未接受操作：\(code)")
                     item.completion?(.rejected(code))
                 }
             }
@@ -395,7 +395,7 @@ final class ControllerModel: ObservableObject {
                 guard !Task.isCancelled, let self, self.generation == currentGeneration, self.foreground else { return }
                 guard !self.pending.values.contains(where: { $0.type == "ping" }) else { continue }
                 self.send("ping", fields: [:], timeout: 8) { result in
-                    if case .uncertain = result { self.disconnect(message: "电脑没有响应，已停止控制。") }
+                    if case .uncertain = result { self.disconnect(message: String(localized: "电脑没有响应，已停止控制。")) }
                 }
             }
         }
@@ -412,20 +412,20 @@ final class ControllerModel: ObservableObject {
             return
         }
         if let testSend {
-            guard connected else { completion?(.rejected("尚未连接")); return }
+            guard connected else { completion?(.rejected(String(localized: "尚未连接"))); return }
             testSend(type, fields) { completion?($0 ? .accepted([:]) : .rejected("test_rejected")) }
             return
         }
 #endif
-        guard connected, let socket else { completion?(.rejected("尚未连接")); return }
-        guard pending.count < 32 else { completion?(.rejected("操作过快，请稍后")); return }
+        guard connected, let socket else { completion?(.rejected(String(localized: "尚未连接"))); return }
+        guard pending.count < 32 else { completion?(.rejected(String(localized: "操作过快，请稍后"))); return }
         let id = UUID().uuidString
         var frame = fields
         frame["type"] = type
         frame["id"] = id
         guard let data = try? JSONSerialization.data(withJSONObject: frame), data.count <= 65_536,
               let text = String(data: data, encoding: .utf8) else {
-            completion?(.rejected("文字编码后超过传输限制，请拆成几段")); return
+            completion?(.rejected(String(localized: "文字编码后超过传输限制，请拆成几段"))); return
         }
         let currentGeneration = generation
         let timer = Task { [weak self] in
@@ -433,14 +433,14 @@ final class ControllerModel: ObservableObject {
             guard !Task.isCancelled, let self, self.generation == currentGeneration,
                   let item = self.pending.removeValue(forKey: id) else { return }
             item.completion?(.uncertain)
-            self.disconnect(message: "电脑响应超时，已停止控制。文字可能已输入，请查看电脑屏幕。")
+            self.disconnect(message: String(localized: "电脑响应超时，已停止控制。文字可能已输入，请查看电脑屏幕。"))
         }
         pending[id] = Pending(type: type, timer: timer, completion: completion)
         socket.send(.string(text)) { [weak self] error in
             guard error != nil else { return }
             Task { @MainActor in
                 guard let self, self.generation == currentGeneration else { return }
-                self.disconnect(message: "发送时连接中断。未确认的文字不会自动重发。")
+                self.disconnect(message: String(localized: "发送时连接中断。未确认的文字不会自动重发。"))
             }
         }
     }
@@ -476,7 +476,7 @@ final class ControllerModel: ObservableObject {
                     self.motionBusy = false
                     guard self.dragReleasePending else { return }
                     if case .accepted = result { self.finishDragRelease() }
-                    else { self.disconnect(message: "拖拽移动未得到确认，已断开并释放鼠标。") }
+                    else { self.disconnect(message: String(localized: "拖拽移动未得到确认，已断开并释放鼠标。")) }
                 }
             }
         }
@@ -494,7 +494,7 @@ final class ControllerModel: ObservableObject {
         guard canControl else { return }
         endLiveTextEditing()
         feedback()
-        if demo { notice = "演示：\(button == "left" ? "左键" : "右键")单击。"; return }
+        if demo { notice = button == "left" ? String(localized: "演示：左键单击。") : String(localized: "演示：右键单击。"); return }
         send("click", fields: ["button": button])
     }
 
@@ -503,7 +503,7 @@ final class ControllerModel: ObservableObject {
         if down { endLiveTextEditing() }
         dragging = down
         feedback()
-        if demo { notice = down ? "演示：按住拖拽，再用触控板移动。" : "演示：已松开拖拽。"; return }
+        if demo { notice = down ? String(localized: "演示：按住拖拽，再用触控板移动。") : String(localized: "演示：已松开拖拽。"); return }
         if !down {
             // Freeze this gesture's tail before the next run-loop tick or UI
             // cancellation can clear it. It belongs before mouse-up even if an
@@ -518,7 +518,7 @@ final class ControllerModel: ObservableObject {
         send("button", fields: ["button": "left", "down": true]) { [weak self] result in
             guard let self, self.generation == currentGeneration else { return }
             if case .accepted = result { return }
-            self.disconnect(message: "拖拽状态未得到确认，已断开并释放鼠标。")
+            self.disconnect(message: String(localized: "拖拽状态未得到确认，已断开并释放鼠标。"))
         }
     }
 
@@ -532,13 +532,13 @@ final class ControllerModel: ObservableObject {
                 guard let self, self.generation == currentGeneration else { return }
                 self.motionBusy = false
                 if case .accepted = result { self.finishDragRelease() }
-                else { self.disconnect(message: "拖拽移动未得到确认，已断开并释放鼠标。") }
+                else { self.disconnect(message: String(localized: "拖拽移动未得到确认，已断开并释放鼠标。")) }
             }
         } else {
             send("button", fields: ["button": "left", "down": false]) { [weak self] result in
                 guard let self, self.generation == currentGeneration else { return }
                 if case .accepted = result { self.dragReleasePending = false }
-                else { self.disconnect(message: "拖拽状态未得到确认，已断开并释放鼠标。") }
+                else { self.disconnect(message: String(localized: "拖拽状态未得到确认，已断开并释放鼠标。")) }
             }
         }
     }
@@ -547,7 +547,7 @@ final class ControllerModel: ObservableObject {
         guard canControl else { return }
         endLiveTextEditing()
         feedback()
-        if demo { notice = "演示：\(key.uppercased()) 快捷键。"; return }
+        if demo { notice = String(localized: "演示：\(key.uppercased()) 快捷键。"); return }
         send("key", fields: ["key": key, "modifiers": modifiers])
     }
 
@@ -564,7 +564,7 @@ final class ControllerModel: ObservableObject {
         if demo {
             lastSentDraft = draft
             textDelivery = .sent
-            notice = "演示：没有将文字发送到任何电脑。"
+            notice = String(localized: "演示：没有将文字发送到任何电脑。")
             return
         }
         textDelivery = .sending
@@ -695,7 +695,7 @@ final class ControllerModel: ObservableObject {
     private func pauseLiveText(_ code: String) {
         invalidateLiveText(pause: true)
         liveTextStatus = .paused(code)
-        notice = "实时编辑已暂停。请检查电脑输入框；手机上的文字不会自动重发。"
+        notice = String(localized: "实时编辑已暂停。请检查电脑输入框；手机上的文字不会自动重发。")
     }
     func endLiveTextEditing() {
         guard liveTextSession != nil || liveTextStatus == .starting else { return }
@@ -721,7 +721,7 @@ final class ControllerModel: ObservableObject {
     func startAirMouse() {
         guard canControl, foreground, !airMoving else { return }
         if demo { airMoving = true; feedback(); return }
-        guard motion.isDeviceMotionAvailable else { notice = "这台设备没有可用的陀螺仪，请使用触控板。"; return }
+        guard motion.isDeviceMotionAvailable else { notice = String(localized: "这台设备没有可用的陀螺仪，请使用触控板。"); return }
         airMoving = true
         feedback()
         motion.deviceMotionUpdateInterval = 1.0 / 60.0
@@ -730,7 +730,7 @@ final class ControllerModel: ObservableObject {
                 guard let self, self.airMoving else { return }
                 if error != nil {
                     self.stopAirMouse()
-                    self.notice = "无法读取陀螺仪，请检查运动权限或使用触控板。"
+                    self.notice = String(localized: "无法读取陀螺仪，请检查运动权限或使用触控板。")
                     return
                 }
                 guard let data, ProcessInfo.processInfo.systemUptime - data.timestamp <= 0.15 else { return }

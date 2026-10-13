@@ -1,0 +1,20 @@
+{
+  "appInfo": {
+    "name": "Sofatap",
+    "subtitle": "Your computer, from the sofa",
+    "privacyPolicyUrl": "https://github.com/chekusu/sofatap/blob/main/PRIVACY.md"
+  },
+  "version": {
+    "versionString": "1.0",
+    "description": "Your iPhone becomes a touchpad and keyboard for the computer connected to your TV. Sit back, move the pointer, scroll a page, and enter text without reaching for a mouse.\n\nONE SIMPLE TOUCH SURFACE\nSlide to move. Tap to click. Double-tap for a right click. Hold for a moment to drag, and use two fingers to scroll. A calm mint dot pattern responds to your touch.\n\nTYPE OR DICTATE\nUse your iPhone keyboard or tap the microphone for on-device dictation where your device and language support it. With a compatible receiver and supported text field, typing, deletion and recognized speech synchronize as you go. Other fields use a draft you review and send.\n\nPAIR WITH YOUR OWN COMPUTER\nInstall the Sofatap receiver, connect both devices to the same home network, and scan the QR code in the receiver window. The computer's picture stays on your TV or monitor. Sofatap sends input directly to your paired computer over an encrypted connection, without a Sofatap account or cloud relay.\n\nREQUIREMENTS\niPhone with iOS 17 or later and a computer running the Sofatap desktop receiver. Windows and Mac receivers are available; Linux support depends on the desktop environment. The computer must be awake, unlocked and accessible on your home network. Mac requires Accessibility permission.\n\nText editing support varies by operating system, receiver version and destination application. Live editing supports compatible native Windows and Mac fields; browsers, custom fields, Linux and older receivers use review-and-send input. On-device dictation availability varies by device and language.\n\nDownload the receiver and read the setup guide:\nhttps://github.com/chekusu/sofatap/releases\nhttps://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md",
+    "keywords": "remote,mouse,touchpad,keyboard,dictation,voice,computer,desktop,living room,Wi-Fi,trackpad",
+    "promotionalText": "Turn your iPhone into a touchpad and keyboard for your living-room computer. Pair on your home network, then tap, scroll, type or dictate from the sofa.",
+    "supportUrl": "https://github.com/chekusu/sofatap/issues",
+    "marketingUrl": "https://github.com/chekusu/sofatap",
+    "whatsNew": "Control your paired computer with touch gestures, keyboard input and on-device dictation where supported. Includes native QR pairing and live editing for compatible computer text fields."
+  },
+  "testFlight": {
+    "description": "Sofatap turns your iPhone into a touchpad and text-input surface for your own computer. Install the desktop receiver on the same home network, pair using its QR code, then use gestures, the iPhone keyboard or supported on-device dictation. A separate receiver is required; the computer must be awake and unlocked.",
+    "whatToTest": "Test pairing with the receiver version provided for this beta. Confirm one-finger pointer movement, single-tap left click, double-tap right click, a 0.3-second hold followed by dragging, and two-finger scrolling.\n\nIn a supported native text field with a current receiver, test existing-text import, typing, emoji, newlines, Backspace, selection and Select All followed by deletion. Confirm changes reach the intended field without pressing Send. Test the microphone where local speech recognition is supported, including partial results and corrections.\n\nIn a browser or with an older receiver, expect a review-and-send draft. Check the computer before retrying text after a lost connection. Also test denying and later enabling Camera, Local Network, Microphone and Speech permissions.\n\nReport the phone/iOS version, receiver version, computer OS and destination application. Do not attach pairing QR codes, pairing links or private text."
+  }
+}

@@ -26,16 +26,28 @@ if [[ "$BUILD_MODE" == simulator ]]; then
                  -Xlinker -sectcreate -Xlinker __TEXT -Xlinker __ents_der -Xlinker "$BUILD_STAGE/Simulator.entitlements.der")
 fi
 xcrun --sdk "$BUILD_SDK" swiftc "${compile_args[@]}" "${sources[@]}" -o "$APP_BUNDLE/SofaTap"
-python3 - "$IOS_ROOT/SofaTap/Info.plist" "$APP_BUNDLE/Info.plist" "$BUILD_PLATFORM" "$BUILD_SDK" <<'PY'
+python3 - "$IOS_ROOT/SofaTap/Info.plist" "$APP_BUNDLE/Info.plist" "$BUILD_PLATFORM" "$BUILD_SDK" "$IOS_ROOT/project.yml" <<'PY'
 import plistlib
+import re
 import sys
 from pathlib import Path
-source, output, platform, sdk = sys.argv[1:]
+source, output, platform, sdk, project = sys.argv[1:]
+# Read the two scalar XcodeGen settings without requiring a YAML dependency.
+# Reject ambiguous/missing settings instead of producing a stale version.
+settings = Path(project).read_text()
+def version_setting(name, pattern):
+    matches = re.findall(r'^\s*' + name + r':\s*["\']?(' + pattern + r')["\']?\s*$', settings, re.MULTILINE)
+    if len(matches) != 1:
+        raise SystemExit(f"Expected one valid {name} in {project}")
+    return matches[0]
+version = version_setting('MARKETING_VERSION', r'\d+\.\d+(?:\.\d+)?')
+build = version_setting('CURRENT_PROJECT_VERSION', r'\d+')
 data = plistlib.loads(Path(source).read_bytes())
 data.update({
     'CFBundleName': 'Sofatap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
-    'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': '0.7.0',
-    'CFBundleVersion': '10', 'CFBundleSupportedPlatforms': [platform],
+    'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': version,
+    'CFBundleVersion': build, 'CFBundleSupportedPlatforms': [platform],
+    'CFBundleDevelopmentRegion': 'en',
     'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],
     'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}}
 })
@@ -45,6 +57,10 @@ sips -z 120 120 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.pn
 sips -z 180 180 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@3x.png" >/dev/null
 cp "$IOS_ROOT/SofaTap/Assets.xcassets/BrandMark.imageset/BrandMark.png" "$APP_BUNDLE/BrandMark.png"
 cp "$IOS_ROOT/SofaTap/PrivacyInfo.xcprivacy" "$APP_BUNDLE/PrivacyInfo.xcprivacy"
+for localization in "$IOS_ROOT/SofaTap/"*.lproj; do
+  [[ -d "$localization" ]] || continue
+  cp -R "$localization" "$APP_BUNDLE/"
+done
 xattr -cr "$APP_BUNDLE"
 if [[ "$BUILD_MODE" == simulator ]]; then
   codesign --force --sign - "$APP_BUNDLE"
