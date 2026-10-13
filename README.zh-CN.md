@@ -27,9 +27,9 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 - 三端接收器采用已选定的**暮色薄荷**设计：深灰底色、薄荷绿操作按钮与清晰的白底二维码。当前 beta 安装包已包含该设计和新版 Sofatap 图标，参见[设计规格](docs/RECEIVER-DESIGN.md)。
 - 通过家庭局域网连接，使用 WSS/TLS、证书指纹校验和本地配对凭据。电脑上的修改与当前编辑冲突或连接中断时，实时输入会暂停；结果不确定的编辑不会自动重放。
 
-最新源码加入设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。这些更新晚于 TestFlight build 12，见[验证记录](docs/verification/device-library-2026-10-14.md)。
+TestFlight 构建 14 已包含设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。见[语言覆盖](docs/APP-LANGUAGES.md)与[验证记录](docs/verification/device-library-2026-10-14.md)。
 
-**当前 beta：**iPhone **1.0 (12)** 已通过 Apple 处理（`VALID`）并进入内部 TestFlight 测试，配套[接收器 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。外部 beta 审核**已提交**，正在等待 Apple 审核（`WAITING_FOR_REVIEW`）。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)已预留，名额上限为 100 人，但审核通过前不能通过它安装。此状态不代表 App Store 正式发布或新增真机验收。见[构建与审核状态](docs/verification/testflight-1.0-12.md)。
+**当前 beta：**iPhone **1.0 (14)** 已通过 Apple 处理（`VALID`），已获邀请的内部 TestFlight 测试人员可以安装（`IN_BETA_TESTING`），配套[接收器 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。**构建 12** 仍在等待外部审核（`WAITING_FOR_REVIEW`）。Apple 因同一版本已有构建在审，拒绝了构建 14 的送审请求；构建 14 目前为 `READY_FOR_BETA_SUBMISSION`，需等构建 12 审结后再提交。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)名额上限为 100 人，目前尚不能通过它安装。此状态不代表 App Store 正式发布或新增真机验收。见[构建与审核状态](docs/verification/testflight-1.0-14.md)。
 
 此前的 [0.7.0 (10) 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；最终构建的实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。接收器打包与公证检查不等于真实输入验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
@@ -51,7 +51,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。1.0 (12) 已进入内部 TestFlight 测试，界面支持英文和简体中文。外部 beta 审核已提交，正在等待 Apple 审核，公开测试未开放。此前 0.7.0 (10) 的 RichEdit 键盘验收是独立结果，构建 12 的真机验收仍待完成。 |
+| iPhone | iOS 17+。1.0 (14) 已可通过内部 TestFlight 安装，界面支持 12 种语言。构建 12 正在等待外部审核，构建 14 需等其审结后才能提交；公开测试未开放。此前 0.7.0 (10) 的 RichEdit 键盘验收是独立结果，构建 14 的真机验收仍待完成。 |
 | Windows | 接收器 0.7.0 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。Windows 程序尚无 Authenticode 签名。 |
 | Mac | macOS 15+。0.7.0 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
 | Linux | 0.7.0 beta.1 的 x64、ARM64 GTK3 包已发布。此前 X11 输入通过隔离桌面检查；Wayland 为实验支持，真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
@@ -74,9 +74,9 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 ### 安装 iPhone App 并配对
 
-1. 已获邀请的内部测试人员可通过 TestFlight 获取 iPhone 1.0 (12)。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)已预留但尚未开放，外部 beta 审核已提交，正在等待 Apple 批准，见[当前状态](docs/verification/testflight-1.0-12.md)。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
+1. 已获邀请的内部测试人员可通过 TestFlight 安装 iPhone 1.0 (14)。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)尚未开放：构建 12 正在等待外部审核，构建 14 需等其审结后再提交。见[当前状态](docs/verification/testflight-1.0-14.md)。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
 2. 将 iPhone 与电脑接入可互通的家庭网络。访客 Wi-Fi 的设备隔离可能阻止连接。
-3. 用 iPhone App 扫描接收端原生窗口里的二维码，或粘贴完整配对链接。
+3. 点击 iPhone App 左上角的设备选择入口，在**添加设备**下选择**电脑**，然后扫描接收端原生窗口里的二维码，或粘贴完整配对链接。
 4. 在电脑上选中输入框，再打开手机键盘或麦克风。受支持的字段自动同步打字、删除和识别文字；其他字段显示**发送**按钮，供检查草稿后发送。焦点冲突或断线导致实时输入暂停时，先检查电脑，再明确重新打开编辑器；不确定的编辑不会自动重放。
 
 配对链接含有控制凭据，应只保留在自己的设备上。如果从最早使用 **Tiltro** 名称的版本升级，请阅读[升级说明](docs/WINDOWS-START.md#从旧名称版本升级)：这些版本的标识和存储位置不同，其配对和草稿不会自动迁移。本次 Sofatap 品牌拼写统一会保留现有 Sofatap 配对。
