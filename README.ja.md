@@ -24,10 +24,12 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 - スワイプして移動、1 回タップで左クリック、2 回連続タップで右クリック、300 ms 長押しでドラッグ、2 本指でスクロールできます。
 - 下部のマイクから、対応する端末・言語では端末内の音声認識を利用できます。iPhone キーボード／Typeless も使用可能です。対応する入力欄ではリアルタイム入力が標準で、確定した文字、削除、選択範囲、音声認識の更新を**送信**ボタンなしで同期します。未対応の欄や古い受信アプリでは、下書きを確認して送信します。追加の Enter やフォーム送信操作は行いません。
 - **パソコンのネイティブウインドウ**に表示された QR コードでペアリング。Mac は AppKit/SwiftUI、Windows は WinForms、Linux は GTK3 を使用し、ブラウザを開く必要はありません。
-- 3 つのデスクトップ受信アプリは、選定済みの **Mint Calm（暮色薄荷）** デザインに統一します。チャコールの背景、淡いミント色の操作ボタン、白地の QR 領域を使用します。[デザイン仕様](docs/RECEIVER-DESIGN.md)をご覧ください。変更は開発ソースに含まれ、下記の旧版ダウンロードには未反映です。
+- 3 つのデスクトップ受信アプリは、選定済みの **Mint Calm（暮色薄荷）** デザインを使用します。チャコールの背景、淡いミント色の操作ボタン、白地の QR 領域と現在の Sofatap アイコンを、今回のベータパッケージに含めています。[デザイン仕様](docs/RECEIVER-DESIGN.md)をご覧ください。
 - 家庭内ネットワークで接続し、WSS/TLS、証明書の固定検証、ローカルのペアリング認証情報を使用します。パソコン側の編集との競合や切断時にはリアルタイム入力を一時停止し、結果が不明な編集を自動再送しません。
 
-**現在はアルファプレビュー版です。** リアルタイム文字編集は `main` の 0.7.0 開発ソース（iPhone ビルド 10）に含まれ、下記のダウンロードは以前のアルファ版です。[0.7.0 の iPhone・Windows 限定実機検証](docs/verification/realtime-input-0.7.0.md)では、ネイティブ RichEdit の既存文章の読み込み、多言語・絵文字・改行の追記、キーボードでの削除、全選択、空欄までの削除を確認しました。リアルタイム音声と追加項目は未検証です。[0.6.0 の記録](docs/verification/2026-10-13-iphone-input.md)にはジェスチャー、マイク認識、明示的な文字送信を別途記載しています。Bluetooth とクラウド中継は未実装です。[操作仕様と今後の独立 CUA 構想](docs/INTERACTION.md)をご覧ください。
+**現在のベータ版：** [受信アプリ 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) は iPhone 1.0 (11) に対応します。Apple の処理が完了し、内部 TestFlight テストが可能な状態です。公開テストリンクと App Store 正式版はまだありません。この TestFlight ビルドの実機インストールは確認中です。
+
+以前の [0.7.0 (10) の iPhone・Windows 限定実機検証](docs/verification/realtime-input-0.7.0.md)では、ネイティブ RichEdit の既存文章の読み込み、多言語・絵文字・改行の追記、キーボードでの削除、全選択、空欄までの削除を確認しました。最終ビルドでのリアルタイム音声と追加項目は未検証です。[0.6.0 の記録](docs/verification/2026-10-13-iphone-input.md)にはジェスチャー、マイク認識、明示的な文字送信を別途記載しています。パッケージと公証の確認は実入力の検証とは別です。Bluetooth とクラウド中継は未実装です。[操作仕様と今後の独立 CUA 構想](docs/INTERACTION.md)をご覧ください。
 
 ロゴをタップすると接続の詳細と操作方法を確認できます。入力が必要なときだけタッチ面の下に編集欄が開きます。対応する欄はリアルタイム編集となり、その他は下書きを確認して送信できます。[オフラインのシミュレーター画面](docs/images/sofatap-single-screen.png)と[ドット格子のプレビュー動画](docs/images/sofatap-touch-effects.mp4)をご覧ください。ローカルの描画を示すもので、実機 iPhone の入力や性能の検証結果ではありません。
 
@@ -41,10 +43,10 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 | プラットフォーム | 現在の状況 |
 | --- | --- |
-| iPhone | iOS 17 以降。0.7.0 (10) で Windows RichEdit テスト欄の読み込み、追記、削除、選択範囲の同期を実機確認しました。リアルタイム音声と追加項目は未検証です。 |
-| Windows | 0.3.0 でネイティブ受信アプリを公開済み。開発ソースは Edit/RichEdit のリアルタイム編集に対応し、RichEdit の限定的な実機キーボード操作を確認しました。その他の項目は未検証です。 |
-| Mac | macOS 15 以降。Apple Silicon・Intel 両方のパッケージを公証済み。Apple Silicon では一部の実機検証が完了し、Intel の実入力は未検証です。 |
-| Linux | 0.4.0 で GTK3 のネイティブ受信アプリを公開済み。X11 入力は隔離デスクトップで検証済み。Wayland portal は実験的対応で、実機 iPhone 連携、実際の Wayland コンポジター、ARM64 での動作は未検証です。 |
+| iPhone | iOS 17 以降。1.0 (11) は内部 TestFlight テストが可能で、英語・簡体字中国語の UI を含みます。以前の 0.7.0 (10) の RichEdit 実機検証とは別に、最終ビルドの実機確認を進めています。 |
+| Windows | 受信アプリ 0.7.0 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目は未検証です。Windows バイナリに Authenticode 署名はありません。 |
+| Mac | macOS 15 以降。0.7.0 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済み。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
+| Linux | 0.7.0 beta.1 の x64・ARM64 GTK3 パッケージを公開済み。以前の X11 入力は隔離デスクトップで検証済み。Wayland は実験的対応で、実機 iPhone 連携、実際の Wayland コンポジター、ARM64 での動作は未検証です。 |
 
 [Mac の検証記録](docs/verification/macos-0.3.0.md)には、2026-10-11 に行った実カメラによるペアリング、TLS 接続、入力文字の完全一致確認、一部のキー・ポインター操作を記載しています。[Linux の検証記録](docs/verification/linux-0.4.0.md)は、ネイティブ GTK の描画、独立した Xvfb デスクトップでの X11 入力、プライベート D-Bus 上の模擬 Wayland portal を対象としています。すべてのアプリとの互換性を保証するものではありません。
 
@@ -56,15 +58,15 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 | パソコン | ダウンロード | 手順 |
 | --- | --- | --- |
-| Windows x64 | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)：`SofaTap-Windows-x64.zip` と対応する `.sha256` | 展開して `SofaTap.exe` を実行します。ファイアウォールは信頼できる家庭内のプライベートネットワークのみ許可してください。[Windows ガイド](docs/WINDOWS-START.md) |
-| Mac | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)：`SofaTap-macOS-arm64-notarized.zip` または `SofaTap-macOS-x64-notarized.zip` と対応する `.sha256` | Apple Silicon または Intel 用を選びます。どちらも公証済みです。[Mac のインストールと権限設定](docs/MAC-START.md)を参照してください。 |
-| Linux x64 / ARM64 | [v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha)：`SofaTap-Linux-x64.tar.gz` または `SofaTap-Linux-arm64.tar.gz` と対応する `.sha256` | システムの GTK と入力関連の依存パッケージを入れ、展開後に `./sofatap` を実行します。ネイティブウインドウから Wayland の許可を開始できます。[Linux ガイド](desktop/linux/README.md) |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip) | 展開して `SofaTap.exe` を実行します。ファイアウォールは信頼できる家庭内のプライベートネットワークのみ許可してください。[Windows ガイド](docs/WINDOWS-START.md) |
+| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | 両方とも公証済みです。[Mac のインストールと権限設定](docs/MAC-START.md)を参照してください。 |
+| Linux x64 / ARM64 | [x64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | システムの GTK と入力関連の依存パッケージを入れ、展開後に `./sofatap` を実行します。ネイティブウインドウから Wayland の許可を開始できます。[Linux ガイド](desktop/linux/README.md) |
 
-パソコン側のパッケージには .NET ランタイムを同梱しています。Linux ではガイドに記載したシステム依存パッケージが別途必要です。`--dry-run` ではデスクトップへの入力を発生させずに接続を試せます。
+上記はすべて [0.7.0 beta.1 で、対応する SHA256 ファイルとリリースノート](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)を公開しています。.NET ランタイムを同梱し、Linux では記載のシステム依存パッケージが別途必要です。`--dry-run` はデスクトップへの入力なしで接続を試せます。過去の検証記録には、実際に試したバージョンを残しています。
 
 ### iPhone アプリをインストールしてペアリング
 
-1. Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選択して実行します。有効な開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
+1. 招待済みの内部テスターは TestFlight から iPhone 1.0 (11) を利用できます。公開テストリンクはまだありません。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
 2. iPhone とパソコンを、互いに通信できる家庭内ネットワークにつなぎます。ゲスト Wi-Fi の端末分離設定によっては接続できません。
 3. 受信アプリのネイティブウインドウに表示された QR コードを iPhone アプリで読み取るか、完全なペアリングリンクを貼り付けます。
 4. パソコンで入力欄を選び、iPhone のキーボードまたはマイクを開きます。対応する欄では文字、削除、音声認識の結果を自動同期します。未対応の欄では下書きを確認して**送信**します。フォーカスの競合や切断で一時停止した場合は、パソコン側を確認してから明示的に編集を再開してください。不明な編集は自動再送しません。

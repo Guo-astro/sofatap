@@ -24,10 +24,12 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 - 滑动移动鼠标、单击左键、连续双击右键、停留 300 ms 后拖动、双指滑动滚动。
 - 点击底部麦克风使用设备支持的本机语音识别，也可使用 iPhone 键盘／Typeless。受支持的输入框默认实时同步：键盘确认的文字、删除、选区和语音识别更新直接反映到电脑，无需点**发送**。其他输入框及旧接收端保留检查草稿后发送；不会额外追加回车或提交操作。
 - 扫描**电脑原生窗口**里的二维码配对：Mac 使用 AppKit/SwiftUI，Windows 使用 WinForms，Linux 使用 GTK3，无需打开浏览器。
-- 三端接收器采用已选定的**暮色薄荷**设计：深灰底色、薄荷绿操作按钮与清晰的白底二维码。参见[设计规格](docs/RECEIVER-DESIGN.md)；此次更新位于开发源码，下方旧版下载尚未包含。
+- 三端接收器采用已选定的**暮色薄荷**设计：深灰底色、薄荷绿操作按钮与清晰的白底二维码。当前 beta 安装包已包含该设计和新版 Sofatap 图标，参见[设计规格](docs/RECEIVER-DESIGN.md)。
 - 通过家庭局域网连接，使用 WSS/TLS、证书指纹校验和本地配对凭据。电脑上的修改与当前编辑冲突或连接中断时，实时输入会暂停；结果不确定的编辑不会自动重放。
 
-**当前是 alpha 预览版。** 实时文字编辑位于 `main` 的 0.7.0 开发源码（iPhone build 10）中，下方下载仍是先前 alpha 版本。[0.7.0 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
+**当前 beta：**[接收器 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) 对应 iPhone 1.0 (11)。Apple 已处理该构建，并标记为可供内部 TestFlight 测试；尚无公开测试链接或 App Store 正式版本。该 TestFlight 构建的真机安装仍在检查中。
+
+此前的 [0.7.0 (10) 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；最终构建的实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。接收器打包与公证检查不等于真实输入验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
 点击 logo 查看连接详情和手势帮助。需要输入时，编辑区才出现在触控区域下方；受支持的输入框直接实时编辑，其他输入框保留草稿检查与明确发送。[查看离线模拟器界面](docs/images/sofatap-single-screen.png)与[点阵动效预览](docs/images/sofatap-touch-effects.mp4)。这些仅展示本地渲染，不代表真实 iPhone 输入或性能已验证。
 
@@ -41,10 +43,10 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。0.7.0 (10) 已通过 Windows RichEdit 测试字段的真实导入、追加、删除和选区同步；实时语音及更多场景仍待验收。 |
-| Windows | 0.3.0 原生接收端已发布。开发源码支持原生 Edit/RichEdit 实时编辑；限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。 |
-| Mac | macOS 15+。Apple Silicon 和 Intel 包均已公证；Apple Silicon 完成部分真机验收，Intel 输入待实测。 |
-| Linux | 0.4.0 GTK3 原生接收端已发布；X11 输入通过隔离桌面检查。Wayland portal 为实验支持；真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
+| iPhone | iOS 17+。1.0 (11) 已可供内部 TestFlight 测试，界面支持英文和简体中文。此前 0.7.0 (10) 的 RichEdit 键盘验收是独立结果，最终构建的真机验证仍在进行。 |
+| Windows | 接收器 0.7.0 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。Windows 程序尚无 Authenticode 签名。 |
+| Mac | macOS 15+。0.7.0 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
+| Linux | 0.7.0 beta.1 的 x64、ARM64 GTK3 包已发布。此前 X11 输入通过隔离桌面检查；Wayland 为实验支持，真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
 
 [Mac 验收记录](docs/verification/macos-0.3.0.md)覆盖了 2026-10-11 的真实相机扫码、TLS 连接、文字精确读回和部分按键、指针操作。[Linux 验收记录](docs/verification/linux-0.4.0.md)覆盖原生 GTK 渲染、独立 Xvfb 桌面上的 X11 输入，以及私有 D-Bus 上的模拟 Wayland portal。这些记录不代表所有应用的兼容性均已验证。
 
@@ -56,15 +58,15 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 | 电脑 | 下载 | 安装说明 |
 | --- | --- | --- |
-| Windows x64 | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)：`SofaTap-Windows-x64.zip` 及对应 `.sha256` | 解压并运行 `SofaTap.exe`，防火墙只允许可信家庭专用网络访问。[Windows 启动说明](docs/WINDOWS-START.md) |
-| Mac | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha)：`SofaTap-macOS-arm64-notarized.zip` 或 `SofaTap-macOS-x64-notarized.zip` 及对应 `.sha256` | 根据电脑选择 Apple Silicon 或 Intel 包，两者均已公证。见 [Mac 安装与授权说明](docs/MAC-START.md)。 |
-| Linux x64 / ARM64 | [v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha)：`SofaTap-Linux-x64.tar.gz` 或 `SofaTap-Linux-arm64.tar.gz` 及对应 `.sha256` | 安装系统 GTK 和输入依赖后，解压并运行 `./sofatap`；原生窗口包含 Wayland 授权入口。[Linux 启动说明](desktop/linux/README.md) |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip) | 解压并运行 `SofaTap.exe`，防火墙只允许可信家庭专用网络访问。[Windows 启动说明](docs/WINDOWS-START.md) |
+| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | 两者均已公证。见 [Mac 安装与授权说明](docs/MAC-START.md)。 |
+| Linux x64 / ARM64 | [x64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | 安装系统 GTK 和输入依赖后，解压并运行 `./sofatap`；原生窗口包含 Wayland 授权入口。[Linux 启动说明](desktop/linux/README.md) |
 
-电脑端包已包含 .NET 运行时。Linux 仍需安装指南中列出的系统依赖。`--dry-run` 可演练连接流程，不产生桌面输入。
+以上均为 [0.7.0 beta.1，附对应 SHA256 文件与发布说明](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。电脑端包已包含 .NET 运行时，Linux 仍需安装列出的系统依赖。`--dry-run` 可演练连接流程，不产生桌面输入。此前验收记录保留实际测试时的版本标签。
 
 ### 安装 iPhone App 并配对
 
-1. 在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone，然后运行 App。安装需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
+1. 已获邀请的内部测试人员可通过 TestFlight 获取 iPhone 1.0 (11)，暂未提供公开测试链接。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
 2. 将 iPhone 与电脑接入可互通的家庭网络。访客 Wi-Fi 的设备隔离可能阻止连接。
 3. 用 iPhone App 扫描接收端原生窗口里的二维码，或粘贴完整配对链接。
 4. 在电脑上选中输入框，再打开手机键盘或麦克风。受支持的字段自动同步打字、删除和识别文字；其他字段显示**发送**按钮，供检查草稿后发送。焦点冲突或断线导致实时输入暂停时，先检查电脑，再明确重新打开编辑器；不确定的编辑不会自动重放。

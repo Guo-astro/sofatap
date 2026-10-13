@@ -24,10 +24,12 @@ A one-minute tour of pointer gestures, typing on the phone keyboard and voice di
 - Slide to move, tap for a left click, double-tap for a right click, hold still for 300 ms to drag, and use two fingers to scroll.
 - Tap the bottom microphone for on-device dictation when supported, or use the iPhone keyboard / Typeless. In supported fields, live input is the default: confirmed keyboard text, deletions, selections and speech recognition updates synchronize without a **Send** button. Unsupported fields and older receivers retain the review-and-send composer. No extra Enter or form-submit action is appended.
 - Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
-- The three desktop receivers share the selected **Mint Calm (暮色薄荷)** design: charcoal background, pale mint actions and a clear white QR area. See the [design specification](docs/RECEIVER-DESIGN.md); this work is in development source, not the earlier downloads below.
+- The three desktop receivers share the selected **Mint Calm (暮色薄荷)** design: charcoal background, pale mint actions and a clear white QR area. The current beta packages include this design and the current Sofatap icon. See the [design specification](docs/RECEIVER-DESIGN.md).
 - Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Live input pauses on conflicting desktop edits or a lost connection; it never automatically replays uncertain edits.
 
-**This is an alpha preview.** Live text editing is in the 0.7.0 (iPhone build 10) development source on `main`; the downloads below are earlier alpha releases. [Scoped 0.7.0 iPhone-to-Windows checks](docs/verification/realtime-input-0.7.0.md) passed existing-text import, multilingual/emoji/newline append, keyboard deletion, Select All and deletion to empty in a native RichEdit field. Live speech and further cases remain pending. The [0.6.0 record](docs/verification/2026-10-13-iphone-input.md) separately covers gestures, microphone dictation and explicit text sending. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+**Current beta:** [receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) accompanies iPhone 1.0 (11), which Apple has processed and marked ready for internal TestFlight testing. There is no public TestFlight link or App Store release yet. Physical installation of this TestFlight build is still being checked.
+
+Earlier [scoped 0.7.0 (10) iPhone-to-Windows checks](docs/verification/realtime-input-0.7.0.md) passed existing-text import, multilingual/emoji/newline append, keyboard deletion, Select All and deletion to empty in a native RichEdit field. Final-build live speech and further cases remain pending. The [0.6.0 record](docs/verification/2026-10-13-iphone-input.md) separately covers gestures, microphone dictation and explicit text sending. Receiver packaging and notarization checks do not replace physical input acceptance. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
 
 Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface. Supported fields open as live editors; other fields keep draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [dot-matrix preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
 
@@ -41,10 +43,10 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Physical 0.7.0 (10) live import, append, deletion and selection passed in a Windows RichEdit fixture; live speech and broader coverage remain pending. |
-| Windows | Native receiver released in 0.3.0. Development source supports native Edit/RichEdit live editing; scoped physical RichEdit keyboard checks passed, with further device cases pending. |
-| Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
-| Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
+| iPhone | iOS 17+. Version 1.0 (11) is ready for internal TestFlight testing, with English and Simplified Chinese UI. Earlier 0.7.0 (10) RichEdit keyboard acceptance remains a separate result; final-build device testing is ongoing. |
+| Windows | Receiver 0.7.0 beta.1 is available with native Edit/RichEdit live editing. Earlier scoped physical RichEdit keyboard checks passed; further device cases remain pending. Windows binaries are not Authenticode-signed. |
+| Mac | macOS 15+. Receiver 0.7.0 beta.1 Apple Silicon and Intel packages are signed and notarized. Earlier scoped Apple Silicon input checks passed; current live editing and Intel input still need physical acceptance. |
+| Linux | Receiver 0.7.0 beta.1 GTK3 packages are available for x64 and ARM64. Earlier X11 input passed isolated desktop checks. Wayland is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
 
 The [Mac verification record](docs/verification/macos-0.3.0.md) covers real camera pairing, TLS, exact text readback and selected key/pointer actions on 2026-10-11. The [Linux verification record](docs/verification/linux-0.4.0.md) covers native GTK rendering, X11 input on an isolated Xvfb desktop and a mock Wayland portal on a private D-Bus. Neither record establishes complete application compatibility.
 
@@ -56,15 +58,15 @@ Pointer, shortcut and fallback text input use Win32 `SendInput` on Windows and Q
 
 | Computer | Download | Instructions |
 | --- | --- | --- |
-| Windows x64 | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha): `SofaTap-Windows-x64.zip` and its `.sha256` | Extract and run `SofaTap.exe`. Allow firewall access only on your trusted home private network. [Windows guide](docs/WINDOWS-START.md) |
-| Mac | [v0.3.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.3.0-alpha): `SofaTap-macOS-arm64-notarized.zip` or `SofaTap-macOS-x64-notarized.zip` and its `.sha256` | Choose Apple Silicon or Intel. Both packages are notarized. Follow the [Mac installation and permission guide](docs/MAC-START.md). |
-| Linux x64 / ARM64 | [v0.4.0-alpha](https://github.com/chekusu/sofatap/releases/tag/v0.4.0-alpha): `SofaTap-Linux-x64.tar.gz` or `SofaTap-Linux-arm64.tar.gz` and its `.sha256` | Install the system GTK/input dependencies, extract and run `./sofatap`. The native window includes the Wayland authorization action. [Linux guide](desktop/linux/README.md) |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip) | Extract and run `SofaTap.exe`. Allow firewall access only on your trusted home private network. [Windows guide](docs/WINDOWS-START.md) |
+| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | Both packages are notarized. Follow the [Mac installation and permission guide](docs/MAC-START.md). |
+| Linux x64 / ARM64 | [x64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | Install the system GTK/input dependencies, extract and run `./sofatap`. The native window includes the Wayland authorization action. [Linux guide](desktop/linux/README.md) |
 
-The desktop packages include the .NET runtime. Linux still requires the system dependencies in its guide. `--dry-run` previews connectivity without generating desktop input.
+All downloads above are [0.7.0 beta.1, with matching SHA256 files and release notes](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1). The packages include the .NET runtime; Linux still requires its listed system dependencies. `--dry-run` previews connectivity without generating desktop input. Older acceptance records remain labeled with the versions actually tested.
 
 ### Install the iPhone app and pair
 
-1. Open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, then run the app. Installation requires valid development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
+1. Invited internal testers can access iPhone 1.0 (11) through TestFlight. There is no public beta link yet. To build it yourself, open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, and run the app; this path requires development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
 2. Connect the iPhone and computer to the same reachable home network. Guest Wi-Fi device isolation may prevent a connection.
 3. Scan the QR code in the receiver's native window, or paste the complete pairing link into the iPhone app.
 4. Select a field on the computer and open the phone keyboard or microphone. A supported field synchronizes typing, deletion and recognized speech automatically; an unsupported field shows **Send** for a reviewed draft. If live input pauses after a focus conflict or disconnect, inspect the computer and explicitly reopen the editor. Uncertain edits are never replayed automatically.

@@ -1,8 +1,14 @@
 Sofatap is an input remote for a user-owned computer on a home network. It does not stream the computer's screen, host cloud computers, offer a software store, or require a Sofatap account. This release has no in-app purchases or subscription. No login credentials are needed for review.
 
 REQUIRED EQUIPMENT
-An iPhone running iOS 17 or later and an awake, unlocked computer on the same reachable local network. Install the matching desktop receiver from:
-https://github.com/chekusu/sofatap/releases
+An iPhone running iOS 17 or later and an awake, unlocked computer on the same reachable local network. Install desktop receiver 0.7.0 beta.1 (companion for iPhone 1.0 build 11):
+https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1
+Windows x64:
+https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip
+Mac Apple Silicon:
+https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip
+Mac Intel:
+https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip
 Setup guide:
 https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
 

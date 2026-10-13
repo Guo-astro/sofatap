@@ -6,13 +6,15 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 
 ## Install the receiver
 
-[Receiver downloads](https://github.com/chekusu/sofatap/releases) include release notes and checksums. The latest public downloads checked on October 13, 2026 are earlier alpha receiver releases: Windows/Mac 0.3.0 and Linux 0.4.0. They support the review-and-send text path; newer live-editing features require a newer compatible receiver. Use the version listed in your TestFlight testing instructions when evaluating a new build.
+[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) accompanies iPhone 1.0 (11). It includes native pairing, the current Sofatap icon and live editing for supported Windows/Mac fields. Linux and unsupported fields use review-and-send. All five packages and their SHA256 files are public; read the release notes for validation limits.
 
-| Computer | Installation guide |
-| --- | --- |
-| Windows x64 | [Windows setup](../WINDOWS-START.md). Extract the full package and run `SofaTap.exe`. Allow the receiver on a trusted private network when prompted; do not disable the firewall. |
-| Mac, macOS 15+ | [Mac setup](../MAC-START.md). Choose the notarized Apple Silicon or Intel package, place the app in Applications, open it normally, and grant the receiver Accessibility permission. |
-| Linux | [Linux setup and dependencies](../../desktop/linux/README.md). X11 is the initial supported desktop path; Wayland support is experimental and depends on the desktop's RemoteDesktop portal. |
+| Computer | Download | Installation guide |
+| --- | --- | --- |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip) | [Windows setup](../WINDOWS-START.md). Extract the full package and run `SofaTap.exe`. Allow the receiver on a trusted private network when prompted; do not disable the firewall. Windows binaries are not Authenticode-signed. |
+| Mac, macOS 15+ | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | Both packages are signed and notarized. Place `Sofatap Receiver.app` in Applications, open it normally, and grant it Accessibility permission. [Mac permission guide](../MAC-START.md); older examples there use the historical app name. |
+| Linux | [x64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | [Linux setup and dependencies](../../desktop/linux/README.md). X11 is the initial desktop path; Wayland is experimental and depends on the desktop's RemoteDesktop portal. |
+
+The iPhone 1.0 (11) build has completed Apple processing and is ready for internal TestFlight testing. Invited internal testers can access it through TestFlight; there is no public beta link yet. Physical installation of this TestFlight build is being checked. Receiver packaging checks and earlier physical-input records are separate results.
 
 The ordinary receiver requires an unlocked, interactive desktop. A Windows Remote Desktop session and the desktop shown on a TV can be different sessions. Sofatap does not unlock the computer or enter a Windows sign-in PIN in this release.
 
