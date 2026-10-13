@@ -34,6 +34,8 @@ Live editing is the default where supported. A focus, text or selection conflict
 
 The intended next stage is a standalone computer-use service: spoken command → intent/planning → explicitly authorized observation and bounded mouse/keyboard execution → progress or clarification on the phone. It must run as part of Sofatap's own product, independently of Codex. The current app and receiver already communicate directly; Codex is a development tool, not their runtime.
 
+The [October 13 architecture research](research/natural-language-pro.md) evaluates pi-durable, Cua Driver and DeepSeek for an optional paid tier, including recovery, platform limits and qualification gates. It is a proposal, not an enabled feature.
+
 Dictating text and asking the computer to act are separate intents. Dictation must never silently become a command. A future command session will have an explicit start/stop boundary and visible progress on the same phone surface. Screen capture, model credentials, observation privacy, cancellation and confirmation for consequential actions need their own implementation and validation. Untrusted text from a webpage or desktop app cannot grant additional authority to the agent.
 
 No CUA model, cloud transcription, screen streaming or arbitrary-command endpoint is enabled by this change. The existing authenticated, certificate-pinned action channel and native receiver permission gates remain the executor boundary.
