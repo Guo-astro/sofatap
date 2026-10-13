@@ -47,7 +47,11 @@ struct RemoteView: View {
         !showingSpeechError && !resendAlert && !clearAlert
     }
 
-    var body: some View {
+    var body: some View { dictationEvents }
+
+    // Keep each opaque view expression small enough for the CI Swift compiler.
+    // The modifier order remains layout -> presentation -> lifecycle -> dictation.
+    private var layout: some View {
         GeometryReader { geometry in
             let available = max(0, geometry.size.height - 32)
             let padMinimum = min(184, available * 0.62)
@@ -67,6 +71,10 @@ struct RemoteView: View {
             .padding(.vertical, 10)
         }
         .background(Palette.background)
+    }
+
+    private var presentation: some View {
+        layout
         .sheet(isPresented: $pairingSheet) {
             PairingView(model: model, tv: tv, androidTV: androidTV, selectAndroidTV: selectAndroidTelevision,
                         selectTV: selectTelevision, selectComputer: selectComputer)
@@ -86,6 +94,10 @@ struct RemoteView: View {
             Button(String(localized: "取消"), role: .cancel) {}
             Button(String(localized: "清空草稿"), role: .destructive) { model.clearDraft() }
         } message: { Text(String(localized: "不会删除电脑里已经输入的文字。")) }
+    }
+
+    private var connectionEvents: some View {
+        presentation
         .onAppear {
             model.becameActive()
             if model.textDelivery == .uncertain { composerVisible = true }
@@ -122,6 +134,10 @@ struct RemoteView: View {
             if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel() }
             if !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { tv.resumeInput() }
         }
+    }
+
+    private var desktopEvents: some View {
+        connectionEvents
         .onChange(of: model.liveTextStatus) { _, _ in
             if model.liveTextPaused || (model.usesLiveText && model.liveTextStatus == .idle && speechRequest != nil) {
                 cancelSpeech()
@@ -138,6 +154,10 @@ struct RemoteView: View {
             // stopping dictation. Only session/permission loss resets UI state.
             if !available && !televisionSelected { handledFocusRevision = nil; stopInteraction() }
         }
+    }
+
+    private var interactionEvents: some View {
+        desktopEvents
         .onChange(of: pairingSheet) { _, shown in
             if shown { stopInteraction() }
             else { resumeCurrentInput() }
@@ -160,6 +180,10 @@ struct RemoteView: View {
                 if dictation.state != .requestingPermission { cancelSpeech() }
             } else { resumeCurrentInput() }
         }
+    }
+
+    private var dictationEvents: some View {
+        interactionEvents
         .onReceive(dictation.$transcript) { transcript in
             guard !televisionSelected else { return }
             // @Published replays its current value when SwiftUI subscribes. Ignore
