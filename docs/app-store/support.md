@@ -6,7 +6,7 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 
 ## Install the receiver
 
-[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) accompanies iPhone 1.0 (11). It includes native pairing, the current Sofatap icon and live editing for supported Windows/Mac fields. Linux and unsupported fields use review-and-send. All five packages and their SHA256 files are public; read the release notes for validation limits.
+[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) is compatible with iPhone 1.0 (12). It includes native pairing, the current Sofatap icon and live editing for supported Windows/Mac fields. Linux and unsupported fields use review-and-send. All five packages and their SHA256 files are public; read the release notes for validation limits.
 
 | Computer | Download | Installation guide |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 | Mac, macOS 15+ | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | Both packages are signed and notarized. Place `Sofatap Receiver.app` in Applications, open it normally, and grant it Accessibility permission. [Mac permission guide](../MAC-START.md); older examples there use the historical app name. |
 | Linux | [x64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | [Linux setup and dependencies](../../desktop/linux/README.md). X11 is the initial desktop path; Wayland is experimental and depends on the desktop's RemoteDesktop portal. |
 
-The iPhone 1.0 (11) build has completed Apple processing and is ready for internal TestFlight testing. Invited internal testers can access it through TestFlight; there is no public beta link yet. Physical installation of this TestFlight build is being checked. Receiver packaging checks and earlier physical-input records are separate results.
+The iPhone 1.0 (12) build has completed Apple processing and is available to invited internal TestFlight testers. A [public TestFlight invitation](https://testflight.apple.com/join/e6MuKx9S) is configured for up to 100 testers, but external review has not been submitted yet because review-contact details are missing. Friends cannot install through that link until Apple approves external testing. See the [release record](../verification/testflight-1.0-12.md). Final-build physical installation and input acceptance remain separate from build processing.
 
 The ordinary receiver requires an unlocked, interactive desktop. A Windows Remote Desktop session and the desktop shown on a TV can be different sessions. Sofatap does not unlock the computer or enter a Windows sign-in PIN in this release.
 
@@ -31,7 +31,7 @@ The ordinary receiver requires an unlocked, interactive desktop. A Windows Remot
 - Slide one finger to move the pointer.
 - Tap once for a left click; tap twice in succession for a right click.
 - Hold still for 0.3 seconds, then move to drag; lift your finger to release.
-- Slide two fingers to scroll.
+- Slide two fingers to drag content naturally. The strip inside the touchpad's right edge follows scrollbar direction: slide down to scroll down.
 - Tap the keyboard icon to type, or the microphone to dictate where on-device recognition is supported.
 
 A compatible receiver can open the keyboard when a supported text field gains focus. Live editing is available only for certain native Windows and Mac fields. It imports the field's text and synchronizes editing automatically. Browsers, custom fields, Linux and older receivers use a draft with a Send action instead. No extra Enter or form submission is added to text input.

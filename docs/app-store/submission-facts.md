@@ -1,6 +1,8 @@
 # Sofatap first-release submission facts
 
-Updated October 13, 2026. iPhone 1.0 (11) is uploaded, processed `VALID` and `READY_FOR_BETA_TESTING` for internal testing. Four authentic screenshots and English store materials are saved. App Privacy responses are saved as a draft, not published. Formal App Store review has not been submitted; the internal invitation has been accepted on a test iPhone, but its TestFlight download has not completed.
+Historical first-upload snapshot, October 13, 2026. The latest 1.0 (12) upload and external-beta preparation are recorded in [TestFlight 1.0 (12)](../verification/testflight-1.0-12.md).
+
+At this snapshot: iPhone 1.0 (11) is uploaded, processed `VALID` and `READY_FOR_BETA_TESTING` for internal testing. Four authentic screenshots and English store materials are saved. App Privacy responses are saved as a draft, not published. Formal App Store review has not been submitted; the internal invitation has been accepted on a test iPhone, but its TestFlight download has not completed.
 
 ## Record and draft fields
 

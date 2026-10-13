@@ -1,8 +1,8 @@
 # Sofatap Privacy Policy
 
-Effective date: October 13, 2026
+Effective date: October 14, 2026
 
-Sofatap is provided by CHEKUSU INC. This policy covers the Sofatap iPhone app and its desktop receiver. Sofatap lets you control a computer you pair with your phone. You do not need a Sofatap account.
+Sofatap is provided by CHEKUSU INC. This policy covers the Sofatap iPhone app, its desktop receiver and the TV previews described below. Sofatap lets you control a computer you pair with your phone. You do not need a Sofatap account.
 
 ## Your devices communicate directly
 
@@ -18,7 +18,7 @@ A pairing code grants control of the computer. Keep codes and pairing links priv
 
 ## TV development preview
 
-The development-source LG webOS preview also connects directly to a TV you select on the home network. It stores the selected TV's address, approved certificate fingerprint and client key in a separate device-only, unlocked-device Keychain record. Pointer and navigation commands go to the TV over pinned encrypted connections; they are not sent to CHEKUSU. The preview does not collect TV screenshots or text, and has no TV microphone or keyboard feature. Use **Forget TV** in its native pairing screen to remove the phone's TV credentials. This removes local pairing only; the TV's own controller-authority settings are separate. This preview is not part of the previously published app build.
+The experimental LG webOS preview also connects directly to a TV you select on the home network. It stores the selected TV's address, approved certificate fingerprint and client key in a separate device-only, unlocked-device Keychain record. Pointer and navigation commands go to the TV over pinned encrypted connections; they are not sent to CHEKUSU. The preview does not collect TV screenshots or text, and has no TV microphone or keyboard feature. Use **Forget TV** in its native pairing screen to remove the phone's TV credentials. This removes local pairing only; the TV's own controller-authority settings are separate. The TV pairing adapters are included in iPhone 1.0 (12) as experimental previews; physical TV model qualification remains pending.
 
 The Android/Google TV development receiver has a separate native QR pairing flow. Its five-minute enrollment credential is consumed on first pairing and replaced by a persistent random credential. The phone stores only the resulting pairing in its device-only, unlocked-device Keychain. The receiver stores the credential hash and its TLS identity in an encrypted, backup-excluded local file protected by Android Keystore. **Pair another iPhone** revokes the previous pairing; **Stop receiver** disconnects the phone. Disabling the accessibility service removes its input permission.
 
