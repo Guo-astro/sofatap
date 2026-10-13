@@ -24,9 +24,11 @@
 		6C8981371521C6494A9E86D5 /* AndroidTVSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 522343BC19D300FF01229D20 /* AndroidTVSocket.swift */; };
 		7DDB633B72618F7923EDE140 /* WebOSTVPairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409CB46FC55E930BD22D5436 /* WebOSTVPairingStore.swift */; };
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
+		8583D7E1F07210394C11A4F6 /* EdgeScrollGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB516F458F92F797A2D61F61 /* EdgeScrollGesture.swift */; };
 		8BCAB73533A219F58CB0B3C6 /* WebOSTVProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */; };
 		93F0C888DB704DABA66D5901 /* TVPairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54AF04458B57B98FBC0F3928 /* TVPairingView.swift */; };
 		9434097D51E493B438C2FCE6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 09B7623BA020963D10FF6660 /* Localizable.strings */; };
+		96DEF4B578A190200004BDEC /* EdgeScrollStrip.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0416314FF9ABB35588FD4779 /* EdgeScrollStrip.swift */; };
 		993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2194963D13F182243533BEB /* SofaTapApp.swift */; };
 		9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */; };
 		A2A404ACCEC5948E6FA6E3D0 /* AndroidTVPairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653112145C3AC3F8360E3E33 /* AndroidTVPairingStore.swift */; };
@@ -38,6 +40,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		0416314FF9ABB35588FD4779 /* EdgeScrollStrip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeScrollStrip.swift; sourceTree = "<group>"; };
 		073F44E198299E317E1E4D3D /* NativeControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativeControls.swift; sourceTree = "<group>"; };
 		0FC98CB31D572AB388B6B719 /* SofaTap.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SofaTap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCredentialVault.swift; sourceTree = "<group>"; };
@@ -66,6 +69,7 @@
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
 		B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockProtocol.swift; sourceTree = "<group>"; };
+		CB516F458F92F797A2D61F61 /* EdgeScrollGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeScrollGesture.swift; sourceTree = "<group>"; };
 		D18FB04130086BA45CCC4601 /* AndroidTVProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVProtocol.swift; sourceTree = "<group>"; };
 		D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVProtocol.swift; sourceTree = "<group>"; };
 		E6DC33E8052762AFA900FC59 /* AndroidTVPairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVPairingView.swift; sourceTree = "<group>"; };
@@ -78,6 +82,7 @@
 			children = (
 				5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */,
 				7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */,
+				CB516F458F92F797A2D61F61 /* EdgeScrollGesture.swift */,
 				6898F264D24CA602D5304DA0 /* Pairing.swift */,
 				8836BE62D39309B8AF525D9F /* ReceiverState.swift */,
 				1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */,
@@ -132,6 +137,7 @@
 			children = (
 				E6DC33E8052762AFA900FC59 /* AndroidTVPairingView.swift */,
 				85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */,
+				0416314FF9ABB35588FD4779 /* EdgeScrollStrip.swift */,
 				073F44E198299E317E1E4D3D /* NativeControls.swift */,
 				A8F19D4B8423478A9CA42C50 /* PairingView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
@@ -231,6 +237,8 @@
 				A48C6B42061DF866CF421F83 /* ComputerUnlockController.swift in Sources */,
 				68E7813DE872359DEE8A3E06 /* ComputerUnlockView.swift in Sources */,
 				235031F88751C7AF87089F98 /* ControllerModel.swift in Sources */,
+				8583D7E1F07210394C11A4F6 /* EdgeScrollGesture.swift in Sources */,
+				96DEF4B578A190200004BDEC /* EdgeScrollStrip.swift in Sources */,
 				C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */,
 				667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */,
 				0C3B35855B50DA22F878C842 /* PairingView.swift in Sources */,

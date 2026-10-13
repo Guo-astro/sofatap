@@ -81,7 +81,7 @@ private final class InteropMemoryStore: AndroidTVPairingStorage {
         await wait("five acknowledged native input actions") { (stats(dir)?.actions.count ?? 0) >= 5 || controller.phase == .failed }
         let sent = stats(dir)!.actions
         require(controller.canControl && sent.map(\.type) == ["move", "click", "scroll", "key", "key"], "native queue and Java ACKs preserve action order")
-        require(sent[0].dx == 12 && sent[0].dy == -3 && sent[2].dy == -9 && sent[3].key == "back" && sent[4].key == "home", "wire deltas and buttons match receiver actions")
+        require(sent[0].dx == 12 && sent[0].dy == -3 && sent[2].dy == 9 && sent[3].key == "back" && sent[4].key == "home", "wire movement, downward scroll and buttons match receiver actions")
         controller.pauseInput(); controller.click(); await pause(200)
         require(stats(dir)?.actions.count == 5, "paused native input is not sent")
         controller.resumeInput()

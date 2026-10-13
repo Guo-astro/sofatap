@@ -11,10 +11,11 @@ private final class DraftFixture: NSObject, UITextViewDelegate {
     var focused = false
     var beforeRender: (() -> Void)?
     var renderDuringPublication = false
+    var edits: [(String, NSRange, Bool)] = []
     let view = UITextView()
     var coordinator: NativeDraftEditor.Coordinator!
 
-    init(_ text: String = "") {
+    init(_ text: String = "", control: NativeDraftEditor.Control? = nil) {
         self.text = text
         super.init()
         let editor = NativeDraftEditor(
@@ -23,9 +24,14 @@ private final class DraftFixture: NSObject, UITextViewDelegate {
                 if self.renderDuringPublication { self.coordinator.synchronizeText(self.view) }
             }),
             composing: Binding(get: { self.composing }, set: { self.composing = $0 }),
-            isFocused: Binding(get: { self.focused }, set: { self.focused = $0 }), disabled: false)
+            isFocused: Binding(get: { self.focused }, set: { self.focused = $0 }), disabled: false,
+            onEdit: control == nil ? nil : { [weak self] text, selection, marked in
+                self?.edits.append((text, selection, marked))
+            },
+            control: control)
         coordinator = editor.makeCoordinator()
         coordinator.textView = view
+        coordinator.attachControl(control)
         coordinator.synchronizeText(view)
         view.selectedRange = NSRange(location: text.utf16.count, length: 0)
         view.delegate = self
@@ -143,6 +149,44 @@ struct NativeDraftEditorTests {
         publication.renderDuringPublication = true
         publication.view.insertText("测")
         check("binding publication cannot recursively overwrite the edit", publication.text == "实测" && publication.view.text == "实测")
+
+        let sendControl = NativeDraftEditor.Control()
+        let pendingVoice = DraftFixture("原文 ", control: sendControl)
+        pendingVoice.view.delegate = nil
+        pendingVoice.view.insertText("语音追加 🛋️")
+        let nativeVoice = pendingVoice.view.text!
+        let nativeSelection = pendingVoice.view.selectedRange
+        check("fixture delays delegate publication before Send", pendingVoice.text == "原文 " && nativeVoice != pendingVoice.text)
+        check("Send flush publishes the latest native voice append", sendControl.flushForSend() && pendingVoice.text == nativeVoice)
+        check("Send flush publishes the matching native selection atomically", pendingVoice.edits.last?.0 == nativeVoice && pendingVoice.edits.last?.1 == nativeSelection && pendingVoice.edits.last?.2 == false)
+
+        let markedControl = NativeDraftEditor.Control()
+        let pendingIME = DraftFixture("前缀 ", control: markedControl)
+        pendingIME.view.delegate = nil
+        pendingIME.view.setMarkedText("shice", selectedRange: NSRange(location: 5, length: 0))
+        check("Send refuses provisional IME and retains the marked range", !markedControl.flushForSend() && pendingIME.view.markedTextRange != nil)
+        check("refused Send does not publish a provisional edit", pendingIME.text == "前缀 " && pendingIME.edits.isEmpty)
+        pendingIME.view.insertText("实测")
+        check("an explicit keyboard commit can subsequently flush for Send", markedControl.flushForSend() && pendingIME.text == "前缀 实测" && pendingIME.edits.last?.2 == false)
+
+        let clearControl = NativeDraftEditor.Control()
+        let clearBeforeSend = DraftFixture("旧草稿", control: clearControl)
+        clearBeforeSend.view.delegate = nil
+        clearBeforeSend.view.insertText("最后一字")
+        clearBeforeSend.text = ""
+        check("explicit model clear wins over an unpublished native edit at Send", clearControl.flushForSend() && clearBeforeSend.text.isEmpty && clearBeforeSend.view.text.isEmpty)
+        check("clear flush publishes empty text and valid selection", clearBeforeSend.edits.last?.0 == "" && clearBeforeSend.edits.last?.1 == NSRange(location: 0, length: 0))
+
+        let detachedControl = NativeDraftEditor.Control()
+        check("an unattached Send control cannot report a successful flush", !detachedControl.flushForSend())
+        let oldEditor = DraftFixture("旧实例", control: detachedControl)
+        let newEditor = DraftFixture("新实例", control: detachedControl)
+        oldEditor.coordinator.attachControl(nil)
+        newEditor.view.delegate = nil
+        newEditor.view.insertText("输入")
+        check("old editor teardown cannot detach the current Send control", detachedControl.flushForSend() && newEditor.text == "新实例输入")
+        newEditor.coordinator.attachControl(nil)
+        check("current editor teardown detaches Send safely", !detachedControl.flushForSend())
 
         print("Native draft editor: \(passed) UIKit checks passed without windows or input injection")
     }

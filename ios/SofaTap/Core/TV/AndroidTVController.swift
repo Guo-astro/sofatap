@@ -120,7 +120,9 @@ final class AndroidTVController: ObservableObject {
     }
     func scroll(dy: Double) {
         guard status?.capabilities.scroll == true else { return }
-        enqueue(.scroll(dx: 0, dy: dy))
+        // Phone gestures use desktop wheel direction: finger down emits a negative delta.
+        // Android's accessible-container action uses a positive delta for document down.
+        enqueue(.scroll(dx: 0, dy: -dy))
     }
     func key(_ key: AndroidTVKey) {
         let caps = status?.capabilities

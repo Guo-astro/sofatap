@@ -146,6 +146,7 @@ struct LiveTextControllerTests {
         check("fallback sending status shows pending delivery", unsupported.model.textStatus.contains("等待电脑确认"))
         unsupported.reply(1)
         check("fallback successful receipt replaces unsupported hint", unsupported.model.textStatus.contains("已向电脑系统提交"))
+        unsupported.model.clearDraft()
         unsupported.model.editText("新内容", selection: NSRange(location: 3, length: 0), marked: false)
         unsupported.model.sendText(); unsupported.reply(2, error: "input_unavailable")
         check("fallback rejection displays the actual delivery error", unsupported.model.textStatus.contains("未被电脑接受：input_unavailable"))

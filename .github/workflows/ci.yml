@@ -69,6 +69,8 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
           "$RUNNER_TEMP/sofatap-touch-tests"
+      - name: Edge scroll gestures and native view without desktop input
+        run: bash ios/scripts/test-edge-scroll.sh
       - name: TV protocol boundaries without devices
         run: |
           swiftc ios/SofaTap/Core/TV/WebOSTVProtocol.swift tests/WebOSTVProtocolTests.swift -o "$RUNNER_TEMP/sofatap-tv-protocol-tests"
@@ -87,6 +89,8 @@ jobs:
         run: bash ios/scripts/test-drag-release.sh
       - name: Synchronize live text and selection without desktop input
         run: bash ios/scripts/test-live-text.sh
+      - name: Preserve appended explicit drafts across focus and delivery changes
+        run: bash ios/scripts/test-explicit-text.sh
       - name: Guard live phone gestures without connecting to a device
         run: python3 -m unittest discover -s tests/device-harness -p test_live_phone_gesture.py -v
       - name: Mac native-window protocol checks without launching a UI

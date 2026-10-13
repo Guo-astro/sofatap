@@ -10,7 +10,16 @@ struct NativeDraftEditor: UIViewRepresentable {
     var onEdit: ((String, NSRange, Bool) -> Void)? = nil
     var preservesFocusWhileLoading = false
     var liveEditing = false
+    var control: Control? = nil
     var editorAccessibilityLabel: String { liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿") }
+
+    /// Send must read the latest native edit even if UIKit has not delivered its
+    /// delegate callback yet. Unconfirmed IME text is never committed implicitly.
+    final class Control {
+        fileprivate weak var coordinator: Coordinator?
+        @discardableResult
+        func flushForSend() -> Bool { coordinator?.flushForSend() ?? false }
+    }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> UITextView {
@@ -26,17 +35,14 @@ struct NativeDraftEditor: UIViewRepresentable {
         view.smartQuotesType = .default
         view.accessibilityLabel = editorAccessibilityLabel
         view.accessibilityIdentifier = "textDraft"
-        let toolbar = UIToolbar()
-        toolbar.items = [UIBarButtonItem(systemItem: .flexibleSpace),
-                         UIBarButtonItem(title: String(localized: "收起键盘"), style: .done, target: context.coordinator, action: #selector(Coordinator.done))]
-        toolbar.sizeToFit()
-        view.inputAccessoryView = toolbar
         context.coordinator.textView = view
+        context.coordinator.attachControl(control)
         return view
     }
     func updateUIView(_ view: UITextView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
+        coordinator.attachControl(control)
         view.accessibilityLabel = editorAccessibilityLabel
         coordinator.synchronizeText(view)
         view.isEditable = !disabled
@@ -54,6 +60,7 @@ struct NativeDraftEditor: UIViewRepresentable {
     static func dismantleUIView(_ view: UITextView, coordinator: Coordinator) {
         view.resignFirstResponder()
         view.delegate = nil
+        coordinator.attachControl(nil)
         coordinator.textView = nil
     }
     final class Coordinator: NSObject, UITextViewDelegate {
@@ -67,10 +74,27 @@ struct NativeDraftEditor: UIViewRepresentable {
         private var pendingExternalText: String?
         private var applyingModelText = false
         private var publishingNativeText = false
+        private weak var control: Control?
         init(_ parent: NativeDraftEditor) {
             self.parent = parent
             lastPublishedText = parent.text
             lastPublishedSelection = nil
+        }
+        func attachControl(_ next: Control?) {
+            if control !== next {
+                if control?.coordinator === self { control?.coordinator = nil }
+                control = next
+            }
+            next?.coordinator = self
+        }
+        @discardableResult
+        func flushForSend() -> Bool {
+            guard !applyingModelText, !publishingNativeText,
+                  let view = textView, view.markedTextRange == nil else { return false }
+            // This uses the same conflict ordering as normal delegate delivery:
+            // explicit model clear/replacement wins, otherwise native text wins.
+            publishNativeText(view)
+            return view.markedTextRange == nil
         }
         func synchronizeText(_ view: UITextView) {
             guard !applyingModelText, !publishingNativeText else { return }
@@ -161,10 +185,6 @@ struct NativeDraftEditor: UIViewRepresentable {
             // text and selection together so its first frame cannot contain the
             // previous text with the new caret. Select All also takes this path.
             if parent.onEdit != nil { publishNativeText(textView) }
-        }
-        @objc func done() {
-            parent.isFocused = false
-            textView?.resignFirstResponder()
         }
     }
 }

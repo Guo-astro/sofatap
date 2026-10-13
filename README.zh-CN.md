@@ -31,6 +31,8 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 此前的 [0.7.0 (10) 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；最终构建的实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。接收器打包与公证检查不等于真实输入验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
+支持触控区双指滚动，也可沿右侧滚动条单指上下滑动。输入区用一排清空、收起键盘和发送图标贴近键盘，不显示字数计数；确认发送模式下，已发送草稿继续追加后只发送新增文字。[查看输入区预览](docs/images/sofatap-composer-zh-CN.png)。
+
 点击 logo 查看连接详情和手势帮助。需要输入时，编辑区才出现在触控区域下方；受支持的输入框直接实时编辑，其他输入框保留草稿检查与明确发送。[查看离线模拟器界面](docs/images/sofatap-single-screen.png)与[点阵动效预览](docs/images/sofatap-touch-effects.mp4)。这些仅展示本地渲染，不代表真实 iPhone 输入或性能已验证。
 
 **路线图：**免费提供手动鼠标／触控遥控，当前支持电脑，下一步扩展直连电视；电视的真实光标能力需要单独验证，方向键导航不等同于鼠标。基础语音转文字仍是免费输入。付费的语音目标自动化先面向 Windows、macOS、Linux 的多步任务，之后再扩展电视。当前版本尚未实现直连电视或自动化，也未启用订阅。参见[路线图与验收目标](docs/ROADMAP.md)和[自动化研究](docs/research/natural-language-pro.md)。

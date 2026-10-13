@@ -25,15 +25,15 @@ final class ControllerModel: ObservableObject {
     @Published private(set) var computerName = String(localized: "客厅电脑")
     @Published var notice = String(localized: "配对一次，坐下来就能控制电脑。")
     @Published var pairingError: String?
+    private var draftDefaults: UserDefaults? = .standard
     @Published var draft: String {
         didSet {
             // Local-only recovery for a Typeless app switch or process termination.
-#if SOFATAP_CONTROLLER_TESTING
-            if testSend == nil && testLiveSend == nil && !demo && !ephemeralDraft { UserDefaults.standard.set(draft, forKey: "localTextDraft") }
-#else
-            if !demo && !ephemeralDraft { UserDefaults.standard.set(draft, forKey: "localTextDraft") }
-#endif
-            if textDelivery == .sent && draft != lastSentDraft { textDelivery = .ready }
+            if !demo && !ephemeralDraft { draftDefaults?.set(draft, forKey: "localTextDraft") }
+            if textDelivery == .sent && explicitTextToSend != "" { textDelivery = .ready }
+            else if textDelivery == .ready && lastSentDraft != nil && explicitTextToSend == "" { textDelivery = .sent }
+            // Keep the acknowledged prefix receipt when an unsent suffix is edited.
+            persistDeliveryState()
         }
     }
     @Published var composing = false
@@ -59,6 +59,7 @@ final class ControllerModel: ObservableObject {
 
     private var lastSentDraft: String?
     private var sentSnapshot = ""
+    private var explicitSendAttempt: UUID?
     private var socket: URLSessionWebSocketTask?
     private var session: URLSession?
     private var sessionDelegate: PinnedSessionDelegate?
@@ -90,17 +91,21 @@ final class ControllerModel: ObservableObject {
     private var testSend: ((String, [String: Any], @escaping (Bool) -> Void) -> Void)?
     init(testSend: @escaping (String, [String: Any], @escaping (Bool) -> Void) -> Void) {
         demo = false
+        draftDefaults = nil
         pairing = nil
         draft = ""
         connected = true
         inputAvailable = true
         self.testSend = testSend
     }
-    init(testLiveSend: @escaping (String, [String: Any], @escaping ([String: Any]) -> Void) -> Void) {
-        demo = false; pairing = nil; draft = ""; connected = true; inputAvailable = true
+    init(testLiveSend: @escaping (String, [String: Any], @escaping ([String: Any]) -> Void) -> Void,
+         draftDefaults: UserDefaults? = nil) {
+        demo = false; pairing = nil; draft = draftDefaults?.string(forKey: "localTextDraft") ?? ""; connected = true; inputAvailable = true
+        self.draftDefaults = draftDefaults
         receiverState = ReceiverState(platform: .windows, status: .ready, inputAvailable: true,
                                       textFocus: .editable, reportsTextFocus: true, supportsLiveText: true)
         self.testLiveSend = testLiveSend
+        restoreDeliveryReceipt()
     }
     func testFlushMovement() { flushMovement() }
     func testReceiveFocus(_ revision: Int, editable: Bool = true) {
@@ -116,11 +121,18 @@ final class ControllerModel: ObservableObject {
         self.draft = demo ? String(localized: "你好，帮我播放今晚想看的电影。") : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
         unlock.setPairing(self.pairing)
         if demo { notice = String(localized: "界面演示：按钮只展示反馈，没有连接或操作电脑。") }
-        else if let marker = UserDefaults.standard.string(forKey: "textDeliveryMarker") {
+        else { restoreDeliveryReceipt() }
+    }
+
+    private func restoreDeliveryReceipt() {
+        if let defaults = draftDefaults, let marker = defaults.string(forKey: "textDeliveryMarker") {
             // A process kill must never turn a pending/accepted draft into an implicit retry.
-            if marker == "sent", UserDefaults.standard.string(forKey: "sentDraftDigest") == digest(draft) {
-                lastSentDraft = draft
-                textDelivery = .sent
+            let count = defaults.object(forKey: "sentDraftUTF16Length") as? Int ?? draft.utf16.count
+            if ["sent", "accepted-prefix"].contains(marker), count > 0, count <= draft.utf16.count,
+               let prefix = Self.exactPrefix(draft, count: count),
+               defaults.string(forKey: "sentDraftDigest") == digest(prefix) {
+                lastSentDraft = prefix
+                textDelivery = explicitTextToSend == "" ? .sent : .ready
             } else {
                 textDelivery = .uncertain
             }
@@ -147,7 +159,13 @@ final class ControllerModel: ObservableObject {
     var draftLength: Int { draft.utf16.count }
     var draftWithinLimit: Bool { draftLength <= 16_000 }
     var sendingText: Bool { textDelivery == .sending }
-    var usesLiveText: Bool { !demo && ((receiverState.supportsLiveText && liveTextStatus != .unsupported) || liveTextPaused) }
+    var usesLiveText: Bool {
+        // A local explicit draft belongs to the user, even when a reconnected
+        // receiver advertises live editing. Only an already-opening/live session
+        // may own imported field text; don't silently replace a retained draft.
+        let retainedExplicitDraft = !ephemeralDraft && !draft.isEmpty && liveTextStatus != .starting
+        return !demo && ((receiverState.supportsLiveText && liveTextStatus != .unsupported && !retainedExplicitDraft) || liveTextPaused)
+    }
     var liveTextReady: Bool { liveTextStatus == .active || liveTextStatus == .syncing }
     var liveTextPaused: Bool { if case .paused = liveTextStatus { return true }; return false }
     var editorLoading: Bool { liveTextStatus == .starting }
@@ -162,15 +180,30 @@ final class ControllerModel: ObservableObject {
         }
     }
     var canSendText: Bool {
-        !usesLiveText && canControl && !draft.isEmpty && draftWithinLimit && !composing && !sendingText &&
-        textDelivery != .uncertain && !(textDelivery == .sent && draft == lastSentDraft)
+        !usesLiveText && canControl && !(explicitTextToSend?.isEmpty ?? true) && draftWithinLimit && !composing && !sendingText &&
+        textDelivery != .uncertain
+    }
+    var sentTextWasEdited: Bool { !usesLiveText && lastSentDraft != nil && explicitTextToSend == nil }
+    private var explicitTextToSend: String? {
+        guard let prefix = lastSentDraft else { return draft }
+        guard draft.utf16.starts(with: prefix.utf16) else { return nil }
+        return (draft as NSString).substring(from: prefix.utf16.count)
+    }
+    private static func exactPrefix(_ text: String, count: Int) -> String? {
+        let units = Array(text.utf16)
+        guard count >= 0, count <= units.count,
+              count == units.count || !(0xDC00...0xDFFF).contains(units[count]) else { return nil }
+        return (text as NSString).substring(to: count)
     }
     var textStatus: String {
         if usesLiveText { return liveTextDescription }
         if composing { return String(localized: "正在输入或听写，完成后再发送。") }
-        if !draftWithinLimit { return String(localized: "文字超过 16,000 字符限制，请拆成几段发送。") }
+        if !draftWithinLimit { return String(localized: "文字过长，请分段发送。") }
+        if sentTextWasEdited && textDelivery != .uncertain && !sendingText { return String(localized: "已发送部分已修改；电脑不会自动覆盖。请清空后输入新段，或检查电脑后允许整段重发。") }
         switch textDelivery {
-        case .ready: return liveTextStatus == .unsupported ? liveTextDescription : String(localized: "先点电脑里的输入框，再发送整段文字。")
+        case .ready:
+            if lastSentDraft != nil { return String(localized: "确认后只发送新增的文字。") }
+            return liveTextStatus == .unsupported ? liveTextDescription : String(localized: "先点电脑里的输入框，再发送整段文字。")
         case .sending: return String(localized: "等待电脑确认… 请勿重复发送。")
         case .sent: return String(localized: "已向电脑系统提交文字；请在屏幕上确认内容。")
         case .rejected(let error): return String(localized: "未被电脑接受：\(error)")
@@ -432,6 +465,7 @@ final class ControllerModel: ObservableObject {
         if let testLiveSend {
             guard connected else { completion?(.uncertain); return }
             testLiveSend(type, fields) { reply in
+                if reply["uncertain"] as? Bool == true { completion?(.uncertain); return }
                 completion?(reply["ok"] as? Bool == true ? .accepted(reply) : .rejected(reply["error"] as? String ?? "live_text_uncertain"))
             }
             return
@@ -583,22 +617,26 @@ final class ControllerModel: ObservableObject {
     }
 
     func sendText() {
-        guard canSendText else { return }
+        guard canSendText, let payload = explicitTextToSend, !payload.isEmpty else { return }
         feedback()
-        sentSnapshot = draft
+        let snapshot = draft
+        sentSnapshot = snapshot
         if demo {
             lastSentDraft = draft
             textDelivery = .sent
             notice = String(localized: "演示：没有将文字发送到任何电脑。")
             return
         }
+        let attempt = UUID()
+        explicitSendAttempt = attempt
         textDelivery = .sending
-        send("text", fields: ["text": sentSnapshot]) { [weak self] result in
-            guard let self else { return }
+        send("text", fields: ["text": payload]) { [weak self] result in
+            guard let self, self.explicitSendAttempt == attempt else { return }
+            self.explicitSendAttempt = nil
             switch result {
             case .accepted:
-                self.lastSentDraft = self.sentSnapshot
-                self.textDelivery = self.draft == self.sentSnapshot ? .sent : .ready
+                self.lastSentDraft = snapshot
+                self.textDelivery = self.explicitTextToSend == "" ? .sent : .ready
             case .rejected(let error): self.textDelivery = .rejected(error)
             case .uncertain: self.textDelivery = .uncertain
             }
@@ -607,23 +645,27 @@ final class ControllerModel: ObservableObject {
 
     func allowManualResend() {
         guard !sendingText else { return }
-        textDelivery = .ready
         lastSentDraft = nil
+        textDelivery = .ready
     }
 
     func clearDraft() {
         guard !sendingText else { return }
         if liveTextReady { editText("", selection: NSRange(location: 0, length: 0), marked: false) }
         else { draft = ""; draftSelection = NSRange(location: 0, length: 0) }
-        textDelivery = .ready
         lastSentDraft = nil
+        textDelivery = .ready
     }
 
     /// Opening is an explicit or editable-focus-triggered snapshot request. The
     /// editor stays disabled until its initial snapshot has been acknowledged.
     func openTextEditor(completion: (() -> Void)? = nil) {
+        openTextEditor(replacingRetainedDraft: false, completion: completion)
+    }
+
+    private func openTextEditor(replacingRetainedDraft: Bool, completion: (() -> Void)? = nil) {
         guard canControl, remoteTextFocus != .protected else { return }
-        guard usesLiveText else { completion?(); return }
+        guard usesLiveText || replacingRetainedDraft else { completion?(); return }
         if liveTextPaused { return }
         if liveTextReady { completion?(); return }
         if let completion { liveTextOpenCallbacks.append(completion) }
@@ -635,11 +677,16 @@ final class ControllerModel: ObservableObject {
             guard let self, self.liveTextEpoch == epoch else { return }
             switch result {
             case .accepted(let message):
+                // A speech/Typeless binding update can bypass editText while a
+                // snapshot is in flight. Never import over that newer local edit.
+                guard self.liveTextOpeningSnapshot == LiveTextSnapshot(text: self.draft, selection: self.draftSelection),
+                      !self.composing else { self.pauseLiveText("live_text_changed"); return }
                 guard let reply = message["liveText"] as? [String: Any],
                       let session = reply["session"] as? String, UUID(uuidString: session) != nil,
                       LiveTextSnapshot.integer(reply["revision"]) == 0,
                       let snapshot = LiveTextSnapshot.parse(reply) else { self.pauseLiveText("live_text_uncertain"); return }
                 self.liveTextSession = session; self.liveTextRevision = 0
+                self.lastSentDraft = nil
                 self.liveTextBaseline = snapshot; self.liveTextDesired = snapshot
                 self.ephemeralDraft = true
                 self.applyLiveSnapshot(snapshot)
@@ -652,8 +699,8 @@ final class ControllerModel: ObservableObject {
                 // fallback draft which would duplicate that field on Send.
                 if self.ephemeralDraft { self.draft = ""; self.draftSelection = NSRange(location: 0, length: 0) }
                 self.ephemeralDraft = false
-                self.textDelivery = .ready
                 self.lastSentDraft = nil
+                self.textDelivery = .ready
                 let callbacks = self.liveTextOpenCallbacks; self.liveTextOpenCallbacks.removeAll()
                 callbacks.forEach { $0() }
             case .rejected(let code): self.pauseLiveText(code)
@@ -667,7 +714,7 @@ final class ControllerModel: ObservableObject {
         // User explicitly asks to replace the retained draft with a new snapshot.
         invalidateLiveText(pause: false)
         liveTextStatus = .idle
-        openTextEditor()
+        openTextEditor(replacingRetainedDraft: true)
     }
 
     func editText(_ text: String, selection: NSRange, marked: Bool) {
@@ -738,7 +785,11 @@ final class ControllerModel: ObservableObject {
     private func updateReceiverState(_ state: ReceiverState) {
         if state.focusRevision != receiverState.focusRevision || !state.inputAvailable || state.textFocus == .protected {
             endLiveTextEditing()
-            if liveTextStatus == .unsupported { liveTextStatus = .idle }
+            // A field-focus refresh must not silently promote an explicit draft
+            // to live editing, hide Send, or import over its unsent continuation.
+            if liveTextStatus == .unsupported && draft.isEmpty && !sendingText && textDelivery != .uncertain {
+                liveTextStatus = .idle
+            }
         }
         receiverState = state; inputAvailable = state.inputAvailable
     }
@@ -785,22 +836,27 @@ final class ControllerModel: ObservableObject {
     }
 
     private func persistDeliveryState() {
-#if SOFATAP_CONTROLLER_TESTING
-        if testSend != nil || testLiveSend != nil { return }
-#endif
-        guard !demo else { return }
+        guard !demo, let defaults = draftDefaults else { return }
         switch textDelivery {
         case .sending:
-            UserDefaults.standard.set(digest(sentSnapshot), forKey: "sentDraftDigest")
-            UserDefaults.standard.set("pending", forKey: "textDeliveryMarker")
+            defaults.set(digest(sentSnapshot), forKey: "sentDraftDigest")
+            defaults.set("pending", forKey: "textDeliveryMarker")
         case .sent:
-            UserDefaults.standard.set(digest(lastSentDraft ?? sentSnapshot), forKey: "sentDraftDigest")
-            UserDefaults.standard.set("sent", forKey: "textDeliveryMarker")
+            defaults.set(digest(lastSentDraft ?? sentSnapshot), forKey: "sentDraftDigest")
+            defaults.set((lastSentDraft ?? sentSnapshot).utf16.count, forKey: "sentDraftUTF16Length")
+            defaults.set("sent", forKey: "textDeliveryMarker")
         case .uncertain:
-            UserDefaults.standard.set("uncertain", forKey: "textDeliveryMarker")
+            defaults.set("uncertain", forKey: "textDeliveryMarker")
         case .ready, .rejected:
-            UserDefaults.standard.removeObject(forKey: "textDeliveryMarker")
-            UserDefaults.standard.removeObject(forKey: "sentDraftDigest")
+            if let prefix = lastSentDraft {
+                defaults.set(digest(prefix), forKey: "sentDraftDigest")
+                defaults.set(prefix.utf16.count, forKey: "sentDraftUTF16Length")
+                defaults.set("accepted-prefix", forKey: "textDeliveryMarker")
+            } else {
+                defaults.removeObject(forKey: "textDeliveryMarker")
+                defaults.removeObject(forKey: "sentDraftDigest")
+                defaults.removeObject(forKey: "sentDraftUTF16Length")
+            }
         }
     }
 }

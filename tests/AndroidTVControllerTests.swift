@@ -91,6 +91,18 @@ private final class MemoryStore: AndroidTVPairingStorage {
         rejected("unbounded movement disallowed") { _ = try AndroidTVProtocol.encode(.scroll(dx: 0, dy: 501), id: UUID().uuidString) }
         check("click carries no raw button", try AndroidTVProtocol.encode(.click, id: UUID().uuidString).contains("click"))
         do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.scroll(dy: -12)
+            check("downward finger emits Android document-down action", socket.sent.count == 1 && socket.sent[0]["type"] as? String == "scroll" && socket.sent[0]["dy"] as? Double == 12)
+            socket.ack(0)
+            rig.controller.scroll(dy: 9)
+            check("upward finger emits Android document-up action", socket.sent.count == 2 && socket.sent[1]["dy"] as? Double == -9)
+            socket.ack(1)
+            rig.controller.scroll(dy: .nan)
+            check("direction normalization still rejects nonfinite input", socket.sent.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
             let rig = Rig(), socket = rig.pair()
             check("QR bootstrap never persisted", rig.store.writes == 0 && rig.controller.saved == nil)
             check("connecting cannot control", !rig.controller.canControl)
