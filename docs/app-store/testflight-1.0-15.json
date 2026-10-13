@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "build": "15",
+  "whatToTest": {
+    "en-US": "Build 15 unifies Add Device: open Scan QR Code to see the camera above the supported-device list, with no computer or TV-type selection first. Sofatap reads the device type and name from compatible receiver codes, then offers a local name after a verified connection. Existing receiver 0.7.0 codes still work. Check scanning, pasted links, cancellation, retry and renaming in My Devices. Android TV / Google TV remains experimental; LG webOS still uses manual TV authorization. No TV model is hardware-qualified. The new QR flow has software and simulator checks; optical scanning and final physical-device acceptance still need testing.",
+    "zh-Hans": "Build 15 统一了添加设备入口：点击扫描二维码，上方直接显示相机，下方列出设备，无需先选择电脑或电视类型。兼容接收器的二维码会提供设备类型和名称，验证连接成功后可直接起名；现有接收器 0.7.0 的二维码仍可使用。请检查扫码、粘贴链接、取消、失败重试，以及我的设备中的重命名。Android TV / Google TV 仍为实验版；LG webOS 继续使用手动电视授权，尚无通过实机验收的电视型号。新流程已做软件和模拟器检查，摄像头实扫与最终真机验收仍需测试。",
+    "ja": "Build 15 ではデバイス追加を統一しました。「QR コードをスキャン」を開くと、上部にカメラ、下部に対応デバイスが表示されます。パソコンやテレビの種類を先に選ぶ必要はありません。対応受信アプリのコードから種類と名前を読み取り、接続の確認後にローカル名を設定できます。既存の受信アプリ 0.7.0 のコードにも対応します。スキャン、リンク貼り付け、キャンセル、再試行、マイデバイスでの名前変更をご確認ください。Android TV / Google TV は実験段階で、LG webOS は手動のテレビ承認を使用します。実機認定済みテレビはありません。新フローはソフトウェアとシミュレーターで検証済みですが、カメラでの読み取りと最終実機検証は未完了です。"
+  }
+}

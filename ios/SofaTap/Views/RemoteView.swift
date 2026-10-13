@@ -31,6 +31,7 @@ struct RemoteView: View {
     @StateObject private var androidTV: AndroidTVController
     @State private var androidSelected: Bool
     @State private var pairingSheet = false
+    @State private var incomingPairingLink: String?
     @State private var guideSheet = false
     @State private var showingSpeechError = false
     @State private var touchControl = TouchSurface.Control()
@@ -84,7 +85,7 @@ struct RemoteView: View {
         .sheet(isPresented: $pairingSheet) {
             PairingView(model: model, tv: tv, androidTV: androidTV, selectAndroidTV: selectAndroidTelevision,
                         selectTV: selectTelevision, selectComputer: { selectComputer(reconnect: false) },
-                        androidSelected: androidTVSelected)
+                        androidSelected: androidTVSelected, incomingLink: $incomingPairingLink)
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
@@ -116,21 +117,16 @@ struct RemoteView: View {
 #if targetEnvironment(simulator)
             if model.demo {
                 guideSheet = ProcessInfo.processInfo.arguments.contains("--demo-guide")
-                pairingSheet = ProcessInfo.processInfo.arguments.contains("--demo-pairing")
+                pairingSheet = ProcessInfo.processInfo.arguments.contains("--demo-pairing") || ProcessInfo.processInfo.arguments.contains("--demo-add-device") || ProcessInfo.processInfo.arguments.contains("--demo-added-device")
             }
 #endif
         }
         .onDisappear { stopInteraction() }
         .onOpenURL { url in
-            if (try? AndroidTVPairing.parse(url.absoluteString)) != nil {
-                selectAndroidTelevision()
-                androidTV.pair(url.absoluteString)
-                pairingSheet = true
-                return
-            }
-            guard (try? Pairing.parse(url.absoluteString)) != nil else { model.acceptPairing(url.absoluteString); return }
-            selectComputer(reconnect: false)
-            model.acceptPairing(url.absoluteString)
+            // QR scans, pasted links and system links share one routing and
+            // naming flow. Parsing happens before selecting any target.
+            incomingPairingLink = url.absoluteString
+            pairingSheet = true
         }
         .onChange(of: model.focusRevision) { _, _ in applyRemoteFocus() }
         .onChange(of: model.desktopControlEnabled) { _, enabled in

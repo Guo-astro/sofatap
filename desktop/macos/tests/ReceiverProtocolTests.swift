@@ -13,8 +13,12 @@ enum ReceiverProtocolTests {
             catch { checks += 1 }
         }
         let png = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/F1kAAAAASUVORK5CYII="
+        let token = String(repeating: "D", count: 43), fingerprint = String(repeating: "a", count: 64)
+        func link(_ host: String = "192.0.2.1") -> String {
+            "sofatap://pair?host=\(host)&port=53319&token=\(token)&fingerprint=\(fingerprint)"
+        }
         func pairing(_ host: String) -> [String: Any] {
-            ["host": host, "uri": "sofatap://pair?host=\(host)&port=53319&token=TEST_ONLY&fingerprint=TEST_ONLY", "qrPng": png]
+            ["host": host, "uri": link(host), "qrPng": png]
         }
         func frame(_ changes: [String: Any] = [:]) throws -> Data {
             var value: [String: Any] = ["type": "state", "name": "客厅 Mac 🛋️", "platform": "macos",
@@ -71,6 +75,32 @@ enum ReceiverProtocolTests {
         rejects("reject address control characters") { _ = try ReceiverState.decode(frame(["pairings": [badPairing]])) }
         let future = try ReceiverState.decode(frame(["inputStatus": "future_status", "futureField": true]))
         check(future.inputStatus == "future_status", "unknown statuses stay unavailable in UI but don't break forward-compatible state")
+        let base = link()
+        func encoded(_ name: String) -> String { name.addingPercentEncoding(withAllowedCharacters: .alphanumerics)! }
+        for metadata in ["", "&platform=windows", "&platform=macos", "&platform=linux", "&name=Living+Room",
+                         "&platform=macos&name=" + encoded("\u{a0} 客厅 + TV 🛋️ \u{3000}"),
+                         "&name=" + String(repeating: "a", count: 80), "&name=" + encoded(String(repeating: "😀", count: 64))] {
+            check(ReceiverPairingURI.valid(base + metadata, expectedHost: "192.0.2.1"), "old and metadata desktop QR links accepted")
+        }
+        for invalid in [base + "&platform=androidtv", base + "&platform=unknown", base + "&platform=",
+                        base + "&platform=macos&platform=windows", base + "&name=TV&name=TV", base + "&extra=1",
+                        base + "&name=", base + "&name=%20%C2%A0", base + "&name=" + String(repeating: "a", count: 81),
+                        base + "&name=" + encoded(String(repeating: "😀", count: 65)),
+                        base + "&name=" + encoded(String(repeating: "e\u{301}", count: 41)),
+                        base + "&name=TV%00", base + "&name=TV%0A", base + "&name=TV%C2%85",
+                        base + "&name=TV%E2%80%8B", base + "&name=TV%E2%80%AE", base + "&name=%FF",
+                        base + "&name=%ED%A0%80", base + "&name=%ZZ", base + "&na%6De=TV",
+                        base + "&host=192.0.2.1", base + "#", base.replacingOccurrences(of: "//pair?", with: "//tv?"),
+                        base.replacingOccurrences(of: "//pair?", with: "//pair/path?"),
+                        base.replacingOccurrences(of: "//pair?", with: "//user@pair?"),
+                        base.replacingOccurrences(of: "//pair?", with: "//pair:80?"),
+                        base.replacingOccurrences(of: "&port=53319", with: ""),
+                        base.replacingOccurrences(of: "&port=53319", with: "&port=0"),
+                        base.replacingOccurrences(of: token, with: "short"),
+                        base.replacingOccurrences(of: fingerprint, with: String(repeating: "g", count: 64)),
+                        link("192.0.2.2")] {
+            check(!ReceiverPairingURI.valid(invalid, expectedHost: "192.0.2.1"), "ambiguous, mismatched or unsafe QR rejected")
+        }
         for command in ReceiverCommand.allCases {
             let bytes = command.line
             check(bytes.last == 10 && bytes.filter { $0 == 10 }.count == 1, "commands have exactly one newline")

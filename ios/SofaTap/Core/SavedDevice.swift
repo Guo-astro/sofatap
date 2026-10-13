@@ -5,7 +5,14 @@ import CryptoKit
 protocol SavedDeviceCredential: Codable, Equatable {
     var deviceIdentity: String { get }
     var deviceAddress: String { get }
+    var pairingName: String? { get }
+    var pairingPlatform: String? { get }
     func validateForStorage() throws
+}
+
+extension SavedDeviceCredential {
+    var pairingName: String? { nil }
+    var pairingPlatform: String? { nil }
 }
 
 /// Names and credentials share the same device-only Keychain record. No bearer
@@ -25,6 +32,10 @@ struct SavedDevice<Credential: SavedDeviceCredential>: Codable, Equatable, Ident
         id = UUID(uuid: (hash[0], hash[1], hash[2], hash[3], hash[4], hash[5], hash[6], hash[7],
                          hash[8], hash[9], hash[10], hash[11], hash[12], hash[13], hash[14], hash[15]))
         self.credential = credential
+        // Only new records receive QR hints. Refreshing credentials preserves
+        // authenticated metadata and the user's local alias.
+        reportedName = credential.pairingName
+        platform = credential.pairingPlatform
     }
 }
 

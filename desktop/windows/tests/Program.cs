@@ -43,6 +43,10 @@ Check(NativeProtocol.ValidPairingUri(Link("Living-Room.local"), "living-room.loc
 Check(NativeProtocol.ValidPairingUri(Link("2001:db8::17"), "2001:db8::17") is not null, "encoded IPv6 host supported");
 Check(NativeProtocol.ValidPairingUri(link.Replace("host=192.0.2.1", "host=%31%39%32.0.2.1"), "192.0.2.1") is not null, "percent escapes decoded once for field validation");
 Check(NativeProtocol.ValidPairingUri($"sofatap://pair?fingerprint={fingerprint}&token={token}&port=53319&host=192.0.2.1", "192.0.2.1") is not null, "query order does not matter");
+foreach (var metadata in new[] { "&platform=windows", "&platform=macos", "&platform=linux", "&name=Living+Room",
+    "&platform=windows&name=" + Uri.EscapeDataString("\u00a0 客厅 + TV 🛋️ \u3000"),
+    "&name=" + new string('a', 80), "&name=" + Uri.EscapeDataString(string.Concat(Enumerable.Repeat("😀", 64))) })
+    Check(NativeProtocol.ValidPairingUri(link + metadata, "192.0.2.1") == link + metadata, "optional bounded metadata retains copy link");
 foreach (var malformed in new[]
 {
     link.Replace("sofatap:", "https:"), link.Replace("//pair?", "//user@pair?"), link.Replace("//pair?", "//pair:80?"),
@@ -53,7 +57,13 @@ foreach (var malformed in new[]
     link.Replace("port=53319", "port=-1"), link.Replace("port=53319", "port=%2B53319"), link.Replace("port=53319", "port=999999999999999999999"),
     link.Replace(token, new string('D', 31)), link.Replace(token, new string('D', 257)), link.Replace(token, token + "+"),
     link.Replace(fingerprint, new string('a', 63)), link.Replace(fingerprint, new string('g', 64)), link + "\n", " " + link,
-    new string('x', NativeProtocol.MaximumPairingUriLength + 1)
+    new string('x', NativeProtocol.MaximumPairingUriLength + 1),
+    link + "&platform=androidtv", link + "&platform=unknown", link + "&platform=", link + "&platform=windows&platform=macos",
+    link + "&name=TV&name=TV", link + "&name=", link + "&name=%20%C2%A0", link + "&name=" + new string('a', 81),
+    link + "&name=" + Uri.EscapeDataString(string.Concat(Enumerable.Repeat("😀", 65))),
+    link + "&name=" + Uri.EscapeDataString(string.Concat(Enumerable.Repeat("e\u0301", 41))),
+    link + "&name=TV%00", link + "&name=TV%0A", link + "&name=TV%C2%85", link + "&name=TV%E2%80%8B",
+    link + "&name=TV%E2%80%AE", link + "&name=%FF", link + "&name=%ED%A0%80", link + "&name=%ZZ", link + "&na%6De=TV"
 })
 {
     var invalidLink = NativeProtocol.Parse(Snapshot(uri: malformed));

@@ -8,6 +8,13 @@ struct Pairing: SavedDeviceCredential {
     let port: Int
     let token: String
     let fingerprint: String
+    let platform: String?
+    let name: String?
+
+    init(host: String, port: Int, token: String, fingerprint: String, platform: String? = nil, name: String? = nil) {
+        self.host = host; self.port = port; self.token = token; self.fingerprint = fingerprint
+        self.platform = platform; self.name = name
+    }
 
     static func parse(_ raw: String) throws -> Pairing {
         let text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -16,10 +23,10 @@ struct Pairing: SavedDeviceCredential {
               url.scheme?.lowercased() == "sofatap", url.host == "pair",
               url.user == nil, url.password == nil, url.port == nil,
               url.path.isEmpty, url.fragment == nil,
-              let items = url.queryItems, items.count == 4 else { throw PairingError.invalid }
+              let items = url.queryItems, (4...6).contains(items.count) else { throw PairingError.invalid }
         var fields: [String: String] = [:]
         for item in items {
-            guard ["host", "port", "token", "fingerprint"].contains(item.name),
+            guard ["host", "port", "token", "fingerprint", "platform", "name"].contains(item.name),
                   fields[item.name] == nil, let value = item.value else { throw PairingError.invalid }
             fields[item.name] = value
         }
@@ -33,7 +40,10 @@ struct Pairing: SavedDeviceCredential {
               let fingerprint = fields["fingerprint"], fingerprint.utf8.count == 64,
               fingerprint.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) || (65...70).contains($0) })
         else { throw PairingError.invalid }
-        return Pairing(host: host.lowercased(), port: port, token: token, fingerprint: fingerprint.lowercased())
+        let metadata = try PairingMetadata.validate(platform: fields["platform"], name: fields["name"],
+                                                    allowedPlatforms: ["windows", "macos", "linux"])
+        return Pairing(host: host.lowercased(), port: port, token: token, fingerprint: fingerprint.lowercased(),
+                       platform: metadata.platform, name: metadata.name)
     }
 
     private static func validHost(_ host: String) -> Bool {
@@ -57,6 +67,20 @@ struct Pairing: SavedDeviceCredential {
     }
 }
 
+/// QR labels are untrusted display hints, never part of the TLS identity.
+/// Reject controls before trimming so newline/bidi injection cannot disappear
+/// during normalization. URLComponents retains a literal '+' in names.
+enum PairingMetadata {
+    static func validate(platform: String?, name: String?, allowedPlatforms: Set<String>) throws -> (platform: String?, name: String?) {
+        if let platform, !allowedPlatforms.contains(platform) { throw PairingError.invalid }
+        guard let name else { return (platform, nil) }
+        guard !name.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { throw PairingError.invalid }
+        let normalized = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !normalized.isEmpty, normalized.unicodeScalars.count <= 80, normalized.utf8.count <= 256 else { throw PairingError.invalid }
+        return (platform, normalized)
+    }
+}
+
 enum PairingError: LocalizedError {
     case invalid, storeFailed
     var errorDescription: String? {
@@ -70,11 +94,15 @@ enum PairingError: LocalizedError {
 extension Pairing {
     var deviceIdentity: String { "computer:" + fingerprint.lowercased() }
     var deviceAddress: String { "\(host):\(port)" }
+    var pairingName: String? { name }
+    var pairingPlatform: String? { platform }
     func validateForStorage() throws {
         var link = URLComponents()
         link.scheme = "sofatap"; link.host = "pair"
         link.queryItems = [URLQueryItem(name: "host", value: host), URLQueryItem(name: "port", value: String(port)),
                            URLQueryItem(name: "token", value: token), URLQueryItem(name: "fingerprint", value: fingerprint)]
+        if let platform { link.queryItems?.append(URLQueryItem(name: "platform", value: platform)) }
+        if let name { link.queryItems?.append(URLQueryItem(name: "name", value: name)) }
         guard let raw = link.string, (try? Self.parse(raw)) == self else { throw PairingError.invalid }
     }
 }

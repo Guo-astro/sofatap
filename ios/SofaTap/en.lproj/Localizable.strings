@@ -293,3 +293,26 @@
 "键盘已展开" = "Keyboard shown";
 "键盘已收起" = "Keyboard hidden";
 "预览" = "Preview";
+
+/* Unified QR pairing and device naming. */
+"扫描后自动识别电脑或电视，无需选择设备类型。" = "Scanning identifies the computer or TV automatically. No device type selection is needed.";
+"支持的设备" = "Supported Devices";
+"Mac、Windows 和 Linux 需先安装 Sofatap 接收器。" = "Install the Sofatap receiver on your Mac, Windows or Linux computer first.";
+"Android TV / Google TV 需安装电视接收器；机型兼容性仍在验证。" = "Android TV / Google TV requires the TV receiver. Model compatibility is still being tested.";
+"LG webOS 使用电视授权配对，暂不支持扫码。" = "LG webOS pairs through approval on the TV. QR scanning is not supported yet.";
+"手动连接 LG webOS" = "Connect LG webOS Manually";
+"粘贴配对链接" = "Paste Pairing Link";
+"打开系统设置" = "Open Settings";
+"再次扫描" = "Scan Again";
+"正在添加设备…" = "Adding device…";
+"连接未完成" = "Connection Incomplete";
+"设备已添加" = "Device Added";
+"给设备起个名字" = "Name Your Device";
+"以后可在“我的设备”中修改名称。" = "You can change the name later in My Devices.";
+"保留原名称" = "Keep Original Name";
+"保存并完成" = "Save and Finish";
+"相机预览（演示）" = "Camera Preview (Demo)";
+"这不是有效的 Sofatap 配对二维码或链接。请在接收器中重新生成。" = "This is not a valid Sofatap pairing QR code or link. Generate a new one in the receiver.";
+"重试连接" = "Retry Connection";
+"已自动识别" = "Identified Automatically";
+"继续" = "Continue";

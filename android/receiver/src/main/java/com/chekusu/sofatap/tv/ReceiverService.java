@@ -44,8 +44,9 @@ public final class ReceiverService extends Service {
                 ReceiverIdentity credentials = new ReceiverIdentity(this);
                 PairingAuthority auth = new PairingAuthority(credentials.pairedDigest(), SystemClock::elapsedRealtime, credentials::saveDigest);
                 if (!auth.paired()) auth.newPairing();
-                String name = Build.MODEL;
-                if (name == null || name.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 128) name = "Android TV";
+                String name = PairingUri.deviceName(Build.MODEL);
+                // Preserve the existing hello frame's 128-byte display-name contract.
+                if (name.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 128) name = "Android TV";
                 candidate = new ReceiverServer(credentials.tls(), null, 53319, auth, new ReceiverServer.Input() {
                     @Override public JSONObject snapshot() throws Exception {
                         return onMain(() -> InputBridge.snapshot(ReceiverService.this));
@@ -93,7 +94,7 @@ public final class ReceiverService extends Service {
         try {
             String token = authority == null ? null : authority.bootstrap();
             if (token == null || identity == null || !identity.addresses.contains(address)) return null;
-            return "sofatap://tv?host=" + address + "&port=53319&token=" + token + "&fingerprint=" + identity.fingerprint();
+            return PairingUri.create(address, 53319, token, identity.fingerprint(), Build.MODEL);
         } catch (Exception ignored) { return null; }
     }
     @Override public void onDestroy() {

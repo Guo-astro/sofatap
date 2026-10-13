@@ -43,7 +43,7 @@ final class AndroidTVController: ObservableObject {
     }
 
     var currentDisplayName: String {
-        if let pairing, pairing.deviceIdentity != saved?.deviceIdentity { return pairing.deviceAddress }
+        if let pairing, pairing.deviceIdentity != saved?.deviceIdentity { return pairing.name ?? pairing.deviceAddress }
         return savedDevices.first { $0.id == selectedDeviceID }?.displayName ?? saved?.deviceAddress ?? name
     }
     @discardableResult private func refreshSavedDevices() -> Bool {

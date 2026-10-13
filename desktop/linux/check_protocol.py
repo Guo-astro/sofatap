@@ -10,7 +10,7 @@ import tempfile
 import threading
 import time
 import unittest
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from sofatap import ACCESS_STATUSES, Backend, INPUT_STATUSES, MAXIMUM_LINE, STATUS_LABELS, pairing_uri, parse_state
 
@@ -21,7 +21,7 @@ def copy_uri(**changes):
     # Synthetic format fixture only; no receiver credentials or live QR.
     fields = dict(host="192.0.2.1", port="53319", token="test-only-not-a-secret-" * 2, fingerprint="0" * 64)
     fields.update(changes)
-    return "sofatap://pair?" + urlencode(fields)
+    return "sofatap://pair?" + urlencode(fields, quote_via=quote)
 
 
 def snapshot(**changes):
@@ -69,6 +69,11 @@ class ProtocolChecks(unittest.TestCase):
             valid + "#fragment", valid + "#", valid + "\n", valid.replace("192.0.2.1", "%GG"),
             valid.replace("192.0.2.1", "192.0.2.1%00"), valid.replace("192.0.2.1", "%FF"),
             valid.replace("192.0.2.1", "测试"),
+            copy_uri(platform="androidtv"), copy_uri(platform="unknown"), copy_uri(platform=""),
+            valid + "&platform=linux&platform=windows", valid + "&name=TV&name=TV", valid + "&na%6De=TV",
+            copy_uri(name=""), copy_uri(name=" \u00a0"), copy_uri(name="a" * 81), copy_uri(name="😀" * 65),
+            copy_uri(name="e\u0301" * 41), copy_uri(name="TV\n"), copy_uri(name="TV\x00"), copy_uri(name="TV\u0085"),
+            copy_uri(name="TV\u200b"), copy_uri(name="TV\u202e"), valid + "&name=%FF", valid + "&name=%ED%A0%80",
         ]
         for index, uri in enumerate(invalid):
             with self.subTest(case=index):
@@ -76,6 +81,15 @@ class ProtocolChecks(unittest.TestCase):
                 state = parse_state(snapshot(pairings=[dict(host="192.0.2.1", qrPng=PNG, uri=uri)]))
                 self.assertIsNone(state.pairings[0].uri)
                 self.assertEqual(state.pairings[0].png, base64.b64decode(PNG))
+
+    def test_copy_payload_accepts_optional_bounded_metadata(self):
+        for changes in ({"platform": "windows"}, {"platform": "macos"}, {"platform": "linux"},
+                        {"platform": "linux", "name": "\u00a0 客厅 + TV 🛋️ \u3000"},
+                        {"name": "a" * 80}, {"name": "客" * 80}, {"name": "😀" * 64}):
+            uri = copy_uri(**changes)
+            self.assertEqual(pairing_uri(uri, "192.0.2.1"), uri)
+        literal_plus = copy_uri(name="+").replace("%2B", "+")
+        self.assertEqual(pairing_uri(literal_plus, "192.0.2.1"), literal_plus)
 
     def test_accepts_live_input_statuses(self):
         for status in INPUT_STATUSES - {"dry_run"}:

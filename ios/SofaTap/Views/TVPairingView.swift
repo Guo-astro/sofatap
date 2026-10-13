@@ -5,6 +5,7 @@ struct TVPairingView: View {
     @ObservedObject var tv: WebOSTVController
     let selectTV: () -> Void
     let finishPairing: () -> Void
+    var completionTitle = String(localized: "开始遥控电视")
     @State private var address = ""
     @State private var forgetAlert = false
     var body: some View {
@@ -26,22 +27,22 @@ struct TVPairingView: View {
                         Text(tv.certificate ?? "").font(.caption.monospaced()).textSelection(.enabled)
                     }
                     Button(String(localized: "继续并在电视上确认")) { tv.trustAndPair() }
-                        .buttonStyle(.borderedProminent)
+                        .buttonStyle(.borderedProminent).foregroundStyle(Palette.background)
                         .accessibilityIdentifier("trustTV")
                     Button(String(localized: "取消")) { tv.disconnect() }
                 } else if tv.busy {
                     HStack { ProgressView(); Text(tv.title) }
                     Button(String(localized: "取消连接")) { tv.disconnect() }
                 } else if tv.phase == .ready {
-                    Button(String(localized: "开始遥控电视")) { finishPairing() }
-                        .buttonStyle(.borderedProminent)
+                    Button(completionTitle) { finishPairing() }
+                        .buttonStyle(.borderedProminent).foregroundStyle(Palette.background)
                     Button(String(localized: "断开电视")) { tv.disconnect() }
                 } else {
                     Button(String(localized: "连接电视")) {
                         selectTV()
                         tv.connect(host: address)
                     }
-                    .buttonStyle(.borderedProminent)
+                    .buttonStyle(.borderedProminent).foregroundStyle(Palette.background)
                     .disabled(address.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .accessibilityIdentifier("connectTV")
                 }

@@ -1,5 +1,4 @@
 import SwiftUI
-import AVFoundation
 
 struct PairingView: View {
     @ObservedObject var model: ControllerModel
@@ -9,7 +8,9 @@ struct PairingView: View {
     let selectTV: () -> Void
     let selectComputer: () -> Void
     let androidSelected: Bool
+    @Binding var incomingLink: String?
     @Environment(\.dismiss) private var dismiss
+    @State private var showingAddDevice = false
     @State private var renameTarget: DeviceTarget?
     @State private var removeTarget: DeviceTarget?
     @State private var editedName = ""
@@ -28,15 +29,12 @@ struct PairingView: View {
                     savedDevices
                     VStack(alignment: .leading, spacing: 10) {
                         Text(String(localized: "添加设备")).font(.headline)
-                        NavigationLink {
-                            ComputerPairingView(model: model, selectComputer: selectComputer, finishPairing: { dismiss() })
-                        } label: { addLabel(String(localized: "电脑"), symbol: "desktopcomputer", detail: "Windows · Mac · Linux") }
-                        NavigationLink {
-                            AndroidTVPairingView(tv: androidTV, selectTV: selectAndroidTV, finishPairing: { dismiss() })
-                        } label: { addLabel("Android TV / Google TV", symbol: "tv", detail: String(localized: "实验版")) }
-                        NavigationLink {
-                            TVPairingView(tv: tv, selectTV: selectTV, finishPairing: { dismiss() })
-                        } label: { addLabel("LG webOS", symbol: "tv", detail: String(localized: "预览")) }
+                        Button { showingAddDevice = true } label: {
+                            Label(String(localized: "扫描二维码"), systemImage: "qrcode.viewfinder")
+                                .font(.system(size: 16, weight: .semibold))
+                                .frame(maxWidth: .infinity, minHeight: 48)
+                        }.buttonStyle(.borderedProminent).foregroundStyle(Palette.background)
+                            .accessibilityIdentifier("addDeviceScanner")
                     }
                     if let error = model.pairingError { Text(error).font(.footnote).foregroundStyle(.orange) }
                     if let error = androidTV.managementError { Text(error).font(.footnote).foregroundStyle(.orange) }
@@ -61,6 +59,21 @@ struct PairingView: View {
             .navigationTitle(String(localized: "我的设备"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "完成")) { dismiss() } } }
+            .sheet(isPresented: $showingAddDevice) {
+                AddDeviceView(model: model, tv: tv, androidTV: androidTV,
+                              selectAndroidTV: selectAndroidTV, selectTV: selectTV, selectComputer: selectComputer,
+                              incomingLink: $incomingLink, finishPairing: { showingAddDevice = false; dismiss() })
+                    .presentationDetents([.large])
+                    .presentationDragIndicator(.visible)
+            }
+            .onChange(of: incomingLink) { _, link in if link != nil { showingAddDevice = true } }
+            .onAppear {
+                if incomingLink != nil { showingAddDevice = true }
+#if targetEnvironment(simulator)
+                if model.demo { showingAddDevice = (ProcessInfo.processInfo.arguments.contains("--demo-add-device") ||
+                                                  ProcessInfo.processInfo.arguments.contains("--demo-added-device")) }
+#endif
+            }
             .alert(String(localized: "重命名设备"), isPresented: Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })) {
                 TextField(String(localized: "设备名称"), text: $editedName)
                 Button(String(localized: "取消"), role: .cancel) { renameTarget = nil }
@@ -168,16 +181,6 @@ struct PairingView: View {
     private func computerPlatform(_ value: String?) -> String {
         switch value { case "macos": return "Mac"; case "windows": return "Windows"; case "linux": return "Linux"; default: return String(localized: "电脑") }
     }
-    private func addLabel(_ title: String, symbol: String, detail: String) -> some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol).frame(width: 28)
-            Text(title).font(.system(size: 15, weight: .medium))
-            Spacer(minLength: 4)
-            Text(detail).font(.system(size: 11)).foregroundStyle(Palette.muted)
-            Image(systemName: "chevron.forward").font(.system(size: 10, weight: .semibold))
-        }.padding(14).foregroundStyle(Palette.mint)
-            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 15))
-    }
     private func saveName() {
         guard let target = renameTarget else { return }
         switch target.kind {
@@ -195,156 +198,5 @@ struct PairingView: View {
         case .webos: tv.removeDevice(target.id)
         }
         removeTarget = nil
-    }
-}
-
-private struct ComputerPairingView: View {
-    @ObservedObject var model: ControllerModel
-    let selectComputer: () -> Void
-    let finishPairing: () -> Void
-    @State private var rawLink = ""
-    @State private var showScanner = false
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 20) {
-                Label(String(localized: "连接你的客厅电脑"), systemImage: "desktopcomputer")
-                    .font(.title2.weight(.semibold)).foregroundStyle(Palette.mint)
-                Text(String(localized: "在电脑上打开 Sofatap 接收器，扫描它显示的二维码。手机与电脑连接同一个家庭网络。"))
-                    .foregroundStyle(Palette.muted)
-                Link(String(localized: "下载电脑接收器"), destination: URL(string: "https://github.com/chekusu/sofatap/releases")!)
-                Button { showScanner = true } label: {
-                    Label(String(localized: "扫描电脑二维码"), systemImage: "qrcode.viewfinder")
-                        .frame(maxWidth: .infinity, minHeight: 48)
-                }.buttonStyle(.borderedProminent)
-                Text(String(localized: "或粘贴完整配对链接")).font(.subheadline)
-                TextField("sofatap://pair?host=…", text: $rawLink, axis: .vertical)
-                    .font(.caption.monospaced()).lineLimit(3...6)
-                    .textInputAutocapitalization(.never).autocorrectionDisabled().privacySensitive()
-                    .padding(15).background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
-                    .accessibilityIdentifier("pairingLink")
-                Button(String(localized: "安全保存并连接")) { accept(rawLink) }
-                    .disabled(rawLink.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                if let error = model.pairingError { Text(error).font(.footnote).foregroundStyle(.orange) }
-                Label(String(localized: "配对密钥只保存在 iPhone 钥匙串中。请勿分享二维码或配对链接。"), systemImage: "lock.shield")
-                    .font(.footnote).foregroundStyle(Palette.muted)
-            }.padding(20)
-        }
-        .background(Palette.background).navigationTitle(String(localized: "连接设备"))
-        .navigationBarTitleDisplayMode(.inline)
-        .sheet(isPresented: $showScanner) { ScannerSheet { value in accept(value) } }
-    }
-    private func accept(_ raw: String) {
-        guard (try? Pairing.parse(raw)) != nil else { model.acceptPairing(raw); return }
-        selectComputer()
-        model.acceptPairing(raw)
-        if model.pairingError == nil { rawLink = ""; showScanner = false; finishPairing() }
-    }
-}
-
-struct ScannerSheet: View {
-    var accepts: (String) -> Bool = { (try? Pairing.parse($0)) != nil }
-    let onScan: (String) -> Void
-    @Environment(\.dismiss) private var dismiss
-    @State private var error: String?
-    var body: some View {
-        NavigationStack {
-            ZStack {
-                Color.black
-                QRScanner(accepts: accepts, onScan: onScan, onError: { error = $0 })
-                VStack {
-                    Text(String(localized: "将 Sofatap 配对二维码放入画面"))
-                        .font(.system(size: 15, weight: .medium))
-                        .padding(14).background(.black.opacity(0.65), in: Capsule())
-                    Spacer()
-                    if let error {
-                        Text(error).font(.system(size: 15)).multilineTextAlignment(.center)
-                            .padding(20).background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
-                        Button(String(localized: "返回粘贴配对链接")) { dismiss() }
-                            .padding(15).tint(Palette.mint)
-                    }
-                }.padding(24)
-            }
-            .navigationTitle(String(localized: "扫描二维码"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "取消")) { dismiss() } } }
-        }
-    }
-}
-
-private struct QRScanner: UIViewControllerRepresentable {
-    let accepts: (String) -> Bool
-    let onScan: (String) -> Void
-    let onError: (String) -> Void
-    func makeUIViewController(context: Context) -> ScannerController {
-        ScannerController(accepts: accepts, onScan: onScan, onError: onError)
-    }
-    func updateUIViewController(_ controller: ScannerController, context: Context) {}
-    static func dismantleUIViewController(_ controller: ScannerController, coordinator: ()) { controller.stop() }
-}
-
-private final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
-    private let capture = AVCaptureSession()
-    private let cameraQueue = DispatchQueue(label: "com.chekusu.sofatap.camera")
-    private let accepts: (String) -> Bool
-    private let onScan: (String) -> Void
-    private let onError: (String) -> Void
-    private var preview: AVCaptureVideoPreviewLayer?
-    private var scanned = false
-    private var stopped = false
-    init(accepts: @escaping (String) -> Bool, onScan: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
-        self.accepts = accepts; self.onScan = onScan; self.onError = onError
-        super.init(nibName: nil, bundle: nil)
-    }
-    required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
-    override func viewDidLoad() {
-        super.viewDidLoad()
-        view.backgroundColor = .black
-        switch AVCaptureDevice.authorizationStatus(for: .video) {
-        case .authorized: configure()
-        case .notDetermined:
-            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-                DispatchQueue.main.async {
-                    guard let self else { return }
-                    if granted { self.configure() }
-                    else { self.onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴接收器中的完整配对链接。")) }
-                }
-            }
-        default: onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴接收器中的完整配对链接。"))
-        }
-    }
-    private func configure() {
-        guard !stopped else { return }
-        guard let camera = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: camera) else {
-            onError(String(localized: "这台设备没有可用相机。请返回并粘贴接收器中的完整配对链接。"))
-            return
-        }
-        let output = AVCaptureMetadataOutput()
-        guard capture.canAddInput(input), capture.canAddOutput(output) else {
-            onError(String(localized: "无法打开相机，请尝试粘贴配对链接。"))
-            return
-        }
-        capture.addInput(input)
-        capture.addOutput(output)
-        output.setMetadataObjectsDelegate(self, queue: .main)
-        output.metadataObjectTypes = [.qr]
-        let layer = AVCaptureVideoPreviewLayer(session: capture)
-        layer.videoGravity = .resizeAspectFill
-        layer.frame = view.bounds
-        view.layer.addSublayer(layer)
-        preview = layer
-        cameraQueue.async { [capture] in capture.startRunning() }
-    }
-    override func viewDidLayoutSubviews() { super.viewDidLayoutSubviews(); preview?.frame = view.bounds }
-    func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
-        guard !scanned, let value = (metadataObjects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
-        // Invalid or unrelated QRs stay in the scanner with actionable feedback.
-        guard accepts(value) else { onError(String(localized: "这不是此设备类型的有效 Sofatap 配对二维码。请扫描接收器显示的二维码。")); return }
-        scanned = true
-        stop()
-        onScan(value)
-    }
-    func stop() {
-        stopped = true
-        cameraQueue.async { [capture] in if capture.isRunning { capture.stopRunning() } }
     }
 }

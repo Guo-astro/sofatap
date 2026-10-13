@@ -15,6 +15,8 @@ protocol AndroidTVPairingStorage {
 extension AndroidTVPairing: SavedDeviceCredential {
     var deviceIdentity: String { "androidtv:" + fingerprint }
     var deviceAddress: String { "\(host):\(port)" }
+    var pairingName: String? { name }
+    var pairingPlatform: String? { platform ?? "androidtv" }
     func validateForStorage() throws { try validate() }
 }
 

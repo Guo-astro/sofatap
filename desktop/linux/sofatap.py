@@ -16,7 +16,8 @@ import subprocess
 import sys
 import threading
 import time
-from urllib.parse import parse_qsl, urlsplit
+import unicodedata
+from urllib.parse import unquote, urlsplit
 
 MAXIMUM_LINE = 4 * 1024 * 1024
 STATE_DEADLINE_SECONDS = 12
@@ -68,10 +69,18 @@ def pairing_uri(value, selected_host):
         parts = urlsplit(value)
         if parts.scheme != "sofatap" or parts.netloc != "pair" or parts.path or parts.fragment:
             return None
-        items = parse_qsl(parts.query, keep_blank_values=True, strict_parsing=True,
-                          encoding="utf-8", errors="strict", max_num_fields=4)
-        fields = dict(items)
-        if len(items) != 4 or len(fields) != 4 or set(fields) != {"host", "port", "token", "fingerprint"}:
+        items = parts.query.split("&")
+        if not 4 <= len(items) <= 6:
+            return None
+        fields = {}
+        for item in items:
+            key, separator, encoded = item.partition("=")
+            if (not separator or key not in {"host", "port", "token", "fingerprint", "platform", "name"}
+                    or key in fields):
+                return None
+            # URI queries preserve literal '+': this is not form-urlencoded data.
+            fields[key] = unquote(encoded, encoding="utf-8", errors="strict")
+        if not {"host", "port", "token", "fingerprint"} <= set(fields):
             return None
         host = fields["host"]
         if not host.isascii() or not 1 <= len(host) <= 253:
@@ -90,6 +99,15 @@ def pairing_uri(value, selected_host):
             return None
         if not re.fullmatch(r"[A-Fa-f0-9]{64}", fields["fingerprint"]):
             return None
+        if "platform" in fields and fields["platform"] not in {"windows", "macos", "linux"}:
+            return None
+        if "name" in fields:
+            name = fields["name"]
+            if any(unicodedata.category(character) in {"Cc", "Cf"} for character in name):
+                return None
+            name = name.strip()
+            if not name or len(name) > 80 or len(name.encode("utf-8")) > 256:
+                return None
         return value
     except (ValueError, UnicodeError, AttributeError):
         return None

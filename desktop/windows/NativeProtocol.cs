@@ -2,6 +2,7 @@ using System.Buffers.Binary;
 using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -59,22 +60,26 @@ internal static class NativeProtocol
             || !value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
             || value.Any(character => character <= ' ' || character >= 127 || character == '#')) return null;
         var query = value[prefix.Length..].Split('&');
-        if (query.Length != 4) return null;
+        if (query.Length is < 4 or > 6) return null;
         var fields = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var item in query)
         {
             var separator = item.IndexOf('=');
             if (separator <= 0) return null;
             var name = item[..separator];
-            if (name is not ("host" or "port" or "token" or "fingerprint") || fields.ContainsKey(name)) return null;
+            if (name is not ("host" or "port" or "token" or "fingerprint" or "platform" or "name") || fields.ContainsKey(name)) return null;
             var encoded = item[(separator + 1)..];
+            var bytes = new List<byte>(encoded.Length);
             for (var index = 0; index < encoded.Length; index++)
             {
-                if (encoded[index] != '%') continue;
+                if (encoded[index] != '%') { bytes.Add((byte)encoded[index]); continue; }
                 if (index + 2 >= encoded.Length || !IsHex(encoded[index + 1]) || !IsHex(encoded[index + 2])) return null;
+                bytes.Add(Convert.ToByte(encoded.Substring(index + 1, 2), 16));
                 index += 2;
             }
-            fields[name] = System.Uri.UnescapeDataString(encoded);
+            // A URI query is not form data: literal '+' stays '+'. Invalid UTF-8 fails closed.
+            try { fields[name] = new UTF8Encoding(false, true).GetString(bytes.ToArray()); }
+            catch (DecoderFallbackException) { return null; }
         }
         if (!fields.TryGetValue("host", out var host) || !ValidHost(host)
             || !host.Equals(expectedHost, StringComparison.OrdinalIgnoreCase)
@@ -84,7 +89,16 @@ internal static class NativeProtocol
             || !fields.TryGetValue("token", out var token) || token.Length is < 32 or > 256
             || !token.All(character => IsAsciiLetterOrDigit(character) || character is '-' or '_')
             || !fields.TryGetValue("fingerprint", out var fingerprint) || fingerprint.Length != 64 || !fingerprint.All(IsHex)) return null;
+        if (fields.TryGetValue("platform", out var platform) && platform is not ("windows" or "macos" or "linux")) return null;
+        if (fields.TryGetValue("name", out var deviceName) && !ValidDeviceName(deviceName)) return null;
         return value;
+    }
+
+    private static bool ValidDeviceName(string value)
+    {
+        if (value.EnumerateRunes().Any(rune => Rune.GetUnicodeCategory(rune) is UnicodeCategory.Control or UnicodeCategory.Format)) return false;
+        var trimmed = value.Trim();
+        return trimmed.Length > 0 && trimmed.EnumerateRunes().Count() <= 80 && Encoding.UTF8.GetByteCount(trimmed) <= 256;
     }
 
     private static bool ValidHost(string host)

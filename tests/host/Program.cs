@@ -4,6 +4,7 @@ using SofaTap;
 
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
+PairingUriChecks.Run(Check);
 LinuxInputChecks.Run(Check);
 TextFocusChecks.Run(Check);
 UnlockCapabilityChecks.Run(Check);

@@ -22,9 +22,13 @@ The ordinary receiver requires an unlocked, interactive desktop. A Windows Remot
 
 1. Open the receiver on the computer and choose a home-network address reachable by the phone.
 2. Connect the iPhone to the same home network. A wired computer is fine; guest Wi-Fi client isolation may prevent access.
-3. In the current build, tap the device selector at the top left, choose **Computer** under **Add Device**, then scan the receiver code or paste the complete pairing link. If you are still using build 12, its pairing entry is the top-right QR icon.
+3. In builds 13–14, tap the top-left device selector and choose **Computer** under **Add Device**, then scan the receiver code or paste the complete pairing link. In the build 15 source, choose **Scan QR Code** instead. The camera appears above the platform information; computers and Android/Google TV use the same scanner without a device-type choice. Build 12 uses the top-right QR icon.
 4. Allow Local Network access on the phone. If it was denied, enable it for Sofatap in Settings.
 5. Check the connection indicator, then look at the computer screen while controlling it.
+
+Build 15 identifies the connection type automatically and displays any platform/name supplied by the code. After the authenticated connection succeeds, keep the suggested name or save a new one. You can rename it later in My Devices; this changes only the name on your iPhone. LG webOS still requires manual IP entry and approval on the TV. Android/Google TV requires its development receiver and remains experimental, with no qualified physical TV model or third-party TV app.
+
+The build 15 phone source accepts the original four-field desktop codes from receiver 0.7.0 beta.1. New desktop receiver source emits six-field codes with `platform` and `name`, which require iPhone build 15 or newer. Updated receiver binaries have not been released; current receiver downloads remain compatible with the new phone. Platform/name labels do not replace certificate and pairing-credential checks.
 
 ## Gestures and text
 

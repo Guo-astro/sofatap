@@ -1,4 +1,55 @@
 import Foundation
+import Darwin
+
+/// Same bounded desktop pairing contract as the phone. Copy never accepts TV or browser links.
+enum ReceiverPairingURI {
+    static func valid(_ value: String, expectedHost: String) -> Bool {
+        guard value.utf8.count <= 2_048,
+              value.utf8.allSatisfy({ $0 > 32 && $0 < 127 && $0 != 35 }),
+              value.range(of: "%(?![0-9A-Fa-f]{2})", options: .regularExpression) == nil,
+              let url = URLComponents(string: value), url.scheme?.lowercased() == "sofatap", url.host == "pair",
+              url.user == nil, url.password == nil, url.port == nil, url.path.isEmpty, url.fragment == nil,
+              let query = url.percentEncodedQuery else { return false }
+        let items = query.split(separator: "&", omittingEmptySubsequences: false)
+        guard (4...6).contains(items.count) else { return false }
+        var fields: [String: String] = [:]
+        for item in items {
+            let parts = item.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            guard parts.count == 2,
+                  ["host", "port", "token", "fingerprint", "platform", "name"].contains(String(parts[0])),
+                  fields[String(parts[0])] == nil,
+                  let decoded = String(parts[1]).removingPercentEncoding else { return false }
+            fields[String(parts[0])] = decoded
+        }
+        guard let host = fields["host"], validHost(host), host.lowercased() == expectedHost.lowercased(),
+              let port = fields["port"], !port.isEmpty, port.utf8.allSatisfy({ (48...57).contains($0) }),
+              let number = Int(port), (1...65535).contains(number),
+              let token = fields["token"], (32...256).contains(token.utf8.count),
+              token.utf8.allSatisfy({ asciiAlphanumeric($0) || $0 == 45 || $0 == 95 }),
+              let fingerprint = fields["fingerprint"], fingerprint.utf8.count == 64,
+              fingerprint.utf8.allSatisfy({ (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0) }) else { return false }
+        if let platform = fields["platform"], !["windows", "macos", "linux"].contains(platform) { return false }
+        if let name = fields["name"] {
+            guard !name.unicodeScalars.contains(where: CharacterSet.controlCharacters.contains) else { return false }
+            let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty, trimmed.unicodeScalars.count <= 80, trimmed.utf8.count <= 256 else { return false }
+        }
+        return true
+    }
+
+    private static func validHost(_ host: String) -> Bool {
+        guard !host.isEmpty, host.utf8.count <= 253, host.utf8.allSatisfy({ $0 < 128 }) else { return false }
+        var address = in6_addr()
+        if host.withCString({ inet_pton(AF_INET6, $0, &address) }) == 1 { return true }
+        return host.split(separator: ".", omittingEmptySubsequences: false).allSatisfy { label in
+            !label.isEmpty && label.utf8.count <= 63 && label.first != "-" && label.last != "-" &&
+            label.utf8.allSatisfy({ asciiAlphanumeric($0) || $0 == 45 })
+        }
+    }
+    private static func asciiAlphanumeric(_ byte: UInt8) -> Bool {
+        (48...57).contains(byte) || (65...90).contains(byte) || (97...122).contains(byte)
+    }
+}
 
 enum ReceiverProtocolError: Error {
     case oversizedFrame, truncatedFrame, invalidState
@@ -36,9 +87,7 @@ struct ReceiverPairing: Decodable, Equatable, Sendable, Identifiable {
     func validate() throws {
         guard !host.isEmpty, host.utf8.count <= 253,
               !host.unicodeScalars.contains(where: { CharacterSet.controlCharacters.contains($0) }),
-              uri.utf8.count <= 4_096,
-              let components = URLComponents(string: uri),
-              components.scheme == "sofatap", components.host == "pair",
+              ReceiverPairingURI.valid(uri, expectedHost: host),
               qrPng.utf8.count <= 256 * 1_024,
               let png = pngData, png.count >= 24,
               Array(png.prefix(8)) == [137, 80, 78, 71, 13, 10, 26, 10],

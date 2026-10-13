@@ -93,6 +93,16 @@ final class ControllerModel: ObservableObject {
     // Recording transport only: compiled solely by the offscreen regression test.
     private var testLiveSend: ((String, [String: Any], @escaping ([String: Any]) -> Void) -> Void)?
     private var testSend: ((String, [String: Any], @escaping (Bool) -> Void) -> Void)?
+    private var testPairingWrite: ((Pairing) throws -> DeviceLibrary<Pairing>)?
+    private var testPairingConnect: ((Pairing) -> Void)?
+    init(testPairingLibrary: DeviceLibrary<Pairing>,
+         testPairingWrite: @escaping (Pairing) throws -> DeviceLibrary<Pairing>,
+         testPairingConnect: @escaping (Pairing) -> Void) {
+        demo = false; draftDefaults = nil; draft = ""
+        pairing = testPairingLibrary.selected?.credential
+        savedDevices = testPairingLibrary.devices; selectedDeviceID = testPairingLibrary.selectedID
+        self.testPairingWrite = testPairingWrite; self.testPairingConnect = testPairingConnect
+    }
     init(testSend: @escaping (String, [String: Any], @escaping (Bool) -> Void) -> Void) {
         demo = false
         draftDefaults = nil
@@ -155,6 +165,9 @@ final class ControllerModel: ObservableObject {
     }
 
     private func refreshSavedDevices() {
+#if SOFATAP_CONTROLLER_TESTING
+        if testPairingWrite != nil { return }
+#endif
         do {
             let library = try PairingStore.library()
             savedDevices = library.devices
@@ -313,15 +326,19 @@ final class ControllerModel: ObservableObject {
     func acceptPairing(_ raw: String) {
         do {
             let newPairing = try Pairing.parse(raw)
+            // A failed candidate save must not let foreground reconnect the old
+            // stored target. Only successfully saving this attempt resumes it.
+            manualConnectionPaused = true
             let previous = savedDevices.first(where: { $0.credential.deviceIdentity == newPairing.deviceIdentity })?.credential ?? pairing
             if pairing?.deviceIdentity != newPairing.deviceIdentity { prepareForDeviceSwitch() }
             else { disconnect(message: String(localized: "已保存新的配对。")) }
-            try PairingStore.write(newPairing)
-            if let previous, previous.deviceIdentity == newPairing.deviceIdentity, previous != newPairing {
+            try savePairing(newPairing)
+            if let previous, previous.deviceIdentity == newPairing.deviceIdentity,
+               previous.host != newPairing.host || previous.port != newPairing.port || previous.token != newPairing.token {
                 // Retire credentials tied to the replaced token/address only
                 // after saving succeeds. This does not enable the retired
                 // account-password flow or a PIN-unlock feature.
-                unlock.forget(previous)
+                retireUnlockPairing(previous)
             }
             desktopControlEnabled = true
             manualConnectionPaused = false
@@ -329,12 +346,35 @@ final class ControllerModel: ObservableObject {
             pairing = newPairing
             refreshSavedDevices()
             computerName = savedDevices.first { $0.id == selectedDeviceID }?.reportedName ?? newPairing.deviceAddress
-            unlock.setPairing(newPairing)
+            updateUnlockPairing(newPairing)
             pairingError = nil
             connect()
         } catch {
             pairingError = error.localizedDescription
         }
+    }
+
+    private func savePairing(_ pairing: Pairing) throws {
+#if SOFATAP_CONTROLLER_TESTING
+        if let testPairingWrite {
+            let library = try testPairingWrite(pairing)
+            savedDevices = library.devices; selectedDeviceID = library.selectedID
+            return
+        }
+#endif
+        try PairingStore.write(pairing)
+    }
+    private func retireUnlockPairing(_ pairing: Pairing) {
+#if SOFATAP_CONTROLLER_TESTING
+        if testPairingWrite != nil { return }
+#endif
+        unlock.forget(pairing)
+    }
+    private func updateUnlockPairing(_ pairing: Pairing) {
+#if SOFATAP_CONTROLLER_TESTING
+        if testPairingWrite != nil { return }
+#endif
+        unlock.setPairing(pairing)
     }
 
     func forgetPairing() {
@@ -361,7 +401,7 @@ final class ControllerModel: ObservableObject {
     private func rememberManualTarget(televisionTarget: String = "webos") {
         guard !demo else { return }
 #if SOFATAP_CONTROLLER_TESTING
-        guard testSend == nil && testLiveSend == nil else { return }
+        guard testSend == nil && testLiveSend == nil && testPairingWrite == nil else { return }
 #endif
         UserDefaults.standard.set(desktopControlEnabled ? "computer" : (televisionTarget == "androidtv" ? "androidtv" : "webos"), forKey: "manualRemoteTarget")
     }
@@ -393,6 +433,9 @@ final class ControllerModel: ObservableObject {
         inputAvailable = false
         receiverState = ReceiverState()
         notice = String(localized: "正在验证电脑证书与配对凭据…")
+#if SOFATAP_CONTROLLER_TESTING
+        if let testPairingConnect { testPairingConnect(pairing); return }
+#endif
         let delegate = PinnedSessionDelegate(pairing: pairing)
         sessionDelegate = delegate
         let configuration = URLSessionConfiguration.ephemeral

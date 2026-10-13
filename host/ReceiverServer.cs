@@ -158,7 +158,8 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         catch (WebSocketException) { }
         catch (OperationCanceledException) { }
     }
-    private string PairingUrl(string host) => $"sofatap://pair?host={Uri.EscapeDataString(host)}&port={options.ControlPort}&token={credentials.Token}&fingerprint={credentials.Fingerprint}";
+    private string PairingUrl(string host) => PairingUri.Create(host, options.ControlPort, credentials.Token,
+        credentials.Fingerprint, ReceiverPlatform.Id, Environment.MachineName);
     public void RequestLinuxAccess()
     {
         if (!options.DryRun && input is LinuxInput linux) linux.RequestAccess();

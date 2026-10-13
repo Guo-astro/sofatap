@@ -7,6 +7,13 @@ struct AndroidTVPairing: Codable, Equatable, Sendable {
     let port: Int
     let token: String
     let fingerprint: String
+    let platform: String?
+    let name: String?
+
+    init(host: String, port: Int, token: String, fingerprint: String, platform: String? = nil, name: String? = nil) {
+        self.host = host; self.port = port; self.token = token; self.fingerprint = fingerprint
+        self.platform = platform; self.name = name
+    }
 
     static func parse(_ raw: String) throws -> Self {
         let raw = raw.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -14,10 +21,10 @@ struct AndroidTVPairing: Codable, Equatable, Sendable {
               url.scheme?.lowercased() == "sofatap", url.host == "tv",
               url.user == nil, url.password == nil, url.port == nil,
               url.path.isEmpty, url.fragment == nil,
-              let items = url.queryItems, items.count == 4 else { throw AndroidTVError.invalidPairing }
+              let items = url.queryItems, (4...6).contains(items.count) else { throw AndroidTVError.invalidPairing }
         var fields: [String: String] = [:]
         for item in items {
-            guard ["host", "port", "token", "fingerprint"].contains(item.name),
+            guard ["host", "port", "token", "fingerprint", "platform", "name"].contains(item.name),
                   fields[item.name] == nil, let value = item.value else { throw AndroidTVError.invalidPairing }
             fields[item.name] = value
         }
@@ -25,12 +32,17 @@ struct AndroidTVPairing: Codable, Equatable, Sendable {
               portText.utf8.allSatisfy({ (48...57).contains($0) }),
               let port = Int(portText), let token = fields["token"],
               let fingerprint = fields["fingerprint"] else { throw AndroidTVError.invalidPairing }
-        let pairing = Self(host: host, port: port, token: token, fingerprint: fingerprint.lowercased())
+        guard let metadata = try? PairingMetadata.validate(platform: fields["platform"], name: fields["name"],
+                                                          allowedPlatforms: ["androidtv"]) else { throw AndroidTVError.invalidPairing }
+        let pairing = Self(host: host, port: port, token: token, fingerprint: fingerprint.lowercased(),
+                           platform: metadata.platform, name: metadata.name)
         try pairing.validate()
         return pairing
     }
 
     func validate() throws {
+        guard let metadata = try? PairingMetadata.validate(platform: platform, name: name, allowedPlatforms: ["androidtv"]),
+              metadata.name == name else { throw AndroidTVError.invalidPairing }
         let parts = host.split(separator: ".", omittingEmptySubsequences: false)
         guard parts.count == 4, parts.allSatisfy({ !$0.isEmpty && ($0.count == 1 || $0.first != "0") &&
             $0.utf8.allSatisfy({ (48...57).contains($0) }) && UInt8($0) != nil }) else { throw AndroidTVError.invalidPairing }
@@ -45,7 +57,9 @@ struct AndroidTVPairing: Codable, Equatable, Sendable {
         token.utf8.count == 43 && token.utf8.allSatisfy(AndroidTVProtocol.identifierByte)
     }
     var endpoint: URL { URL(string: "wss://\(host):\(port)/control")! }
-    func replacingToken(_ token: String) -> Self { Self(host: host, port: port, token: token, fingerprint: fingerprint) }
+    func replacingToken(_ token: String) -> Self {
+        Self(host: host, port: port, token: token, fingerprint: fingerprint, platform: platform, name: name)
+    }
 }
 
 enum AndroidTVError: Error { case invalidPairing, malformedMessage, unsupportedVersion, invalidAction }

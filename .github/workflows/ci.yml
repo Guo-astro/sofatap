@@ -61,6 +61,10 @@ jobs:
           "$RUNNER_TEMP/sofatap-pairing-tests"
       - name: Saved device migration and target selection without Keychain access
         run: bash ios/scripts/test-saved-devices.sh
+      - name: Unified QR routing and metadata without device access
+        run: bash ios/scripts/test-pairing-code.sh
+      - name: Pairing cancellation, retry and duplicate bootstrap checks
+        run: bash ios/scripts/test-pairing-attempt.sh
       - name: Native interface and permission localization coverage
         run: python3 ios/scripts/check-localizations.py
       - name: Receiver platform and permission-state checks
