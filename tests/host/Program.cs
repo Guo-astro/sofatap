@@ -8,6 +8,10 @@ LinuxInputChecks.Run(Check);
 TextFocusChecks.Run(Check);
 UnlockCapabilityChecks.Run(Check);
 WindowsTextInputChecks.Run(Check);
+LiveTextChecks.Run(Check);
+WindowsLiveTextChecks.Run(Check);
+MacTextEditorChecks.Run(Check);
+await LiveTextWireChecks.Run(Check);
 
 var focusTracker = new TextFocusTracker();
 Check(focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), false) == new TextFocusMetadata("unknown", 0), "unavailable desktop never exposes a focused field");

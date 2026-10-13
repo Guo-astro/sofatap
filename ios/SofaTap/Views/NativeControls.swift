@@ -6,6 +6,11 @@ struct NativeDraftEditor: UIViewRepresentable {
     @Binding var composing: Bool
     @Binding var isFocused: Bool
     var disabled: Bool
+    var selection: Binding<NSRange>? = nil
+    var onEdit: ((String, NSRange, Bool) -> Void)? = nil
+    var preservesFocusWhileLoading = false
+    var liveEditing = false
+    var editorAccessibilityLabel: String { liveEditing ? "与电脑实时同步的文字和选区" : "要发送到电脑的文字草稿" }
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> UITextView {
@@ -19,7 +24,7 @@ struct NativeDraftEditor: UIViewRepresentable {
         view.keyboardDismissMode = .interactive
         view.autocorrectionType = .default
         view.smartQuotesType = .default
-        view.accessibilityLabel = "要发送到电脑的文字草稿"
+        view.accessibilityLabel = editorAccessibilityLabel
         view.accessibilityIdentifier = "textDraft"
         let toolbar = UIToolbar()
         toolbar.items = [UIBarButtonItem(systemItem: .flexibleSpace),
@@ -32,6 +37,7 @@ struct NativeDraftEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
+        view.accessibilityLabel = editorAccessibilityLabel
         coordinator.synchronizeText(view)
         view.isEditable = !disabled
         // Focus changes after this representable update avoid mutating SwiftUI state
@@ -55,6 +61,7 @@ struct NativeDraftEditor: UIViewRepresentable {
         weak var textView: UITextView? {
             didSet { lastObservedNativeText = textView?.text ?? "" }
         }
+        private var lastPublishedSelection: NSRange?
         private var lastPublishedText: String
         private var lastObservedNativeText = ""
         private var pendingExternalText: String?
@@ -63,6 +70,7 @@ struct NativeDraftEditor: UIViewRepresentable {
         init(_ parent: NativeDraftEditor) {
             self.parent = parent
             lastPublishedText = parent.text
+            lastPublishedSelection = nil
         }
         func synchronizeText(_ view: UITextView) {
             guard !applyingModelText, !publishingNativeText else { return }
@@ -75,6 +83,16 @@ struct NativeDraftEditor: UIViewRepresentable {
                 // UIKit changes text before didChange. An unrelated render in that
                 // interval must not write the previous binding over the new input.
                 applyModelText(lastPublishedText, to: view)
+            }
+            if let selection = parent.selection?.wrappedValue,
+               selection != lastPublishedSelection,
+               selection.location >= 0, selection.length >= 0,
+               selection.location <= view.text.utf16.count,
+               selection.length <= view.text.utf16.count - selection.location {
+                applyingModelText = true
+                view.selectedRange = selection
+                lastPublishedSelection = selection
+                applyingModelText = false
             }
         }
         private func observeExternalText() {
@@ -111,11 +129,24 @@ struct NativeDraftEditor: UIViewRepresentable {
             }
             let marked = view.markedTextRange != nil
             if parent.composing != marked { parent.composing = marked }
+            publishSelectionAndEdit(view, marked: marked)
+        }
+        private func publishSelectionAndEdit(_ view: UITextView, marked: Bool) {
+            guard !applyingModelText, !publishingNativeText, pendingExternalText == nil else { return }
+            publishingNativeText = true
+            defer { publishingNativeText = false }
+            let selection = view.selectedRange
+            lastPublishedSelection = selection
+            if parent.selection?.wrappedValue != selection { parent.selection?.wrappedValue = selection }
+            parent.onEdit?(view.text ?? "", selection, marked)
         }
         func textViewDidBeginEditing(_ textView: UITextView) { parent.isFocused = true }
         func textViewDidEndEditing(_ textView: UITextView) {
             publishNativeText(textView)
-            parent.isFocused = false
+            // Temporarily disabling for textBegin must not erase the user's
+            // keyboard intent. The next acknowledged snapshot re-enables and
+            // refocuses the editor; an explicit hide already sets intent false.
+            if !(parent.disabled && parent.preservesFocusWhileLoading) { parent.isFocused = false }
             parent.composing = false
         }
         func textViewDidChange(_ textView: UITextView) {
@@ -126,6 +157,10 @@ struct NativeDraftEditor: UIViewRepresentable {
             let marked = textView.markedTextRange != nil
             if !marked && pendingExternalText != nil { synchronizeText(textView) }
             if parent.composing != marked { parent.composing = marked }
+            // A keyboard edit can deliver selection before didChange. Publish
+            // text and selection together so its first frame cannot contain the
+            // previous text with the new caret. Select All also takes this path.
+            if parent.onEdit != nil { publishNativeText(textView) }
         }
         @objc func done() {
             parent.isFocused = false

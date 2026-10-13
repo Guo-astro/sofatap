@@ -23,8 +23,8 @@ struct DictationTranscript {
     }
 }
 
-/// Explicit, foreground dictation. Audio stays on this iPhone; results remain a
-/// local draft until the user sends them through ControllerModel.
+/// Explicit, foreground dictation. Audio stays on this iPhone; RemoteView sends
+/// partial transcripts through live editing, or keeps a draft for unsupported fields.
 @MainActor
 final class SpeechDictationController: NSObject, ObservableObject {
     enum State: Equatable {

@@ -4,8 +4,9 @@ using System.Security.Cryptography;
 namespace SofaTap;
 
 public sealed record ActionMessage(string Id, string Type, double Dx = 0, double Dy = 0,
-    string? Button = null, bool Down = false, string? Key = null, string[]? Modifiers = null, string? Text = null);
-public sealed record ActionAck(string Type, string Id, bool Ok, string? Error = null)
+    string? Button = null, bool Down = false, string? Key = null, string[]? Modifiers = null, string? Text = null,
+    string? Session = null, int Revision = 0, int SelectionStart = 0, int SelectionLength = 0);
+public sealed record ActionAck(string Type, string Id, bool Ok, string? Error = null, LiveTextSnapshot? LiveText = null)
 {
     public static ActionAck Success(string id) => new("ack", id, true);
     public static ActionAck Failure(string id, string error) => new("ack", id, false, error);
@@ -38,6 +39,9 @@ public static class Protocol
             "button" => ["id", "type", "button", "down"],
             "key" => ["id", "type", "key", "modifiers"],
             "text" => ["id", "type", "text"],
+            "textBegin" => ["id", "type"],
+            "textEnd" => ["id", "type", "session"],
+            "textSync" => ["id", "type", "session", "revision", "text", "selectionStart", "selectionLength"],
             "ping" => ["id", "type"],
             _ => throw new ProtocolException("Unsupported action type.")
         };
@@ -45,6 +49,16 @@ public static class Protocol
             throw new ProtocolException("Missing or unknown action fields.");
         switch (type)
         {
+            case "textEnd":
+                return new(id, type, Session: Session(fields));
+            case "textSync":
+                var editText = String(fields, "text");
+                var start = Integer(fields, "selectionStart");
+                var length = Integer(fields, "selectionLength");
+                try { LiveTextSession.ValidateText(editText, start, length); }
+                catch (InputInjectionException) { throw new ProtocolException("Invalid live text or selection."); }
+                return new(id, type, Text: editText, Session: Session(fields), Revision: Integer(fields, "revision"),
+                    SelectionStart: start, SelectionLength: length);
             case "move": case "scroll":
                 var limit = type == "move" ? 500 : 1200;
                 return new(id, type, Number(fields, "dx", limit), Number(fields, "dy", limit));
@@ -96,6 +110,17 @@ public static class Protocol
         try { return item.GetString()!; }
         catch (InvalidOperationException) { throw new ProtocolException("Invalid JSON string."); }
     }
+    private static string Session(Dictionary<string, JsonElement> fields)
+    {
+        var value = String(fields, "session");
+        return Guid.TryParseExact(value, "D", out var parsed) ? parsed.ToString("D") : throw new ProtocolException("Invalid editing session.");
+    }
+    private static int Integer(Dictionary<string, JsonElement> fields, string key)
+    {
+        if (!fields.TryGetValue(key, out var item) || !item.TryGetInt32(out var value) || value < 0 || value == int.MaxValue)
+            throw new ProtocolException("Invalid editing integer.");
+        return value;
+    }
     private static double Number(Dictionary<string, JsonElement> fields, string key, double limit)
     {
         if (!fields.TryGetValue(key, out var item) || item.ValueKind != JsonValueKind.Number || !item.TryGetDouble(out var number)
@@ -109,9 +134,10 @@ public static class Protocol
     }
 }
 
-public sealed class ActionSession(IInputInjector input, int maximumActions = 131_072)
+public sealed class ActionSession(IInputInjector input, int maximumActions = 131_072, LiveTextSession? liveText = null)
 {
     private readonly Dictionary<Guid, (ActionAck Ack, byte[] Digest)> _seen = [];
+    private int _cachedTextUnits;
     public ActionAck Execute(ActionMessage action)
     {
         var guid = Guid.Parse(action.Id);
@@ -122,15 +148,33 @@ public sealed class ActionSession(IInputInjector input, int maximumActions = 131
                 ? previous.Ack with { Id = action.Id }
                 : ActionAck.Failure(action.Id, "Action id reused for different content.");
         if (_seen.Count >= maximumActions) throw new ProtocolException("Session action limit reached. Reconnect before sending a new action.");
+        if (_cachedTextUnits > 8_000_000 - Protocol.MaximumTextUnits)
+            throw new ProtocolException("Session action limit reached. Reconnect before sending a new action.");
         ActionAck ack;
         try
         {
-            if (action.Type != "ping") input.Apply(action);
-            ack = ActionAck.Success(action.Id);
+            if (action.Type is "textBegin" or "textSync" or "textEnd")
+            {
+                if (liveText is null) throw new InputInjectionException("live_text_unsupported: This receiver cannot edit the focused field.");
+                LiveTextSnapshot? snapshot = null;
+                if (action.Type == "textBegin") snapshot = liveText.Begin();
+                else if (action.Type == "textSync") snapshot = liveText.Sync(action.Session!, action.Revision, action.Text!, action.SelectionStart, action.SelectionLength);
+                else liveText.End(action.Session);
+                ack = ActionAck.Success(action.Id) with { LiveText = snapshot };
+            }
+            else
+            {
+                // A desktop action can change the caret/target. Pointer motion alone
+                // does not invalidate typing; clicks, keys and drag initiation do.
+                if (action.Type is "click" or "key" or "text" || action.Type == "button" && action.Down) liveText?.End();
+                if (action.Type != "ping") input.Apply(action);
+                ack = ActionAck.Success(action.Id);
+            }
         }
         catch (InputInjectionException error) { ack = ActionAck.Failure(action.Id, error.Message); }
         // Cache failures too: a partial Windows injection must never be repeated.
         _seen.Add(guid, (ack, digest));
+        _cachedTextUnits += ack.LiveText?.Text.Length ?? 0;
         return ack;
     }
 }

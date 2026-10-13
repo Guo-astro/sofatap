@@ -3,7 +3,6 @@ using System.Net.WebSockets;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
-using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using QRCoder;
 
@@ -11,10 +10,11 @@ namespace SofaTap;
 
 public sealed record ReceiverOptions(bool DryRun, string DataDirectory, int ControlPort = 53319);
 
-public sealed class ReceiverServer(ReceiverOptions options, Credentials credentials, IInputInjector input, ITextFocusProbe? textFocus = null)
+public sealed class ReceiverServer(ReceiverOptions options, Credentials credentials, IInputInjector input, ITextFocusProbe? textFocus = null,
+    Func<ILiveTextEditor>? textEditorFactory = null)
 {
     private readonly SemaphoreSlim _controller = new(1, 1);
-    private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web) { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull };
+    private static readonly JsonSerializerOptions JsonOptions = LiveTextWire.Options;
     private readonly byte[] _token = Encoding.ASCII.GetBytes(credentials.Token);
     private CancellationToken _applicationStopping;
     public WebApplication Build()
@@ -68,10 +68,11 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
     // The retired account-password pilot must not be discoverable, even when a
     // legacy enrollment file remains on disk. PIN control needs a separate, verified protocol.
     internal static object CreateHello(string name, string platform, bool dryRun,
-        string status, TextFocusMetadata focus) => new
+        string status, TextFocusMetadata focus, bool liveTextSupported = false) => new
     {
         type = "hello", version = 1, name, platform, dryRun,
-        inputAvailable = status == "ready", inputStatus = status, textFocus = focus
+        inputAvailable = status == "ready", inputStatus = status, textFocus = focus,
+        liveText = liveTextSupported && !dryRun ? new { version = 1 } : null
     };
 
     private async Task RunController(WebSocket socket, CancellationToken requestAborted)
@@ -82,9 +83,11 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
             code == "ready" && !options.DryRun && textFocus is not null
                 ? textFocus.Read() : new(TextFocusKind.Unknown), code == "ready" && !options.DryRun);
         var status = ReceiverPlatform.StatusCode(input, options.DryRun);
+        using var liveText = !options.DryRun && textEditorFactory is not null
+            ? new LiveTextSession(textEditorFactory(), () => ReceiverPlatform.StatusCode(input, options.DryRun) == "ready") : null;
         await Send(socket, CreateHello(Environment.MachineName, ReceiverPlatform.Id,
-            options.DryRun, status, Focus(status)), lifetime.Token);
-        var session = new ActionSession(input);
+            options.DryRun, status, Focus(status), liveText is not null), lifetime.Token);
+        var session = new ActionSession(input, liveText: liveText);
         var buffer = new byte[Protocol.MaximumFrameBytes + 1];
         while (socket.State == WebSocketState.Open && !lifetime.IsCancellationRequested)
         {
@@ -125,6 +128,7 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
                 if (isPing)
                 {
                     var currentStatus = ReceiverPlatform.StatusCode(input, options.DryRun);
+                    if (currentStatus != "ready") liveText?.End();
                     await Send(socket, new { ack.Type, ack.Id, ack.Ok, ack.Error,
                         inputAvailable = currentStatus == "ready", inputStatus = currentStatus, dryRun = options.DryRun,
                         textFocus = Focus(currentStatus) }, lifetime.Token);
@@ -143,7 +147,9 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
     {
         using var bounded = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
         bounded.CancelAfter(TimeSpan.FromSeconds(5));
-        await socket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions), WebSocketMessageType.Text, true, bounded.Token);
+        var bytes = JsonSerializer.SerializeToUtf8Bytes(message, JsonOptions);
+        if (bytes.Length > Protocol.MaximumFrameBytes) throw new WebSocketException("Response exceeds the frame limit.");
+        await socket.SendAsync(bytes, WebSocketMessageType.Text, true, bounded.Token);
     }
     private static async Task Close(WebSocket socket, WebSocketCloseStatus status, string reason)
     {

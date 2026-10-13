@@ -18,6 +18,7 @@ struct ReceiverState: Equatable {
     var textFocus: RemoteTextFocus = .unknown
     var focusRevision: Int = 0
     var reportsTextFocus: Bool = false
+    var supportsLiveText: Bool = false
     var commandModifier: String { platform == .macos ? "win" : "ctrl" }
     var unavailableTitle: String {
         switch status {
@@ -56,7 +57,9 @@ struct ReceiverState: Equatable {
         // Legacy ACKs have no availability metadata and leave state unchanged.
         guard let available = message["inputAvailable"] as? Bool,
               message["dryRun"] is Bool, message["inputStatus"] is String else { return nil }
-        return Self.make(platform: platform, available: available, message: message)
+        var state = Self.make(platform: platform, available: available, message: message)
+        if message["liveText"] == nil { state.supportsLiveText = supportsLiveText }
+        return state
     }
 
     private static func make(platform: Platform, available: Bool, message: [String: Any]) -> ReceiverState {
@@ -65,6 +68,8 @@ struct ReceiverState: Equatable {
         let status: Status = dry ? .dry_run : code ?? (message["inputStatus"] == nil && available ? .ready : .unavailable)
         let canInput = available && status == .ready && !dry
         var state = ReceiverState(platform: platform, status: status, inputAvailable: canInput, dryRun: dry)
+        if let capability = message["liveText"] as? [String: Any],
+           LiveTextSnapshot.integer(capability["version"]) == 1 { state.supportsLiveText = true }
         if let focus = message["textFocus"] as? [String: Any],
            let raw = focus["state"] as? String, let kind = RemoteTextFocus(rawValue: raw),
            let revision = focus["revision"] as? NSNumber,
@@ -76,4 +81,73 @@ struct ReceiverState: Equatable {
         }
         return state
     }
+}
+
+
+/// A complete editable field and its UTF-16 selection. Desktop contents stay in
+/// memory for the lifetime of the editor; they are never persisted as a draft.
+struct LiveTextSnapshot: Equatable {
+    let text: String
+    let selection: NSRange
+    var fields: [String: Any] {
+        ["text": text, "selectionStart": selection.location, "selectionLength": selection.length]
+    }
+    var valid: Bool {
+        let units = Array(text.utf16)
+        guard units.count <= 16_000, !units.contains(0), selection.location >= 0,
+              selection.length >= 0, selection.location <= units.count,
+              selection.length <= units.count - selection.location else { return false }
+        func boundary(_ offset: Int) -> Bool {
+            offset == 0 || offset == units.count || !(0xDC00...0xDFFF).contains(units[offset])
+        }
+        guard boundary(selection.location), boundary(selection.location + selection.length) else { return false }
+        // Reserve the same 1 KiB envelope as the receiver. Unicode may be
+        // escaped differently by Foundation and System.Text.Json: use the
+        // larger of the actual iOS encoding and a conservative receiver bound.
+        guard let encoded = try? JSONSerialization.data(withJSONObject: text, options: [.fragmentsAllowed]) else { return false }
+        return max(encoded.count, receiverEscapedByteBound) <= 65_536 - 1024
+    }
+    private var receiverEscapedByteBound: Int {
+        var count = 2 // JSON string quotes
+        for scalar in text.unicodeScalars {
+            switch scalar.value {
+            case 0x08, 0x09, 0x0A, 0x0C, 0x0D, 0x22, 0x5C: count += 2
+            case 0x00...0x1F: count += 6
+            case 0x10000...0x10FFFF: count += 12 // escaped UTF-16 surrogate pair
+            default:
+                switch scalar.properties.generalCategory {
+                case .control, .format, .privateUse, .unassigned, .lineSeparator, .paragraphSeparator:
+                    count += 6
+                case .spaceSeparator where scalar.value != 0x20:
+                    count += 6
+                default: count += scalar.utf8.count
+                }
+            }
+        }
+        return count
+    }
+    static func integer(_ value: Any?) -> Int? {
+        guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+              number.doubleValue.isFinite, number.doubleValue >= 0,
+              number.doubleValue < Double(Int32.max), number.doubleValue.rounded() == number.doubleValue else { return nil }
+        return number.intValue
+    }
+    static func parse(_ object: [String: Any]) -> LiveTextSnapshot? {
+        guard let text = object["text"] as? String,
+              let start = integer(object["selectionStart"]), let length = integer(object["selectionLength"]) else { return nil }
+        let result = Self(text: text, selection: NSRange(location: start, length: length))
+        return result.valid ? result : nil
+    }
+    /// Speech replaces the selection at recording start; later recognition
+    /// corrections replace only that insertion, retaining the original suffix.
+    func replacingSelection(with transcript: String) -> LiveTextSnapshot? {
+        guard valid else { return nil }
+        let text = (text as NSString).replacingCharacters(in: selection, with: transcript)
+        let result = Self(text: text, selection: NSRange(location: selection.location + transcript.utf16.count, length: 0))
+        return result.valid ? result : nil
+    }
+}
+
+enum LiveTextStatus: Equatable {
+    case idle, starting, active, syncing, unsupported, paused(String)
 }

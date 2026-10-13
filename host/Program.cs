@@ -34,7 +34,9 @@ try
         : OperatingSystem.IsLinux() ? new LinuxInput() : new WindowsInput();
     using var inputLifetime = input as IDisposable;
     using var textFocus = dryRun ? null : TextFocusProbe.Create();
-    var server = new ReceiverServer(options, credentials, input, textFocus);
+    Func<ILiveTextEditor>? textEditorFactory = !dryRun && OperatingSystem.IsWindows() ? () => OperatingSystem.IsWindows() ? new WindowsTextEditor() : throw new PlatformNotSupportedException()
+        : !dryRun && OperatingSystem.IsMacOS() ? () => new MacTextEditor() : null;
+    var server = new ReceiverServer(options, credentials, input, textFocus, textEditorFactory);
     await using var app = server.Build();
     try { await NativeDesktopBridge.RunAsync(app, server, dryRun); }
     finally { input.ReleaseAll(); }

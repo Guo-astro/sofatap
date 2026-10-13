@@ -22,16 +22,16 @@ A one-minute tour of pointer gestures, typing on the phone keyboard and voice di
 
 - One rounded touch surface contains the logo, QR scanner, microphone and keyboard controls. A gently flowing dot matrix fills the surface; touch warps nearby dots and taps send ripples through it. There is no on-surface instruction text. Reduce Motion keeps the grid static with simpler touch feedback.
 - Slide to move, tap for a left click, double-tap for a right click, hold still for 300 ms to drag, and use two fingers to scroll.
-- Tap the bottom microphone for on-device dictation when supported, or use the iPhone keyboard / Typeless. Review the local draft and tap **Send** to type into the computer's focused field. Sending does not append Enter or submit the form; embedded line breaks remain part of the text.
+- Tap the bottom microphone for on-device dictation when supported, or use the iPhone keyboard / Typeless. In supported fields, live input is the default: confirmed keyboard text, deletions, selections and speech recognition updates synchronize without a **Send** button. Unsupported fields and older receivers retain the review-and-send composer. No extra Enter or form-submit action is appended.
 - Pair by scanning a QR code in a **native desktop window**: AppKit/SwiftUI on Mac, WinForms on Windows and GTK3 on Linux. No browser is needed for pairing.
 - The three desktop receivers share the selected **Mint Calm (暮色薄荷)** design: charcoal background, pale mint actions and a clear white QR area. See the [design specification](docs/RECEIVER-DESIGN.md); this work is in development source, not the earlier downloads below.
-- Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Draft retention, send confirmation and no automatic replay help avoid accidental duplicate input after a disconnect.
+- Connect over your home network with WSS/TLS, certificate pinning and locally stored pairing credentials. Live input pauses on conflicting desktop edits or a lost connection; it never automatically replays uncertain edits.
 
-**This is an alpha preview.** The single-screen interaction, microphone and focused-field hints are in the 0.6.0 (iPhone build 9) development source on `main`; the downloads below are earlier alpha releases and do not include these changes. Real iPhone gesture/dictation, Typeless and per-application focus behavior still need acceptance testing. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
+**This is an alpha preview.** Live text editing is in the 0.7.0 (iPhone build 10) development source on `main`; the downloads below are earlier alpha releases. The [0.6.0 scoped Windows record](docs/verification/2026-10-13-iphone-input.md) covers real iPhone gestures, microphone dictation and explicit text sending. It does not establish acceptance of the new real-time editing path, Mac live editing, Typeless or every target application. Bluetooth and a hosted relay service are not implemented. See the [interaction specification and future standalone CUA direction](docs/INTERACTION.md).
 
-Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface, and keeps draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [dot-matrix preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
+Tap the logo for connection details and gesture help. The text composer appears only when needed, below the touch surface. Supported fields open as live editors; other fields keep draft review and explicit sending. [View the offline simulator layout](docs/images/sofatap-single-screen.png) and [dot-matrix preview](docs/images/sofatap-touch-effects.mp4). These show local rendering, not physical iPhone input or performance.
 
-The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. Detection never reads field contents; unsupported, read-only or protected targets do not trigger automatic input UI. Linux detection requires an optional AT-SPI bridge. Manual keyboard access remains available. See [focus detection and platform limits](docs/TEXT-FOCUS.md).
+The keyboard opens automatically when a compatible receiver detects a new writable native or web field that exposes accessibility metadata. This background detection reads no field contents. Opening a live editing session then imports the supported field’s complete text and selection to the paired phone, so Backspace and Select All → Delete can edit existing computer text. Detection support and live-editing support are separate: Windows live input currently supports native Edit/RichEdit controls; Mac requires writable Accessibility selected-text and selection-range attributes. Browsers, custom controls without that support, Linux and older receivers use the review-and-send fallback. Protected and read-only fields cannot start live editing. See [focus detection, data handling and platform limits](docs/TEXT-FOCUS.md).
 
 **Windows lock-screen PIN control (under validation):** the target is iPhone touchpad + manual PIN entry, with optional Face ID-authorized saved PIN entry. Sofatap does not require a Microsoft account password. The earlier account-password pilot is retired and disabled in ordinary discovery and iPhone UI. Pointer diagnostics, native PIN acceptance and iPhone end-to-end tests are separate gates; none is implied by pairing or compilation. See [scope and verification](docs/FACE-ID-UNLOCK.md).
 
@@ -39,14 +39,14 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Version 0.3.0 (4) on an iPhone 17 Pro Max passed scoped iPhone-to-Mac checks. The 0.6.0 (9) single-screen gestures, microphone and automatic keyboard still need physical-device acceptance. |
-| Windows | Native receiver released in 0.3.0. This version's desktop UI and physical iPhone integration still need acceptance testing. |
+| iPhone | iOS 17+. Scoped 0.6.0 iPhone-to-Windows gesture, microphone and explicit-send checks are recorded above; 0.7.0 live editing still needs physical-device acceptance. |
+| Windows | Native receiver released in 0.3.0. Development source adds live editing for native Edit/RichEdit controls; the new path requires isolated phone-to-Windows acceptance. |
 | Mac | macOS 15+. Apple Silicon and Intel packages are notarized. Scoped physical-device checks passed on Apple Silicon; Intel input still needs testing. |
 | Linux | Native GTK3 receiver released in 0.4.0. X11 input passed isolated desktop checks. Wayland portal support is experimental; physical iPhone integration, real Wayland compositors and ARM64 runtime testing remain pending. |
 
 The [Mac verification record](docs/verification/macos-0.3.0.md) covers real camera pairing, TLS, exact text readback and selected key/pointer actions on 2026-10-11. The [Linux verification record](docs/verification/linux-0.4.0.md) covers native GTK rendering, X11 input on an isolated Xvfb desktop and a mock Wayland portal on a private D-Bus. Neither record establishes complete application compatibility.
 
-Windows uses Win32 `SendInput`; Mac uses Quartz after an explicit local Accessibility grant. Linux X11 requires libX11, libXtst and libxdo; Wayland requires a compatible RemoteDesktop portal and a native user permission grant. Linux accepts up to 2,048 Unicode scalar values per text action and does not read or replace the clipboard. Unsupported Wayland sessions remain unavailable, with no XWayland fallback. See [Linux requirements and limits](desktop/linux/README.md).
+Pointer, shortcut and fallback text input use Win32 `SendInput` on Windows and Quartz on Mac after an explicit local Accessibility grant. Live text instead edits and verifies the supported native field through Win32 Edit/RichEdit messages or Mac Accessibility selected-text operations, preserving text outside the changed span. Linux X11 requires libX11, libXtst and libxdo; Wayland requires a compatible RemoteDesktop portal and a native user permission grant. Linux currently uses review-and-send text, accepts up to 2,048 Unicode scalar values per text action, and does not read or replace the clipboard. Unsupported Wayland sessions remain unavailable, with no XWayland fallback. See [Linux requirements and limits](desktop/linux/README.md).
 
 ## Get started
 
@@ -65,7 +65,7 @@ The desktop packages include the .NET runtime. Linux still requires the system d
 1. Open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, then run the app. Installation requires valid development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
 2. Connect the iPhone and computer to the same reachable home network. Guest Wi-Fi device isolation may prevent a connection.
 3. Scan the QR code in the receiver's native window, or paste the complete pairing link into the iPhone app.
-4. Select a field on the computer, compose and review your text on the phone, then explicitly send it. Verify the result on the computer before resending an uncertain action.
+4. Select a field on the computer and open the phone keyboard or microphone. A supported field synchronizes typing, deletion and recognized speech automatically; an unsupported field shows **Send** for a reviewed draft. If live input pauses after a focus conflict or disconnect, inspect the computer and explicitly reopen the editor. Uncertain edits are never replayed automatically.
 
 Pairing links contain control credentials: keep them on your own devices. If upgrading from the earliest **Tiltro** releases, follow the [upgrade guide](docs/WINDOWS-START.md#从旧名称版本升级): those releases used different identifiers and storage, and their pairings and drafts do not migrate automatically. The current Sofatap spelling update preserves existing Sofatap pairings.
 
@@ -73,7 +73,9 @@ Pairing links contain control credentials: keep them on your own devices. If upg
 
 Sofatap connects directly over the local network. The project has no hosted relay service. Pairing uses a pinned TLS certificate; credentials are stored in iPhone Keychain, Windows DPAPI, or current-user-only receiver files on Mac/Linux. Mac input requires Accessibility permission; Wayland input requires the desktop's explicit portal grant.
 
-The microphone starts only after an explicit tap and the required permissions. Supported on-device recognition keeps audio on the phone; Sofatap does not upload audio or silently switch to cloud recognition. Recognized text stays in the local draft until **Send**. System dictation and third-party keyboards have their own data handling.
+The microphone starts only after an explicit tap and the required permissions. Supported on-device recognition keeps audio on the phone; Sofatap does not upload audio or silently switch to cloud recognition. In a live editing session, partial recognized text and later corrections synchronize to the computer. In the fallback composer, text stays local until **Send**. System dictation and third-party keyboards have their own data handling.
+
+Live editing sends the current supported field’s complete text and selection directly to the paired phone over pinned TLS. The phone keeps this imported live text in memory rather than its saved draft preferences. The receiver keeps bounded text-bearing acknowledgements in connection memory for duplicate suppression until the connection ends. The separate review-and-send draft remains stored locally for recovery. Field text is not logged or sent to a hosted service; background focus hints contain only metadata.
 
 Pairing QR codes travel through a private local pipe to the native desktop UI, not a web pairing page. Never publish pairing codes, credentials or signing material. The repository includes no developer account, signing certificate or provisioning profile. See [PROTOCOL.md](PROTOCOL.md) for the transport and input behavior, and [the acceptance checklist](docs/ACCEPTANCE.md) for remaining device checks.
 
@@ -127,7 +129,7 @@ bash ios/scripts/build-manual.sh device
 
 The host runner uses fake input. TLS/WebSocket checks launch a temporary receiver with `--dry-run` and inject no system input. The last command compiles an unprovisioned ARM64 iOS app without installing it. CI also runs platform builds and isolated Linux desktop checks; see [the Linux guide](desktop/linux/README.md#lifecycle-and-checks) for the relevant commands.
 
-Build, protocol, virtual-desktop and physical-device checks establish different things. Remaining 0.6.0 acceptance includes physical single/double taps, 300 ms hold-to-drag, scrolling, particle feedback and Reduce Motion, microphone permissions and recognition, Typeless, per-application keyboard focus, and phone-to-computer behavior on each supported desktop platform.
+Build, protocol, virtual-desktop and physical-device checks establish different things. The new 0.7.0 live path still requires physical keyboard/deletion/selection, revising speech, conflict and reconnect acceptance. Earlier gesture and explicit-send checks do not establish this path or coverage of Typeless and every target application.
 
 ## Repository layout
 

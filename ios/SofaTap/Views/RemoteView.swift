@@ -25,6 +25,8 @@ struct RemoteView: View {
     @State private var keyboardFocused = false
     @State private var handledFocusRevision: Int?
     @State private var speechBaseDraft = ""
+    @State private var speechBaseSnapshot: LiveTextSnapshot?
+    @State private var speechRequest: UUID?
     @State private var speechOwnsDraft = false
     @State private var dictationStartTask: Task<Void, Never>?
 
@@ -77,6 +79,11 @@ struct RemoteView: View {
         }
         .onDisappear { stopInteraction() }
         .onChange(of: model.focusRevision) { _, _ in applyRemoteFocus() }
+        .onChange(of: model.liveTextStatus) { _, _ in
+            if model.liveTextPaused || (model.usesLiveText && model.liveTextStatus == .idle && speechRequest != nil) {
+                cancelSpeech()
+            }
+        }
         .onChange(of: model.dragging) { _, dragging in
             if !dragging { applyRemoteFocus() }
         }
@@ -107,7 +114,7 @@ struct RemoteView: View {
             else if phase == .inactive {
                 interruptTouch()
                 keyboardFocused = false
-                if dictation.state != .requestingPermission { dictation.cancel() }
+                if dictation.state != .requestingPermission { cancelSpeech() }
             } else { applyRemoteFocus() }
         }
         .onReceive(dictation.$transcript) { transcript in
@@ -116,10 +123,13 @@ struct RemoteView: View {
             guard let draft = DictationTranscript.draft(base: speechBaseDraft, transcript: transcript,
                                                        ownsDraft: speechOwnsDraft,
                                                        sessionIsActive: dictation.state != .idle) else { return }
-            model.draft = draft
+            if let base = speechBaseSnapshot {
+                guard let snapshot = base.replacingSelection(with: transcript) else { return }
+                model.editText(snapshot.text, selection: snapshot.selection, marked: false)
+            } else { model.draft = draft }
         }
         .onChange(of: dictation.state) { _, state in
-            if state == .idle { speechOwnsDraft = false }
+            if state == .idle { speechOwnsDraft = false; speechRequest = nil }
         }
     }
 
@@ -206,7 +216,7 @@ struct RemoteView: View {
                 ZStack {
                     Circle().fill(dictation.isRecording ? Color(red: 0.99, green: 0.64, blue: 0.47) : Palette.mint)
                     Circle().stroke(Palette.mint.opacity(0.18), lineWidth: 1).padding(-6)
-                    if dictation.state == .requestingPermission || dictation.state == .finishing {
+                    if dictation.state == .requestingPermission || dictation.state == .finishing || (speechRequest != nil && model.editorLoading) {
                         ProgressView().tint(Palette.background)
                     } else {
                         Image(systemName: dictation.isRecording ? "stop.fill" : "mic.fill")
@@ -221,7 +231,7 @@ struct RemoteView: View {
             .buttonStyle(.plain)
             .disabled(!model.controlAvailable || model.sendingText || model.composing || model.remoteTextFocus == .protected)
             .opacity(model.controlAvailable ? 1 : 0.45)
-            .accessibilityLabel(dictation.isRecording ? "结束听写" : speechBusy ? "取消语音输入" : "开始语音输入")
+            .accessibilityLabel(dictation.isRecording ? "结束听写" : speechBusy || speechRequest != nil ? "取消语音输入" : "开始语音输入")
             .accessibilityValue(dictation.isRecording ? "麦克风正在录音" : dictation.state == .finishing ? "正在整理听写结果" : "")
             .accessibilityIdentifier("dictationButton")
             Spacer(minLength: 0)
@@ -263,7 +273,7 @@ struct RemoteView: View {
                         Label("单击左键，连续点两下右键", systemImage: "hand.tap")
                         Label("按住 0.3 秒开始拖动，抬手松开", systemImage: "hand.point.up")
                         Label("双指滑动，滚动页面", systemImage: "hand.draw.fill")
-                        Label("点麦克风听写，确认文字后发送", systemImage: "mic")
+                        Label("点麦克风听写，文字自动同步到电脑", systemImage: "mic")
                     }
                     .font(.body)
                     Text("光效跟随你在手机上的手指，电脑光标的位置请看电脑屏幕。")
@@ -284,13 +294,17 @@ struct RemoteView: View {
         VStack(alignment: .leading, spacing: 8) {
             ZStack(alignment: .topLeading) {
                 if model.draft.isEmpty {
-                    Text(dictation.isRecording ? "正在听…" : "输入或听写，确认后发送到电脑")
+                    Text(dictation.isRecording ? "正在听…" : model.usesLiveText ? "输入或听写，自动同步到电脑" : "输入或听写，确认后发送到电脑")
                         .font(.system(size: 16)).foregroundStyle(Palette.muted.opacity(0.7))
                         .padding(14).allowsHitTesting(false)
                 }
                 NativeDraftEditor(text: $model.draft, composing: $model.composing,
                                   isFocused: $keyboardFocused,
-                                  disabled: model.sendingText || speechBusy || model.textDelivery == .sent)
+                                  disabled: model.sendingText || speechBusy || model.editorLoading || (model.usesLiveText && !model.liveTextReady) || (!model.usesLiveText && model.textDelivery == .sent),
+                                  selection: model.usesLiveText ? $model.draftSelection : nil,
+                                  onEdit: { text, selection, marked in model.editText(text, selection: selection, marked: marked) },
+                                  preservesFocusWhileLoading: model.editorLoading,
+                                  liveEditing: model.usesLiveText)
             }
             .frame(height: height)
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
@@ -301,37 +315,47 @@ struct RemoteView: View {
                     .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("textDeliveryStatus")
                 Spacer(minLength: 0)
-                Button(action: model.sendText) {
-                    HStack(spacing: 6) {
-                        if model.sendingText { ProgressView().tint(Palette.background) }
-                        else { Image(systemName: model.textDelivery == .sent ? "checkmark" : "arrow.up") }
-                        Text(model.sendingText ? "等待确认" : "发送")
+                if !model.usesLiveText {
+                    Button(action: model.sendText) {
+                        HStack(spacing: 6) {
+                            if model.sendingText { ProgressView().tint(Palette.background) }
+                            else { Image(systemName: model.textDelivery == .sent ? "checkmark" : "arrow.up") }
+                            Text(model.sendingText ? "等待确认" : "发送")
+                        }
+                        .font(.system(size: 13, weight: .semibold))
+                        .padding(.horizontal, 15).frame(height: 44)
+                        .foregroundStyle(Palette.background)
+                        .background(Palette.mint, in: Capsule())
                     }
-                    .font(.system(size: 13, weight: .semibold))
-                    .padding(.horizontal, 15).frame(height: 44)
-                    .foregroundStyle(Palette.background)
-                    .background(Palette.mint, in: Capsule())
+                    .disabled(!model.canSendText || speechBusy)
+                    .opacity(model.canSendText && !speechBusy || model.sendingText ? 1 : 0.45)
+                    .accessibilityIdentifier("sendText")
                 }
-                .disabled(!model.canSendText || speechBusy)
-                .opacity(model.canSendText && !speechBusy || model.sendingText ? 1 : 0.45)
-                .accessibilityIdentifier("sendText")
             }
-            if model.textDelivery == .uncertain || model.textDelivery == .sent {
+            if model.liveTextPaused {
+                Button("检查电脑后重新读取输入框") { model.restartLiveTextEditing() }
+                    .font(.system(size: 11, weight: .medium)).frame(minHeight: 44)
+                    .accessibilityIdentifier("resumeLiveText")
+            }
+            if !model.usesLiveText && (model.textDelivery == .uncertain || model.textDelivery == .sent) {
                 Button("检查电脑后允许重发") { interruptTouch(); resendAlert = true }
                     .font(.system(size: 11, weight: .medium))
                     .frame(minHeight: 44)
             }
             HStack {
-                Button("清空草稿") { interruptTouch(); clearAlert = true }
-                    .disabled(model.draft.isEmpty || model.sendingText || speechBusy)
+                Button(model.usesLiveText ? "全选" : "清空草稿") {
+                    if model.usesLiveText { model.selectAll(); keyboardFocused = true }
+                    else { interruptTouch(); clearAlert = true }
+                }
+                    .accessibilityIdentifier(model.usesLiveText ? "selectAllText" : "clearTextDraft")
+                    .disabled(model.draft.isEmpty || model.composing || model.sendingText || speechBusy || (model.usesLiveText && !model.liveTextReady))
                     .frame(minHeight: 44)
                 Spacer()
                 Text("\(model.draftLength) / 16,000")
                     .foregroundStyle(model.draftWithinLimit ? Palette.muted : .orange)
                 Button("收起") {
                     keyboardFocused = false
-                    dictationStartTask?.cancel()
-                    dictation.cancel()
+                    cancelSpeech()
                     composerVisible = false
                 }
                 .frame(minWidth: 44, minHeight: 44)
@@ -341,7 +365,7 @@ struct RemoteView: View {
     }
 
     private var composerStatus: String {
-        if dictation.isRecording { return "正在听写，结束后确认文字再发送。" }
+        if dictation.isRecording { return model.usesLiveText ? "正在听写并实时同步…" : "正在听写，结束后确认文字再发送。" }
         if dictation.state == .finishing { return "正在整理听写结果…" }
         if model.remoteTextFocus == .protected { return "电脑当前为安全输入框，不会自动听写。" }
         if model.demo && model.textDelivery == .sent { return "演示反馈：文字没有发送到电脑。" }
@@ -350,30 +374,34 @@ struct RemoteView: View {
 
     private func toggleKeyboard() {
         interruptTouch()
-        dictationStartTask?.cancel()
-        dictation.cancel()
-        speechOwnsDraft = false
+        cancelSpeech()
         if keyboardFocused { keyboardFocused = false; composerVisible = false }
         else {
             prepareNewComposition()
             composerVisible = true
             keyboardFocused = true
+            model.openTextEditor()
         }
     }
     private func toggleDictation() {
         guard model.controlAvailable, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
         interruptTouch()
         if dictation.isRecording { dictation.stop(); return }
-        if speechBusy { dictationStartTask?.cancel(); dictation.cancel(); return }
+        if speechBusy || speechRequest != nil { cancelSpeech(); return }
         keyboardFocused = false
         composerVisible = true
         prepareNewComposition()
-        speechBaseDraft = model.draft
-        speechOwnsDraft = true
-        dictationStartTask?.cancel()
-        dictationStartTask = Task {
-            guard !Task.isCancelled, model.controlAvailable, scenePhase == .active else { return }
-            await dictation.start()
+        let request = UUID(); speechRequest = request
+        model.openTextEditor {
+            guard speechRequest == request, model.controlAvailable, scenePhase == .active else { return }
+            speechBaseDraft = model.draft
+            speechBaseSnapshot = model.liveTextReady ? LiveTextSnapshot(text: model.draft, selection: model.draftSelection) : nil
+            speechOwnsDraft = true
+            dictationStartTask?.cancel()
+            dictationStartTask = Task {
+                guard !Task.isCancelled, speechRequest == request, model.controlAvailable, scenePhase == .active else { return }
+                await dictation.start()
+            }
         }
     }
     private func applyRemoteFocus() {
@@ -391,9 +419,10 @@ struct RemoteView: View {
             prepareNewComposition()
             composerVisible = true
             keyboardFocused = true
+            model.openTextEditor()
         case .other, .protected:
             keyboardFocused = false
-            if model.remoteTextFocus == .protected { dictationStartTask?.cancel(); dictation.cancel() }
+            cancelSpeech()
         case .unknown:
             break // Unsupported desktop focus detection leaves manual input available.
         }
@@ -401,8 +430,14 @@ struct RemoteView: View {
     private func stopInteraction() {
         interruptTouch()
         keyboardFocused = false
+        cancelSpeech()
+        model.endLiveTextEditing()
+    }
+    private func cancelSpeech() {
+        speechRequest = nil
         dictationStartTask?.cancel()
         dictation.cancel()
+        speechOwnsDraft = false
     }
     private func interruptTouch() {
         touchControl.cancel()
@@ -411,7 +446,7 @@ struct RemoteView: View {
     private func prepareNewComposition() {
         // A confirmed previous delivery is a receipt, not a prefix for the next
         // utterance. Unsent and uncertain drafts always remain available.
-        if model.textDelivery == .sent { model.clearDraft() }
+        if !model.usesLiveText && model.textDelivery == .sent { model.clearDraft() }
     }
 }
 

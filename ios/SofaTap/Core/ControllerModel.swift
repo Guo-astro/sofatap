@@ -9,7 +9,7 @@ enum TextDelivery: Equatable {
 }
 
 private enum CommandResult {
-    case accepted, rejected(String), uncertain
+    case accepted([String: Any]), rejected(String), uncertain
 }
 
 @MainActor
@@ -25,11 +25,26 @@ final class ControllerModel: ObservableObject {
     @Published var draft: String {
         didSet {
             // Local-only recovery for a Typeless app switch or process termination.
-            if !demo { UserDefaults.standard.set(draft, forKey: "localTextDraft") }
+#if SOFATAP_CONTROLLER_TESTING
+            if testSend == nil && testLiveSend == nil && !demo && !ephemeralDraft { UserDefaults.standard.set(draft, forKey: "localTextDraft") }
+#else
+            if !demo && !ephemeralDraft { UserDefaults.standard.set(draft, forKey: "localTextDraft") }
+#endif
             if textDelivery == .sent && draft != lastSentDraft { textDelivery = .ready }
         }
     }
     @Published var composing = false
+    @Published var draftSelection = NSRange(location: 0, length: 0)
+    @Published private(set) var liveTextStatus: LiveTextStatus = .idle
+    private var ephemeralDraft = false
+    private var liveTextSession: String?
+    private var liveTextRevision = 0
+    private var liveTextBaseline: LiveTextSnapshot?
+    private var liveTextDesired: LiveTextSnapshot?
+    private var liveTextEpoch = UUID()
+    private var liveTextOpenCallbacks: [() -> Void] = []
+    private var liveTextOpeningSnapshot: LiveTextSnapshot?
+
     @Published private(set) var textDelivery: TextDelivery = .ready {
         didSet { persistDeliveryState() }
     }
@@ -68,6 +83,7 @@ final class ControllerModel: ObservableObject {
     private var pending: [String: Pending] = [:]
 #if SOFATAP_CONTROLLER_TESTING
     // Recording transport only: compiled solely by the offscreen regression test.
+    private var testLiveSend: ((String, [String: Any], @escaping ([String: Any]) -> Void) -> Void)?
     private var testSend: ((String, [String: Any], @escaping (Bool) -> Void) -> Void)?
     init(testSend: @escaping (String, [String: Any], @escaping (Bool) -> Void) -> Void) {
         demo = false
@@ -77,7 +93,17 @@ final class ControllerModel: ObservableObject {
         inputAvailable = true
         self.testSend = testSend
     }
+    init(testLiveSend: @escaping (String, [String: Any], @escaping ([String: Any]) -> Void) -> Void) {
+        demo = false; pairing = nil; draft = ""; connected = true; inputAvailable = true
+        receiverState = ReceiverState(platform: .windows, status: .ready, inputAvailable: true,
+                                      textFocus: .editable, reportsTextFocus: true, supportsLiveText: true)
+        self.testLiveSend = testLiveSend
+    }
     func testFlushMovement() { flushMovement() }
+    func testReceiveFocus(_ revision: Int, editable: Bool = true) {
+        var state = receiverState; state.focusRevision = revision; state.textFocus = editable ? .editable : .other
+        updateReceiverState(state)
+    }
 #endif
 
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
@@ -117,15 +143,30 @@ final class ControllerModel: ObservableObject {
     var draftLength: Int { draft.utf16.count }
     var draftWithinLimit: Bool { draftLength <= 16_000 }
     var sendingText: Bool { textDelivery == .sending }
+    var usesLiveText: Bool { !demo && ((receiverState.supportsLiveText && liveTextStatus != .unsupported) || liveTextPaused) }
+    var liveTextReady: Bool { liveTextStatus == .active || liveTextStatus == .syncing }
+    var liveTextPaused: Bool { if case .paused = liveTextStatus { return true }; return false }
+    var editorLoading: Bool { liveTextStatus == .starting }
+    var liveTextDescription: String {
+        switch liveTextStatus {
+        case .idle: return "点键盘或麦克风，开始同步当前输入框。"
+        case .starting: return "正在读取电脑当前输入框…"
+        case .active: return "已实时同步 · 退格、选区和全选也会同步。"
+        case .syncing: return "正在实时同步…"
+        case .unsupported: return "这个输入框不支持实时编辑，请确认后发送。"
+        case .paused: return "同步已暂停，手机文字已保留。检查电脑后重新读取输入框。"
+        }
+    }
     var canSendText: Bool {
-        canControl && !draft.isEmpty && draftWithinLimit && !composing && !sendingText &&
+        !usesLiveText && canControl && !draft.isEmpty && draftWithinLimit && !composing && !sendingText &&
         textDelivery != .uncertain && !(textDelivery == .sent && draft == lastSentDraft)
     }
     var textStatus: String {
+        if usesLiveText { return liveTextDescription }
         if composing { return "正在输入或听写，完成后再发送。" }
         if !draftWithinLimit { return "文字超过 16,000 字符限制，请拆成几段发送。" }
         switch textDelivery {
-        case .ready: return "先点电脑里的输入框，再发送整段文字。"
+        case .ready: return liveTextStatus == .unsupported ? liveTextDescription : "先点电脑里的输入框，再发送整段文字。"
         case .sending: return "等待电脑确认… 请勿重复发送。"
         case .sent: return "已向电脑系统提交文字；请在屏幕上确认内容。"
         case .rejected(let error): return "未被电脑接受：\(error)"
@@ -213,6 +254,7 @@ final class ControllerModel: ObservableObject {
     }
 
     func disconnect(message: String = "已断开连接。") {
+        invalidateLiveText(pause: liveTextSession != nil || liveTextStatus == .starting)
         stopAirMouse()
         motionTimer?.invalidate()
         motionTimer = nil
@@ -308,24 +350,23 @@ final class ControllerModel: ObservableObject {
             item.timer.cancel()
             if item.type == "ping", let state = receiverState.updating(message), state != receiverState {
                 let availabilityChanged = state.inputAvailable != receiverState.inputAvailable || state.status != receiverState.status
-                receiverState = state
-                inputAvailable = state.inputAvailable
+                updateReceiverState(state)
                 if !inputAvailable {
                     stopAirMouse()
                     if dragging { setDragging(false) }
                 }
                 if availabilityChanged { notice = inputAvailable ? "电脑已就绪，可以继续控制。" : state.unavailableMessage }
             }
-            if ok { item.completion?(.accepted) }
+            if ok { item.completion?(.accepted(message)) }
             else {
                 // Show a bounded generic code, not server-controlled arbitrary text or echoed drafts.
                 let rawCode = (message["error"] as? String)?.split(separator: ":", maxSplits: 1).first.map(String.init)
                 let code = rawCode.flatMap { value -> String? in
-                    let allowed = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited"]
+                    let allowed = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"]
                     return allowed.contains(value) ? value : nil
                 } ?? "操作未完成"
                 // A failed injection can have typed a prefix. Unknown errors are conservative.
-                let definitelyRejected = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited"].contains(rawCode ?? "")
+                let definitelyRejected = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"].contains(rawCode ?? "")
                 if item.type == "text" && !definitelyRejected {
                     notice = "电脑未完整确认操作，文字可能已经部分输入。请先查看电脑屏幕。"
                     item.completion?(.uncertain)
@@ -363,9 +404,16 @@ final class ControllerModel: ObservableObject {
     private func send(_ type: String, fields: [String: Any], timeout: Double = 8,
                       completion: ((CommandResult) -> Void)? = nil) {
 #if SOFATAP_CONTROLLER_TESTING
+        if let testLiveSend {
+            guard connected else { completion?(.uncertain); return }
+            testLiveSend(type, fields) { reply in
+                completion?(reply["ok"] as? Bool == true ? .accepted(reply) : .rejected(reply["error"] as? String ?? "live_text_uncertain"))
+            }
+            return
+        }
         if let testSend {
             guard connected else { completion?(.rejected("尚未连接")); return }
-            testSend(type, fields) { completion?($0 ? .accepted : .rejected("test_rejected")) }
+            testSend(type, fields) { completion?($0 ? .accepted([:]) : .rejected("test_rejected")) }
             return
         }
 #endif
@@ -444,6 +492,7 @@ final class ControllerModel: ObservableObject {
 
     func click(_ button: String) {
         guard canControl else { return }
+        endLiveTextEditing()
         feedback()
         if demo { notice = "演示：\(button == "left" ? "左键" : "右键")单击。"; return }
         send("click", fields: ["button": button])
@@ -451,6 +500,7 @@ final class ControllerModel: ObservableObject {
 
     func setDragging(_ down: Bool) {
         guard down != dragging, !down || canControl else { return }
+        if down { endLiveTextEditing() }
         dragging = down
         feedback()
         if demo { notice = down ? "演示：按住拖拽，再用触控板移动。" : "演示：已松开拖拽。"; return }
@@ -495,12 +545,17 @@ final class ControllerModel: ObservableObject {
 
     func key(_ key: String, modifiers: [String] = []) {
         guard canControl else { return }
+        endLiveTextEditing()
         feedback()
         if demo { notice = "演示：\(key.uppercased()) 快捷键。"; return }
         send("key", fields: ["key": key, "modifiers": modifiers])
     }
 
-    func selectAll() { key("a", modifiers: [receiverState.commandModifier]) }
+    func selectAll() {
+        guard !composing else { return }
+        if liveTextReady { editText(draft, selection: NSRange(location: 0, length: draft.utf16.count), marked: false) }
+        else { key("a", modifiers: [receiverState.commandModifier]) }
+    }
 
     func sendText() {
         guard canSendText else { return }
@@ -533,9 +588,134 @@ final class ControllerModel: ObservableObject {
 
     func clearDraft() {
         guard !sendingText else { return }
-        draft = ""
+        if liveTextReady { editText("", selection: NSRange(location: 0, length: 0), marked: false) }
+        else { draft = ""; draftSelection = NSRange(location: 0, length: 0) }
         textDelivery = .ready
         lastSentDraft = nil
+    }
+
+    /// Opening is an explicit or editable-focus-triggered snapshot request. The
+    /// editor stays disabled until its initial snapshot has been acknowledged.
+    func openTextEditor(completion: (() -> Void)? = nil) {
+        guard canControl, remoteTextFocus != .protected else { return }
+        guard usesLiveText else { completion?(); return }
+        if liveTextPaused { return }
+        if liveTextReady { completion?(); return }
+        if let completion { liveTextOpenCallbacks.append(completion) }
+        if liveTextStatus == .starting { return }
+        liveTextOpeningSnapshot = LiveTextSnapshot(text: draft, selection: draftSelection)
+        liveTextStatus = .starting
+        let epoch = UUID(); liveTextEpoch = epoch
+        send("textBegin", fields: [:]) { [weak self] result in
+            guard let self, self.liveTextEpoch == epoch else { return }
+            switch result {
+            case .accepted(let message):
+                guard let reply = message["liveText"] as? [String: Any],
+                      let session = reply["session"] as? String, UUID(uuidString: session) != nil,
+                      LiveTextSnapshot.integer(reply["revision"]) == 0,
+                      let snapshot = LiveTextSnapshot.parse(reply) else { self.pauseLiveText("live_text_uncertain"); return }
+                self.liveTextSession = session; self.liveTextRevision = 0
+                self.liveTextBaseline = snapshot; self.liveTextDesired = snapshot
+                self.ephemeralDraft = true
+                self.applyLiveSnapshot(snapshot)
+                self.liveTextStatus = .active
+                let callbacks = self.liveTextOpenCallbacks; self.liveTextOpenCallbacks.removeAll()
+                callbacks.forEach { $0() }
+            case .rejected(let code) where code == "live_text_unsupported":
+                self.liveTextStatus = .unsupported
+                // A previous imported field must never become an append-only
+                // fallback draft which would duplicate that field on Send.
+                if self.ephemeralDraft { self.draft = ""; self.draftSelection = NSRange(location: 0, length: 0) }
+                self.ephemeralDraft = false
+                self.textDelivery = .ready
+                self.lastSentDraft = nil
+                let callbacks = self.liveTextOpenCallbacks; self.liveTextOpenCallbacks.removeAll()
+                callbacks.forEach { $0() }
+            case .rejected(let code): self.pauseLiveText(code)
+            case .uncertain: self.pauseLiveText("live_text_uncertain")
+            }
+        }
+    }
+
+    func restartLiveTextEditing() {
+        guard usesLiveText, canControl else { return }
+        // User explicitly asks to replace the retained draft with a new snapshot.
+        invalidateLiveText(pause: false)
+        liveTextStatus = .idle
+        openTextEditor()
+    }
+
+    func editText(_ text: String, selection: NSRange, marked: Bool) {
+        draft = text; draftSelection = selection; composing = marked
+        let desired = LiveTextSnapshot(text: text, selection: selection)
+        if liveTextStatus == .starting && (desired != liveTextOpeningSnapshot || marked) {
+            // A final native callback may race with the render which disables
+            // the editor. Preserve that edit rather than importing over it.
+            pauseLiveText("live_text_changed")
+            return
+        }
+        guard liveTextReady else { return }
+        liveTextDesired = desired
+        guard !marked else { return } // IME's provisional Latin syllables stay local.
+        guard desired.valid else { pauseLiveText("live_text_invalid"); return }
+        flushLiveText()
+    }
+
+    private func flushLiveText() {
+        guard liveTextStatus == .active, !composing,
+              let session = liveTextSession, let desired = liveTextDesired,
+              desired.valid, desired != liveTextBaseline else { return }
+        let epoch = liveTextEpoch, revision = liveTextRevision + 1
+        var fields = desired.fields; fields["session"] = session; fields["revision"] = revision
+        liveTextStatus = .syncing
+        send("textSync", fields: fields) { [weak self] result in
+            guard let self, self.liveTextEpoch == epoch else { return }
+            switch result {
+            case .accepted(let message):
+                guard let reply = message["liveText"] as? [String: Any],
+                      reply["session"] as? String == session,
+                      LiveTextSnapshot.integer(reply["revision"]) == revision,
+                      let canonical = LiveTextSnapshot.parse(reply) else { self.pauseLiveText("live_text_uncertain"); return }
+                self.liveTextBaseline = canonical; self.liveTextRevision = revision
+                self.liveTextStatus = .active
+                if self.liveTextDesired == desired && !self.composing {
+                    self.liveTextDesired = canonical
+                    self.applyLiveSnapshot(canonical)
+                }
+                self.flushLiveText()
+            case .rejected(let code): self.pauseLiveText(code)
+            case .uncertain: self.pauseLiveText("live_text_uncertain")
+            }
+        }
+    }
+
+    private func applyLiveSnapshot(_ snapshot: LiveTextSnapshot) {
+        draft = snapshot.text; draftSelection = snapshot.selection
+    }
+    private func pauseLiveText(_ code: String) {
+        invalidateLiveText(pause: true)
+        liveTextStatus = .paused(code)
+        notice = "实时编辑已暂停。请检查电脑输入框；手机上的文字不会自动重发。"
+    }
+    func endLiveTextEditing() {
+        guard liveTextSession != nil || liveTextStatus == .starting else { return }
+        let unsynchronized = liveTextStatus == .syncing || composing || liveTextDesired != liveTextBaseline
+        invalidateLiveText(pause: unsynchronized)
+    }
+    private func invalidateLiveText(pause: Bool) {
+        let session = liveTextSession
+        liveTextEpoch = UUID(); liveTextSession = nil; liveTextBaseline = nil; liveTextDesired = nil; liveTextOpeningSnapshot = nil
+        liveTextOpenCallbacks.removeAll()
+        if pause { liveTextStatus = .paused("live_text_changed") }
+        else if !liveTextPaused { liveTextStatus = .idle }
+        if let session, connected { send("textEnd", fields: ["session": session]) }
+    }
+    private func updateReceiverState(_ state: ReceiverState) {
+        if state.focusRevision != receiverState.focusRevision || !state.inputAvailable || state.textFocus == .protected {
+            endLiveTextEditing()
+            if liveTextStatus == .unsupported { liveTextStatus = .idle }
+        }
+        receiverState = state; inputAvailable = state.inputAvailable
     }
 
     func startAirMouse() {
@@ -570,7 +750,7 @@ final class ControllerModel: ObservableObject {
 
     private func feedback() {
 #if SOFATAP_CONTROLLER_TESTING
-        if testSend != nil { return }
+        if testSend != nil || testLiveSend != nil { return }
 #endif
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
@@ -580,6 +760,9 @@ final class ControllerModel: ObservableObject {
     }
 
     private func persistDeliveryState() {
+#if SOFATAP_CONTROLLER_TESTING
+        if testSend != nil || testLiveSend != nil { return }
+#endif
         guard !demo else { return }
         switch textDelivery {
         case .sending:

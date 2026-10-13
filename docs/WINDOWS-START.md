@@ -2,6 +2,8 @@
 
 本说明对应 **0.3.0 原生窗口版** 的 `SofaTap-Windows-x64.zip`。校验文件为 `SofaTap-Windows-x64.zip.sha256`；它记录 ZIP 的 SHA256，而非解压后单个 EXE 的摘要。
 
+0.7.0 开发源码另有默认实时编辑：普通原生 Edit/RichEdit 字段会把全文及选区导入手机，自动同步打字、删除和语音修正；浏览器、自绘或不支持的字段仍需检查草稿后发送。以下旧安装包不包含该功能，详见[数据处理与限制](TEXT-FOCUS.md)。
+
 1. 将整个 `SofaTap-Windows-x64.zip` 文件夹内容解压到固定位置，例如 `C:\Users\你的用户名\Apps\SofaTap`。
 2. 双击 `Start-SofaTap.cmd` 或 `SofaTap.exe`。此版本包含 .NET 运行时，不需要另装 Python、Node 或 .NET。
 3. 如果 Windows 防火墙询问是否允许连接，只允许后台 `SofaTapHost.exe` 在你信任的家庭“专用网络”使用 TCP 53319。`SofaTap.exe` 是原生窗口，本身不监听网络。不用关闭防火墙，也不用给路由器设置公网端口转发。
