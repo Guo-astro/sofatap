@@ -37,7 +37,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 **电视开发预览：**源码现已加入 LG webOS 的原生 IP 配对，以及移动、单击、滚动、返回和主页适配器。已通过本地协议与 TLS 测试，尚无通过真机验收的电视型号；自动发现、电视打字与听写仍待实现。参见[详细技术方案](docs/research/tv-implementation-plan.zh-CN.md)和[验证范围](docs/verification/webos-pointer-preview.md)。
 
-**下一项电视开发目标：**优先验证共用的原生 Android/Google TV 接收端，随后再扩展 LG 适配。目前尚无可用的 Android 接收包。指针、点击、滚动与文字输入分别验收，不能把安装 APK 等同于获得全局鼠标控制。
+**Android/Google TV 原型：**源码已加入共用的原生接收端与 iPhone 扫码配对适配器，可按照 [Android 指南](android/README.md) 构建开发版 APK。它提供无障碍叠加光标、依赖目标控件的点击与滚动，以及独立的返回、主页和焦点导航；暂不支持电视打字、听写、拖动和右键。[软件验证与电视真机验收](docs/verification/android-tv-probe.md) 分别记录，目前没有对外宣称支持的电视型号。
 
 兼容接收端识别到提供辅助功能元数据的新可编辑输入框时，手机会自动弹出键盘。后台检测不读取框内内容；随后打开实时编辑会话时，会把受支持字段的完整文字和选区传到配对手机，因此退格、全选后删除也能修改电脑上的已有文字。焦点检测与实时编辑的支持范围不同：Windows 实时编辑当前限原生 Edit/RichEdit 控件；Mac 要求辅助功能提供可写的选中文字及选区。缺少相应能力的浏览器、自绘控件、Linux 及旧接收端采用检查草稿后发送。密码和只读字段不能开启实时编辑。参见[焦点检测、数据处理及平台限制](docs/TEXT-FOCUS.md)。
 

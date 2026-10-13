@@ -4,6 +4,8 @@ import AVFoundation
 struct PairingView: View {
     @ObservedObject var model: ControllerModel
     @ObservedObject var tv: WebOSTVController
+    @ObservedObject var androidTV: AndroidTVController
+    let selectAndroidTV: () -> Void
     let selectTV: () -> Void
     let selectComputer: () -> Void
     @Environment(\.dismiss) private var dismiss
@@ -14,13 +16,21 @@ struct PairingView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 23) {
-                    if !model.demo { NavigationLink {
-                        TVPairingView(tv: tv, selectTV: selectTV, finishPairing: { dismiss() })
-                    } label: {
-                        Label(String(localized: "连接 LG 电视（预览）"), systemImage: "tv")
-                            .frame(maxWidth: .infinity, alignment: .leading).padding(16)
-                            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
-                    }
+                    if !model.demo {
+                        NavigationLink {
+                            AndroidTVPairingView(tv: androidTV, selectTV: selectAndroidTV, finishPairing: { dismiss() })
+                        } label: {
+                            Label(String(localized: "连接 Android TV（实验版）"), systemImage: "tv")
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                                .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+                        }
+                        NavigationLink {
+                            TVPairingView(tv: tv, selectTV: selectTV, finishPairing: { dismiss() })
+                        } label: {
+                            Label(String(localized: "连接 LG 电视（预览）"), systemImage: "tv")
+                                .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                                .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+                        }
                     }
                     if !model.desktopControlEnabled {
                         Button(String(localized: "切回电脑遥控")) { selectComputer(); dismiss() }
@@ -107,7 +117,8 @@ struct PairingView: View {
     }
 }
 
-private struct ScannerSheet: View {
+struct ScannerSheet: View {
+    var accepts: (String) -> Bool = { (try? Pairing.parse($0)) != nil }
     let onScan: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var error: String?
@@ -115,9 +126,9 @@ private struct ScannerSheet: View {
         NavigationStack {
             ZStack {
                 Color.black
-                QRScanner(onScan: onScan, onError: { error = $0 })
+                QRScanner(accepts: accepts, onScan: onScan, onError: { error = $0 })
                 VStack {
-                    Text(String(localized: "将 电脑配对二维码放入画面"))
+                    Text(String(localized: "将 Sofatap 配对二维码放入画面"))
                         .font(.system(size: 15, weight: .medium))
                         .padding(14).background(.black.opacity(0.65), in: Capsule())
                     Spacer()
@@ -137,10 +148,11 @@ private struct ScannerSheet: View {
 }
 
 private struct QRScanner: UIViewControllerRepresentable {
+    let accepts: (String) -> Bool
     let onScan: (String) -> Void
     let onError: (String) -> Void
     func makeUIViewController(context: Context) -> ScannerController {
-        ScannerController(onScan: onScan, onError: onError)
+        ScannerController(accepts: accepts, onScan: onScan, onError: onError)
     }
     func updateUIViewController(_ controller: ScannerController, context: Context) {}
     static func dismantleUIViewController(_ controller: ScannerController, coordinator: ()) { controller.stop() }
@@ -149,13 +161,14 @@ private struct QRScanner: UIViewControllerRepresentable {
 private final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsDelegate {
     private let capture = AVCaptureSession()
     private let cameraQueue = DispatchQueue(label: "com.chekusu.sofatap.camera")
+    private let accepts: (String) -> Bool
     private let onScan: (String) -> Void
     private let onError: (String) -> Void
     private var preview: AVCaptureVideoPreviewLayer?
     private var scanned = false
     private var stopped = false
-    init(onScan: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
-        self.onScan = onScan; self.onError = onError
+    init(accepts: @escaping (String) -> Bool, onScan: @escaping (String) -> Void, onError: @escaping (String) -> Void) {
+        self.accepts = accepts; self.onScan = onScan; self.onError = onError
         super.init(nibName: nil, bundle: nil)
     }
     required init?(coder: NSCoder) { fatalError("init(coder:) is not used") }
@@ -169,16 +182,16 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
                 DispatchQueue.main.async {
                     guard let self else { return }
                     if granted { self.configure() }
-                    else { self.onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴电脑上的完整配对链接。")) }
+                    else { self.onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴接收器中的完整配对链接。")) }
                 }
             }
-        default: onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴电脑上的完整配对链接。"))
+        default: onError(String(localized: "相机权限未开启。可在设置中开启，或粘贴接收器中的完整配对链接。"))
         }
     }
     private func configure() {
         guard !stopped else { return }
         guard let camera = AVCaptureDevice.default(for: .video), let input = try? AVCaptureDeviceInput(device: camera) else {
-            onError(String(localized: "这台设备没有可用相机。请返回并粘贴电脑上的完整配对链接。"))
+            onError(String(localized: "这台设备没有可用相机。请返回并粘贴接收器中的完整配对链接。"))
             return
         }
         let output = AVCaptureMetadataOutput()
@@ -201,7 +214,7 @@ private final class ScannerController: UIViewController, AVCaptureMetadataOutput
     func metadataOutput(_ output: AVCaptureMetadataOutput, didOutput metadataObjects: [AVMetadataObject], from connection: AVCaptureConnection) {
         guard !scanned, let value = (metadataObjects.first as? AVMetadataMachineReadableCodeObject)?.stringValue else { return }
         // Invalid or unrelated QRs stay in the scanner with actionable feedback.
-        guard (try? Pairing.parse(value)) != nil else { onError(String(localized: "这不是有效的 Sofatap 配对二维码。请扫描电脑接收器显示的二维码。")); return }
+        guard accepts(value) else { onError(String(localized: "这不是此设备类型的有效 Sofatap 配对二维码。请扫描接收器显示的二维码。")); return }
         scanned = true
         stop()
         onScan(value)

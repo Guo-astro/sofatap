@@ -1,0 +1,241 @@
+package com.chekusu.sofatap.tv;
+
+import okhttp3.*;
+import okhttp3.tls.HandshakeCertificates;
+import okhttp3.tls.HeldCertificate;
+import org.json.JSONObject;
+import org.junit.After;
+import org.junit.Before;
+import org.junit.Test;
+import javax.net.ssl.*;
+import java.io.*;
+import java.net.InetAddress;
+import java.nio.charset.StandardCharsets;
+import java.security.KeyStore;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.BooleanSupplier;
+import static org.junit.Assert.*;
+
+/** Actual loopback TLS, independent OkHttp client, and hand-built malformed wire frames. */
+public class ReceiverServerTest {
+    private ReceiverServer server;
+    private PairingAuthority authority;
+    private FakeInput input;
+    private OkHttpClient client;
+    private SSLContext trustedTls;
+    private String bootstrap;
+    private final List<SocketPeer> peers = new ArrayList<>();
+    private final List<SSLSocket> rawSockets = new ArrayList<>();
+
+    @Before public void startLoopbackReceiver() throws Exception {
+        HeldCertificate certificate = ReceiverCertificate.generate(Collections.singletonList("127.0.0.1"));
+        HandshakeCertificates trusted = new HandshakeCertificates.Builder().addTrustedCertificate(certificate.certificate()).build();
+        trustedTls = trusted.sslContext();
+        KeyStore keys = KeyStore.getInstance(KeyStore.getDefaultType()); keys.load(null);
+        keys.setKeyEntry("test", certificate.keyPair().getPrivate(), "test".toCharArray(),
+            new java.security.cert.Certificate[]{certificate.certificate()});
+        KeyManagerFactory manager = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
+        manager.init(keys, "test".toCharArray());
+        SSLContext tls = SSLContext.getInstance("TLS"); tls.init(manager.getKeyManagers(), null, null);
+        authority = new PairingAuthority(null, System::currentTimeMillis, digest -> {});
+        bootstrap = authority.newPairing(); input = new FakeInput();
+        server = new ReceiverServer(tls, InetAddress.getByName("127.0.0.1"), 0, authority, input, "Local test");
+        server.start();
+        client = new OkHttpClient.Builder().sslSocketFactory(trusted.sslSocketFactory(), trusted.trustManager())
+            .connectTimeout(2, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).build();
+    }
+
+    @After public void stopAllLocalResources() throws Exception {
+        input.release.countDown(); server.close();
+        for (SocketPeer peer : peers) if (peer.socket != null) peer.socket.cancel();
+        for (SSLSocket socket : rawSockets) socket.close();
+        client.connectionPool().evictAll(); client.dispatcher().executorService().shutdownNow();
+    }
+
+    @Test public void bootstrapRotatesThenPersistentTokenReconnectsWithoutReenrolling() throws Exception {
+        SocketPeer first = connect(bootstrap); JSONObject hello = first.message();
+        assertEquals("hello", hello.getString("type")); assertEquals("androidtv", hello.getString("platform"));
+        String token = hello.getString("pairingToken"); assertNotEquals(bootstrap, token);
+        assertNull(authority.bootstrap()); assertTrue(authority.paired());
+        first.socket.cancel(); await(() -> !server.connected());
+        SocketPeer resumed = connect(token); assertFalse(resumed.message().has("pairingToken"));
+        assertTrue(resumed.socket.send(action(UUID.randomUUID().toString(), "click")));
+        assertTrue(resumed.message().getBoolean("ok")); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void productionPeerPolicyAllowsOnlyPrivateIpv4AndLoopbackRequiresExplicitTestBind() throws Exception {
+        for (String host : Arrays.asList("10.0.0.1", "172.16.0.1", "172.31.255.254", "192.168.1.8"))
+            assertTrue(host, ReceiverServer.allowsPeer(InetAddress.getByName(host), false));
+        for (String host : Arrays.asList("127.0.0.1", "0.0.0.0", "172.15.255.255", "172.32.0.1",
+            "169.254.1.8", "100.64.0.1", "8.8.8.8", "224.0.0.1", "::1", "fd00::1", "fe80::1", "2606:4700:4700::1111"))
+            assertFalse(host, ReceiverServer.allowsPeer(InetAddress.getByName(host), false));
+        assertTrue(ReceiverServer.allowsPeer(InetAddress.getByName("127.0.0.1"), true));
+        assertTrue(ReceiverServer.allowsPeer(InetAddress.getByName("::1"), true));
+        assertFalse(ReceiverServer.allowsPeer(InetAddress.getByName("8.8.8.8"), true));
+    }
+
+    @Test public void wrongCredentialIsRejectedBeforeUpgradeAndCannotConsumeQrOrSendInput() throws Exception {
+        SocketPeer denied = connect("x".repeat(43)); assertEquals(401, denied.failedStatus());
+        await(() -> !server.connected()); assertEquals(bootstrap, authority.bootstrap()); assertEquals(0, input.applied.get());
+        assertNotNull(connect(bootstrap).message().getString("pairingToken"));
+    }
+
+    @Test public void aSecondControllerIsRefusedWithoutBreakingTheFirst() throws Exception {
+        SocketPeer first = connect(bootstrap); String token = first.message().getString("pairingToken");
+        SocketPeer second = connect(token); assertEquals(409, second.failedStatus());
+        String id = UUID.randomUUID().toString(); first.socket.send(action(id, "click"));
+        assertEquals(id, first.message().getString("id")); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void identicalRetransmissionReturnsSameAckWithoutRepeatingPhysicalInput() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); String message = action(UUID.randomUUID().toString(), "click");
+        peer.socket.send(message); JSONObject first = peer.message();
+        peer.socket.send(message); JSONObject second = peer.message();
+        assertEquals(first.toString(), second.toString()); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void reusingIdWithChangedActionFailsAndDisconnects() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); String id = UUID.randomUUID().toString();
+        peer.socket.send(action(id, "click")); assertTrue(peer.message().getBoolean("ok"));
+        peer.socket.send(action(id, "ping")); JSONObject failure = peer.message();
+        assertFalse(failure.getBoolean("ok")); assertEquals("id_reused", failure.getString("error"));
+        await(() -> !server.connected()); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void invalidActionCannotReachInputAndIsAcknowledgedAsFailure() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); peer.socket.send(action(UUID.randomUUID().toString(), "shell"));
+        JSONObject failure = peer.message(); assertFalse(failure.getBoolean("ok"));
+        assertEquals("invalid_action", failure.getString("error")); assertEquals(0, input.applied.get());
+        await(() -> !server.connected());
+    }
+
+    @Test public void binaryAndOversizedTextNeverReachInput() throws Exception {
+        SocketPeer binary = connect(bootstrap); String token = binary.message().getString("pairingToken");
+        binary.socket.send(okio.ByteString.encodeUtf8(action(UUID.randomUUID().toString(), "click")));
+        await(() -> !server.connected()); assertEquals(0, input.applied.get());
+        SocketPeer oversized = connect(token); oversized.message();
+        oversized.socket.send("🙂".repeat(16385)); // 65,540 UTF-8 bytes, despite fewer UTF-16 characters.
+        await(() -> !server.connected()); assertEquals(0, input.applied.get());
+    }
+
+    @Test public void fragmentedTextWithInterleavedPingExecutesOnce() throws Exception {
+        RawPeer peer = rawConnect(bootstrap); peer.message();
+        byte[] message = action(UUID.randomUUID().toString(), "click").getBytes(StandardCharsets.UTF_8);
+        peer.frame(0x01, Arrays.copyOfRange(message, 0, 12));
+        peer.frame(0x89, new byte[]{1, 2, 3});
+        RawFrame pong = peer.receive(); assertEquals(10, pong.opcode); assertArrayEquals(new byte[]{1, 2, 3}, pong.body);
+        peer.frame(0x80, Arrays.copyOfRange(message, 12, message.length));
+        assertTrue(peer.message().getBoolean("ok")); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void orphanContinuationAndNewTextDuringFragmentAreRejected() throws Exception {
+        RawPeer orphan = rawConnect(bootstrap); String token = orphan.message().getString("pairingToken");
+        orphan.frame(0x80, new byte[0]); await(() -> !server.connected()); assertEquals(0, input.applied.get());
+        RawPeer nested = rawConnect(token); nested.message(); nested.frame(0x01, new byte[]{'{'});
+        nested.frame(0x81, action(UUID.randomUUID().toString(), "click").getBytes(StandardCharsets.UTF_8));
+        await(() -> !server.connected()); assertEquals(0, input.applied.get());
+    }
+
+    @Test public void aggregateFragmentLimitAndFrameCountLimitAreEnforced() throws Exception {
+        RawPeer oversized = rawConnect(bootstrap); String token = oversized.message().getString("pairingToken");
+        oversized.frame(0x01, new byte[40000]); oversized.frame(0x80, new byte[30000]);
+        await(() -> !server.connected()); assertEquals(0, input.applied.get());
+        RawPeer fragmented = rawConnect(token); fragmented.message(); fragmented.frame(0x01, new byte[0]);
+        for (int i = 0; i < 255; i++) fragmented.frame(0x00, new byte[0]);
+        await(() -> !server.connected()); assertEquals(0, input.applied.get());
+    }
+
+    @Test public void revokedGenerationCancelsAnAlreadyQueuedActionBeforeInput() throws Exception {
+        SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
+        input.block = true; peer.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS)); authority.revoke(); server.disconnectController();
+        input.release.countDown(); await(() -> !server.connected()); assertEquals(0, input.applied.get());
+        assertEquals(401, connect(token).failedStatus());
+    }
+
+    @Test public void closingServerCancelsQueuedActionAndStopsNewConnections() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); input.block = true;
+        peer.socket.send(action(UUID.randomUUID().toString(), "click")); assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        server.close(); input.release.countDown(); await(() -> !server.connected()); assertEquals(0, input.applied.get());
+        assertNotNull(connect(bootstrap).failure.poll(3, TimeUnit.SECONDS));
+    }
+
+    @Test public void incompleteTlsIsClosedByOverallHandshakeDeadline() throws Exception {
+        java.net.Socket socket = new java.net.Socket("127.0.0.1", server.port());
+        try {
+            socket.setSoTimeout(7000);
+            // A JSSE provider may send a TLS alert before closing an incomplete handshake.
+            InputStream stream = socket.getInputStream(); int received = 0;
+            try { while (stream.read() != -1) assertTrue("Unbounded handshake response", ++received < 1024); }
+            catch (java.net.SocketException reset) { /* Bounded abort may use RST instead of TLS close_notify. */ }
+        }
+        finally { socket.close(); }
+        assertEquals(0, input.applied.get()); assertFalse(server.connected());
+    }
+
+    private static final class FakeInput implements ReceiverServer.Input {
+        final AtomicInteger applied = new AtomicInteger(); final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        volatile boolean block;
+        public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
+        public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+            entered.countDown(); if (block) release.await(3, TimeUnit.SECONDS);
+            if (!current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "cancelled");
+            applied.incrementAndGet(); return new JSONObject().put("ok", true);
+        }
+        public void disconnected() { }
+    }
+
+    private final class SocketPeer extends WebSocketListener {
+        WebSocket socket; final BlockingQueue<String> messages = new LinkedBlockingQueue<>();
+        final BlockingQueue<Integer> statuses = new LinkedBlockingQueue<>(); final BlockingQueue<Throwable> failure = new LinkedBlockingQueue<>();
+        @Override public void onMessage(WebSocket ws, String text) { messages.add(text); }
+        @Override public void onFailure(WebSocket ws, Throwable problem, Response response) { statuses.add(response == null ? 0 : response.code()); failure.add(problem); }
+        JSONObject message() throws Exception { String text = messages.poll(3, TimeUnit.SECONDS); assertNotNull("Missing server message; failure=" + failure.peek(), text); return new JSONObject(text); }
+        int failedStatus() throws Exception { Integer status = statuses.poll(3, TimeUnit.SECONDS); assertNotNull("Expected upgrade refusal", status); return status; }
+    }
+    private SocketPeer connect(String token) {
+        SocketPeer peer = new SocketPeer(); peers.add(peer);
+        peer.socket = client.newWebSocket(new Request.Builder().url("wss://127.0.0.1:" + server.port() + "/control")
+            .header("Authorization", "Bearer " + token).build(), peer); return peer;
+    }
+
+    private final class RawPeer {
+        final DataInputStream in; final DataOutputStream out;
+        RawPeer(SSLSocket socket) throws IOException { in = new DataInputStream(socket.getInputStream()); out = new DataOutputStream(socket.getOutputStream()); }
+        void frame(int first, byte[] body) throws IOException {
+            out.writeByte(first); if (body.length < 126) out.writeByte(0x80 | body.length);
+            else if (body.length <= 65535) { out.writeByte(0xfe); out.writeShort(body.length); }
+            else { out.writeByte(0xff); out.writeLong(body.length); }
+            byte[] mask = {0x37, (byte)0xfa, 0x21, 0x3d}; out.write(mask);
+            byte[] masked = body.clone(); for (int i = 0; i < masked.length; i++) masked[i] ^= mask[i % 4];
+            out.write(masked); out.flush();
+        }
+        RawFrame receive() throws IOException {
+            int first = in.readUnsignedByte(), length = in.readUnsignedByte();
+            if ((length & 128) != 0) throw new IOException("Server frame must not be masked");
+            long size = length == 126 ? in.readUnsignedShort() : length == 127 ? in.readLong() : length;
+            if (size > 65536) throw new IOException("Oversized server response");
+            byte[] body = new byte[(int)size]; in.readFully(body); return new RawFrame(first & 15, body);
+        }
+        JSONObject message() throws Exception { RawFrame frame = receive(); assertEquals(1, frame.opcode); return new JSONObject(new String(frame.body, StandardCharsets.UTF_8)); }
+    }
+    private record RawFrame(int opcode, byte[] body) { }
+    private RawPeer rawConnect(String token) throws Exception {
+        SSLSocket socket = (SSLSocket)trustedTls.getSocketFactory().createSocket("127.0.0.1", server.port());
+        rawSockets.add(socket); socket.setSoTimeout(3000); socket.startHandshake(); RawPeer peer = new RawPeer(socket);
+        peer.out.write(("GET /control HTTP/1.1\r\nHost: 127.0.0.1:" + server.port() + "\r\nUpgrade: websocket\r\n"
+            + "Connection: Upgrade\r\nSec-WebSocket-Version: 13\r\nSec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            + "Authorization: Bearer " + token + "\r\n\r\n").getBytes(StandardCharsets.US_ASCII)); peer.out.flush();
+        ByteArrayOutputStream headers = new ByteArrayOutputStream(); int suffix = 0;
+        while (headers.size() < 8192 && suffix != 0x0d0a0d0a) { int b = peer.in.read(); if (b < 0) throw new EOFException(); headers.write(b); suffix = suffix << 8 | b; }
+        assertTrue(headers.toString("US-ASCII").startsWith("HTTP/1.1 101 ")); return peer;
+    }
+    private static String action(String id, String type) throws Exception { return new JSONObject().put("id", id).put("type", type).toString(); }
+    private static void await(BooleanSupplier condition) throws Exception {
+        long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
+        while (!condition.getAsBoolean() && System.nanoTime() < until) Thread.sleep(10);
+        assertTrue("Condition not reached within 3 seconds", condition.getAsBoolean());
+    }
+}

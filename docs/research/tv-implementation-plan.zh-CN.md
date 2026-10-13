@@ -4,7 +4,7 @@
 
 **当前已经写出原生 LG webOS 指针遥控预览，但还没有完成真实电视验收。** 本机协议测试和真实 TLS/WebSocket 测试通过，说明软件在这些测试条件下行为正确，不能据此宣布某款电视已经兼容。自动发现、电视文字输入和电视语音输入仍未接入。
 
-**下一项开发优先级已调整为 Android/Google TV 接收端能力验证。** LG 预览保留为独立适配器，后续 Android 开发不必等待 LG 真机验收。目前尚未产出 Android 接收包，也未确认任何 Android TV 型号已经兼容。
+**下一项开发优先级已调整为 Android/Google TV 接收端能力验证。** LG 预览保留为独立适配器，后续 Android 开发不必等待 LG 真机验收。原生接收端原型与 iPhone 扫码配对适配器已实现，可按[构建指南](../../android/README.md)产出开发 APK。[软件验证](../verification/android-tv-probe.md)与真机验收分别记录，目前未确认任何 Android TV 型号已经兼容。
 
 ## 一、产品顺序与收费边界
 

@@ -147,6 +147,23 @@ struct ControllerDragReleaseTests {
         television.model.setDesktopControlEnabled(true)
         check("explicit computer selection restores mode but does not invent a connection", television.model.desktopControlEnabled && !television.model.connected)
 
+        let androidTV = DragFixture()
+        androidTV.begin()
+        androidTV.model.pauseInput()
+        androidTV.model.setDesktopControlEnabled(false, televisionTarget: "androidtv")
+        androidTV.ack(1)
+        androidTV.model.becameActive()
+        androidTV.model.connect()
+        androidTV.model.move(dx: 50, dy: 10)
+        androidTV.model.testFlushMovement()
+        androidTV.model.click("left")
+        check("Android TV selection releases drag and blocks desktop reconnect/input", androidTV.tags == ["down", "up"] && !androidTV.model.desktopControlEnabled && !androidTV.model.canControl && !androidTV.model.connecting)
+        androidTV.model.setDesktopControlEnabled(false, televisionTarget: "webos")
+        androidTV.model.becameActive()
+        check("switching TV adapters stays disconnected from the computer", !androidTV.model.connected && !androidTV.model.connecting)
+        androidTV.model.setDesktopControlEnabled(true)
+        check("explicit return from Android TV restores only desktop mode", androidTV.model.desktopControlEnabled && !androidTV.model.connected)
+
         print("Controller drag release: \(passed) recording-transport checks passed without windows or OS input")
     }
 }

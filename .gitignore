@@ -25,3 +25,8 @@ receiver.lock
 unlock-capability.dat
 login-service.json
 service.dat
+android/.gradle/
+android/**/build/
+android/local.properties
+*.jks
+*.keystore

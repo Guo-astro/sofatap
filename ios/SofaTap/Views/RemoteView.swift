@@ -15,10 +15,14 @@ struct RemoteView: View {
     init(model: ControllerModel) {
         self.model = model; self.unlock = model.unlock
         _tv = StateObject(wrappedValue: WebOSTVController(enabled: !model.demo))
+        _androidTV = StateObject(wrappedValue: AndroidTVController(enabled: !model.demo))
+        _androidSelected = State(initialValue: !model.demo && UserDefaults.standard.string(forKey: "manualRemoteTarget") == "androidtv")
     }
     @Environment(\.scenePhase) private var scenePhase
     @StateObject private var dictation = SpeechDictationController()
     @StateObject private var tv: WebOSTVController
+    @StateObject private var androidTV: AndroidTVController
+    @State private var androidSelected: Bool
     @State private var pairingSheet = false
     @State private var statusSheet = false
     @State private var showingSpeechError = false
@@ -36,9 +40,10 @@ struct RemoteView: View {
 
     private var speechBusy: Bool { dictation.state != .idle }
     private var televisionSelected: Bool { !model.desktopControlEnabled }
-    private var currentStatusTitle: String { televisionSelected ? tv.title : model.statusTitle }
+    private var androidTVSelected: Bool { televisionSelected && androidSelected }
+    private var currentStatusTitle: String { androidTVSelected ? androidTV.title : televisionSelected ? tv.title : model.statusTitle }
     private var inputEnabled: Bool {
-        (televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !statusSheet &&
+        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !statusSheet &&
         !showingSpeechError && !resendAlert && !clearAlert
     }
 
@@ -63,7 +68,8 @@ struct RemoteView: View {
         }
         .background(Palette.background)
         .sheet(isPresented: $pairingSheet) {
-            PairingView(model: model, tv: tv, selectTV: selectTelevision, selectComputer: selectComputer)
+            PairingView(model: model, tv: tv, androidTV: androidTV, selectAndroidTV: selectAndroidTelevision,
+                        selectTV: selectTelevision, selectComputer: selectComputer)
         }
         .sheet(isPresented: $statusSheet) { statusDetails }
         .alert(String(localized: "语音输入暂不可用"), isPresented: $showingSpeechError) {
@@ -87,6 +93,12 @@ struct RemoteView: View {
         }
         .onDisappear { stopInteraction() }
         .onOpenURL { url in
+            if (try? AndroidTVPairing.parse(url.absoluteString)) != nil {
+                selectAndroidTelevision()
+                androidTV.pair(url.absoluteString)
+                statusSheet = true
+                return
+            }
             guard (try? Pairing.parse(url.absoluteString)) != nil else { model.acceptPairing(url.absoluteString); return }
             selectComputer()
             model.acceptPairing(url.absoluteString)
@@ -97,11 +109,18 @@ struct RemoteView: View {
             stopInteraction()
             composerVisible = false
             handledFocusRevision = nil
-            if enabled { tv.disconnect() }
+            if enabled { tv.disconnect(); androidTV.disconnect() }
+        }
+        .onChange(of: androidTV.phase) { _, phase in
+            if androidTVSelected && phase != .ready { touchControl.cancel() }
+            if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { androidTV.resumeInput() }
+        }
+        .onChange(of: androidTV.canControl) { _, available in
+            if androidTVSelected && !available { touchControl.cancel() }
         }
         .onChange(of: tv.phase) { _, phase in
-            if televisionSelected && phase != .ready { touchControl.cancel() }
-            if phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { tv.resumeInput() }
+            if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel() }
+            if !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { tv.resumeInput() }
         }
         .onChange(of: model.liveTextStatus) { _, _ in
             if model.liveTextPaused || (model.usesLiveText && model.liveTextStatus == .idle && speechRequest != nil) {
@@ -134,7 +153,7 @@ struct RemoteView: View {
             if error != nil { interruptTouch(); showingSpeechError = true }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { stopInteraction(); tv.disconnect() }
+            if phase == .background { stopInteraction(); tv.disconnect(); androidTV.disconnect() }
             else if phase == .inactive {
                 interruptTouch()
                 keyboardFocused = false
@@ -210,13 +229,14 @@ struct RemoteView: View {
             TouchSurface(enabled: inputEnabled, control: touchControl,
                          profile: televisionSelected ? .tvPointer : .desktop,
                          onMove: { dx, dy in
-                             if televisionSelected { tv.move(dx: dx, dy: dy) }
+                             if androidTVSelected { androidTV.move(dx: dx, dy: dy) }
+                             else if televisionSelected { tv.move(dx: dx, dy: dy) }
                              else { model.move(dx: dx, dy: dy) }
                          },
-                         onLeftTap: { if televisionSelected { tv.click() } else { model.click("left") } },
+                         onLeftTap: { if androidTVSelected { androidTV.click() } else if televisionSelected { tv.click() } else { model.click("left") } },
                          onRightTap: { if !televisionSelected { model.click("right") } },
                          onDraggingChanged: { if !televisionSelected { model.setDragging($0) } },
-                         onScroll: { if televisionSelected { tv.scroll(dy: $0) } else { model.scroll(dy: $0) } })
+                         onScroll: { if androidTVSelected { androidTV.scroll(dy: $0) } else if televisionSelected { tv.scroll(dy: $0) } else { model.scroll(dy: $0) } })
         }
         .overlay {
             RoundedRectangle(cornerRadius: 40, style: .continuous)
@@ -233,11 +253,11 @@ struct RemoteView: View {
         Group {
             if televisionSelected {
                 HStack {
-                    Button { touchControl.cancel(); tv.button(.back) } label: {
+                    Button { touchControl.cancel(); if androidTVSelected { androidTV.key(.back) } else { tv.button(.back) } } label: {
                         Image(systemName: "chevron.backward").frame(width: 52, height: 52)
                     }.accessibilityLabel(String(localized: "返回"))
                     Spacer()
-                    Button { touchControl.cancel(); tv.button(.home) } label: {
+                    Button { touchControl.cancel(); if androidTVSelected { androidTV.key(.home) } else { tv.button(.home) } } label: {
                         Image(systemName: "house").frame(width: 64, height: 64)
                     }.accessibilityLabel(String(localized: "电视主页"))
                     Spacer()
@@ -289,6 +309,10 @@ struct RemoteView: View {
     }
 
     private var statusSymbol: String {
+        if androidTVSelected {
+            if androidTV.phase == .failed { return "exclamationmark" }
+            return androidTV.canControl ? "checkmark" : androidTV.busy ? "ellipsis" : "tv"
+        }
         if televisionSelected {
             if tv.phase == .failed { return "exclamationmark" }
             return tv.phase == .ready ? "checkmark" : tv.busy ? "ellipsis" : "tv"
@@ -301,6 +325,7 @@ struct RemoteView: View {
     }
 
     private var statusColor: Color {
+        if androidTVSelected { return androidTV.phase == .failed ? .orange : androidTV.canControl ? Palette.mint : Palette.muted }
         if televisionSelected { return tv.phase == .failed ? .orange : tv.phase == .ready ? Palette.mint : Palette.muted }
         if model.pairingError != nil || model.demo || (model.connected && !model.inputAvailable) { return .orange }
         return model.canControl ? Palette.mint : Palette.muted
@@ -314,7 +339,7 @@ struct RemoteView: View {
                         Label(currentStatusTitle, systemImage: statusSymbol)
                             .font(.title2.weight(.semibold))
                             .foregroundStyle(statusColor)
-                        Text(televisionSelected ? tv.notice : model.notice).foregroundStyle(Palette.muted)
+                        Text(androidTVSelected ? androidTV.notice : televisionSelected ? tv.notice : model.notice).foregroundStyle(Palette.muted)
                         if !televisionSelected, let error = model.pairingError {
                             Text(error).foregroundStyle(.orange)
                         }
@@ -323,7 +348,11 @@ struct RemoteView: View {
                         LegacyUnlockCredentialRemovalView(unlock: unlock)
                     }
                     if televisionSelected {
-                        Text(String(localized: "滑动移动电视光标，单击选择，双指滚动。请在电视上确认操作结果。"))
+                        if androidTVSelected {
+                            Text(String(localized: "实验性接收端：光标是屏幕指示层，单击操作可访问控件，兼容性取决于电视与应用。暂不支持系统鼠标、右键、拖动、键盘或语音输入。"))
+                        } else {
+                            Text(String(localized: "滑动移动电视光标，单击选择，双指滚动。请在电视上确认操作结果。"))
+                        }
                         Button(String(localized: "切回电脑遥控")) { selectComputer(); statusSheet = false }
                     } else {
                     VStack(alignment: .leading, spacing: 14) {
@@ -507,22 +536,36 @@ struct RemoteView: View {
         touchControl.cancel()
         model.pauseInput()
         tv.pauseInput()
+        androidTV.pauseInput()
     }
     private func selectTelevision() {
         stopInteraction()
+        androidTV.disconnect()
+        androidSelected = false
         composerVisible = false
         model.setDesktopControlEnabled(false)
         tv.disconnect()
     }
+    private func selectAndroidTelevision() {
+        stopInteraction()
+        composerVisible = false
+        tv.disconnect()
+        androidTV.disconnect()
+        androidSelected = true
+        model.setDesktopControlEnabled(false, televisionTarget: "androidtv")
+    }
     private func selectComputer() {
         stopInteraction()
         tv.disconnect()
+        androidTV.disconnect()
+        androidSelected = false
         composerVisible = false
         handledFocusRevision = nil
         model.setDesktopControlEnabled(true)
     }
     private func resumeCurrentInput() {
-        if televisionSelected { tv.resumeInput() }
+        if androidTVSelected { androidTV.resumeInput() }
+        else if televisionSelected { tv.resumeInput() }
         else { applyRemoteFocus() }
     }
     private func prepareNewComposition() {

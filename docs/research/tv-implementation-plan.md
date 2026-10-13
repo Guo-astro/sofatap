@@ -8,7 +8,7 @@ The product sequence is **free manual TV control → paid Windows/macOS/Linux vo
 
 ## Current priority: Android/Google TV receiver feasibility
 
-Build and qualify a **shared native Android TV receiver** first. This supersedes the earlier LG-first recommendation: the LG protocol preview remains useful, but does not determine the next target platform. Begin with an installable capability probe, then pair it with the existing iPhone touch surface only after the required input routes are demonstrated. No Android receiver APK or hardware qualification is claimed by this document.
+Build and qualify a **shared native Android TV receiver** first. This supersedes the earlier LG-first recommendation: the LG protocol preview remains useful, but does not determine the next target platform. Begin with an installable capability probe, then pair it with the existing iPhone touch surface only after the required input routes are demonstrated. The first native receiver prototype and iPhone pairing adapter are now implemented; see the [build guide](../../android/README.md) and [software verification](../verification/android-tv-probe.md). Physical-TV qualification remains open.
 
 Use one Android codebase with capability detection and model/firmware-specific qualification, rather than separate brand apps. Native TV UI must be operable with the existing remote, show a local pairing QR code without a browser, and explain accessibility and optional input-method setup. A QR code establishes a pairing opportunity, not input permission. Bind the one-time, expiring pairing secret to the receiver's cryptographic identity, authenticate subsequent traffic, provide revocation and reject unauthenticated commands. Keep QR contents, input text and keys out of logs.
 
