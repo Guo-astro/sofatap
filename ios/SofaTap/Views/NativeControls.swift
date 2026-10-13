@@ -172,6 +172,7 @@ struct NativeDraftEditor: UIViewRepresentable {
 struct TouchSurface: UIViewRepresentable {
     let enabled: Bool
     var control: Control? = nil
+    var profile: TouchGestureState.Profile = .desktop
     let onMove: (Double, Double) -> Void
     let onLeftTap: () -> Void
     let onRightTap: () -> Void
@@ -190,8 +191,6 @@ struct TouchSurface: UIViewRepresentable {
         view.backgroundColor = .clear
         view.isMultipleTouchEnabled = true
         view.isAccessibilityElement = true
-        view.accessibilityLabel = String(localized: "电脑触控板")
-        view.accessibilityHint = String(localized: "滑动移动光标；轻点左键；连续轻点两下右键；按住零点三秒拖动；双指滑动滚动")
         view.accessibilityIdentifier = "touchpad"
         view.configure(self)
         return view
@@ -213,15 +212,19 @@ struct TouchSurface: UIViewRepresentable {
             super.init(frame: frame)
             NotificationCenter.default.addObserver(self, selector: #selector(inactive), name: UIApplication.willResignActiveNotification, object: nil)
             NotificationCenter.default.addObserver(self, selector: #selector(becameActive), name: UIApplication.didBecomeActiveNotification, object: nil)
-            accessibilityCustomActions = [
-                UIAccessibilityCustomAction(name: String(localized: "左键单击"), target: self, selector: #selector(accessibleLeftClick)),
-                UIAccessibilityCustomAction(name: String(localized: "右键单击"), target: self, selector: #selector(accessibleRightClick))
-            ]
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) has not been implemented") }
         deinit { deadlineTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
 
         func configure(_ parent: TouchSurface) {
+            if state.profile != parent.profile {
+                deadlineTimer?.invalidate()
+                deadlineTimer = nil
+                contacts.removeAll()
+                // Keep the previous callbacks installed until its button is released.
+                dispatch(state.changeProfile(to: parent.profile))
+                effects.clear()
+            }
             if !parent.enabled && self.parent?.enabled == true {
                 effects.setActive(false)
                 cancelInput()
@@ -231,6 +234,16 @@ struct TouchSurface: UIViewRepresentable {
             }
             self.parent = parent
             parent.control?.view = self
+            accessibilityLabel = parent.profile == .desktop ? String(localized: "电脑触控板") : String(localized: "电视触控板")
+            accessibilityHint = parent.profile == .desktop
+                ? String(localized: "滑动移动光标；轻点左键；连续轻点两下右键；按住零点三秒拖动；双指滑动滚动")
+                : String(localized: "滑动移动电视光标；轻点确认；双指滑动滚动")
+            accessibilityCustomActions = [
+                UIAccessibilityCustomAction(name: parent.profile == .desktop ? String(localized: "左键单击") : String(localized: "确认"), target: self, selector: #selector(accessibleLeftClick))
+            ]
+            if parent.profile == .desktop {
+                accessibilityCustomActions?.append(UIAccessibilityCustomAction(name: String(localized: "右键单击"), target: self, selector: #selector(accessibleRightClick)))
+            }
             isUserInteractionEnabled = parent.enabled && active
             effects.setActive(parent.enabled && active && window != nil)
 #if targetEnvironment(simulator)
@@ -352,9 +365,11 @@ struct TouchSurface: UIViewRepresentable {
                     parent.onLeftTap()
                     effects.click(at: lastLiftPoint, double: false)
                 case .rightClick:
+                    guard parent.profile == .desktop else { continue }
                     parent.onRightTap()
                     effects.click(at: lastLiftPoint, double: true)
                 case .dragging(let down):
+                    guard parent.profile == .desktop else { continue }
                     parent.onDraggingChanged(down)
                     effects.setDragging(down, at: effectPoint)
                 case .scroll(let dy):
@@ -370,7 +385,7 @@ struct TouchSurface: UIViewRepresentable {
             return true
         }
         @objc private func accessibleRightClick() -> Bool {
-            guard parent?.enabled == true, active else { return false }
+            guard parent?.enabled == true, parent?.profile == .desktop, active else { return false }
             parent?.onRightTap()
             effects.click(at: CGPoint(x: bounds.midX, y: bounds.midY), double: true)
             return true

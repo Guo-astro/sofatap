@@ -34,6 +34,8 @@ Live editing is the default where supported. A focus, text or selection conflict
 
 The [product roadmap](ROADMAP.md) separates free manual control from paid voice automation. Extend the manual touch surface to televisions before integrating an agent runtime. Verify genuine pointer movement, click and scrolling where the TV exposes them. Directional focus navigation is a different capability; expose that mode honestly on TVs that only support remote keys. TV right-click, held-button dragging, text editing and power behavior require their own capability checks and hardware acceptance.
 
+The development LG webOS pointer preview reuses the touch surface with a separate gesture profile: tap selects immediately, two-finger movement scrolls, and Back/Home replace unavailable TV text controls. Long presses do not hold a mouse button, and double taps are two selections rather than a right-click. The native pairing sheet supports manual private IPv4 entry and TV approval; discovery and TV text input remain pending. See the [technical plan](research/tv-implementation-plan.md).
+
 Keyboard input and speech-to-text dictation remain basic input features. A microphone used to enter words must never implicitly start an automated task or require a Pro subscription.
 
 ## Later paid voice-controlled computer actions

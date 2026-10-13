@@ -69,7 +69,15 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
           "$RUNNER_TEMP/sofatap-touch-tests"
-      - name: Native iPhone draft composition without windows or input
+      - name: TV protocol boundaries without devices
+        run: |
+          swiftc ios/SofaTap/Core/TV/WebOSTVProtocol.swift tests/WebOSTVProtocolTests.swift -o "$RUNNER_TEMP/sofatap-tv-protocol-tests"
+          "$RUNNER_TEMP/sofatap-tv-protocol-tests"
+      - name: TV pairing and input lifecycle with injected transport
+        run: bash ios/scripts/test-tv-controller.sh
+      - name: TV TLS and WebSocket transport on loopback only
+        run: bash ios/scripts/test-tv-transport.sh
+      - name: Native iPhone draft composition with TV gesture profiles
         run: bash ios/scripts/test-draft-editor.sh
       - name: Preserve dictation results without microphone access
         run: bash ios/scripts/test-dictation-transcript.sh

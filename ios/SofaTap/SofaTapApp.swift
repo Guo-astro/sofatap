@@ -15,7 +15,6 @@ struct SofaTapApp: App {
                     else if phase == .background { controller.becameInactive() }
                     else { controller.pauseInput() }
                 }
-                .onOpenURL { url in controller.acceptPairing(url.absoluteString) }
         }
     }
 }

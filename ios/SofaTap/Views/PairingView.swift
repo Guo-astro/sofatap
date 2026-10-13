@@ -3,6 +3,9 @@ import AVFoundation
 
 struct PairingView: View {
     @ObservedObject var model: ControllerModel
+    @ObservedObject var tv: WebOSTVController
+    let selectTV: () -> Void
+    let selectComputer: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var rawLink = ""
     @State private var showScanner = false
@@ -11,6 +14,17 @@ struct PairingView: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 23) {
+                    if !model.demo { NavigationLink {
+                        TVPairingView(tv: tv, selectTV: selectTV, finishPairing: { dismiss() })
+                    } label: {
+                        Label(String(localized: "连接 LG 电视（预览）"), systemImage: "tv")
+                            .frame(maxWidth: .infinity, alignment: .leading).padding(16)
+                            .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
+                    }
+                    }
+                    if !model.desktopControlEnabled {
+                        Button(String(localized: "切回电脑遥控")) { selectComputer(); dismiss() }
+                    }
                     Image(systemName: "desktopcomputer.and.arrow.down")
                         .font(.system(size: 42, weight: .light))
                         .foregroundStyle(Palette.mint)
@@ -43,6 +57,8 @@ struct PairingView: View {
                             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 16))
                             .accessibilityIdentifier("pairingLink")
                         Button(String(localized: "安全保存并连接")) {
+                            guard (try? Pairing.parse(rawLink)) != nil else { model.acceptPairing(rawLink); return }
+                            selectComputer()
                             model.acceptPairing(rawLink)
                             if model.pairingError == nil { rawLink = ""; dismiss() }
                         }
@@ -72,11 +88,12 @@ struct PairingView: View {
                 .padding(24)
             }
             .background(Palette.background)
-            .navigationTitle(String(localized: "配对电脑"))
+            .navigationTitle(String(localized: "连接设备"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "完成")) { dismiss() } } }
             .sheet(isPresented: $showScanner) {
                 ScannerSheet { value in
+                    selectComputer()
                     model.acceptPairing(value)
                     if model.pairingError == nil { showScanner = false; dismiss() }
                 }

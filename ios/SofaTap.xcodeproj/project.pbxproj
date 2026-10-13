@@ -13,11 +13,15 @@
 		2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895EB1B944638483C701ADDC /* TouchGestureState.swift */; };
 		390FF8AC98B4923D8FE0BD44 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 951A32A70DFF898858DD7CDD /* Assets.xcassets */; };
 		3D5EF8B303AB20CF62A7EAE4 /* UnlockProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */; };
+		5D0340905D716092B60EFB61 /* WebOSTVSocket.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D0C75FD36E4B1EB7AB94922 /* WebOSTVSocket.swift */; };
 		62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */; };
 		62E055F9B738880A3F6FB68A /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */; };
 		667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6898F264D24CA602D5304DA0 /* Pairing.swift */; };
 		68E7813DE872359DEE8A3E06 /* ComputerUnlockView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */; };
+		7DDB633B72618F7923EDE140 /* WebOSTVPairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409CB46FC55E930BD22D5436 /* WebOSTVPairingStore.swift */; };
 		84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D0FBB7BB69219144E687559 /* RemoteView.swift */; };
+		8BCAB73533A219F58CB0B3C6 /* WebOSTVProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */; };
+		93F0C888DB704DABA66D5901 /* TVPairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54AF04458B57B98FBC0F3928 /* TVPairingView.swift */; };
 		9434097D51E493B438C2FCE6 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 09B7623BA020963D10FF6660 /* Localizable.strings */; };
 		993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2194963D13F182243533BEB /* SofaTapApp.swift */; };
 		9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */; };
@@ -25,6 +29,7 @@
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
 		D9564E7710C99F8C4C4A87C8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */; };
 		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
+		E545FB7FE173DBF5F9706E06 /* WebOSTVController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,9 +40,13 @@
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		2EEF117295FCDC44389DDD7D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		409CB46FC55E930BD22D5436 /* WebOSTVPairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVPairingStore.swift; sourceTree = "<group>"; };
 		40B40E5AEC58118F1B61EC02 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 		4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchParticleRenderer.swift; sourceTree = "<group>"; };
+		4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVController.swift; sourceTree = "<group>"; };
+		4D0C75FD36E4B1EB7AB94922 /* WebOSTVSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVSocket.swift; sourceTree = "<group>"; };
 		5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockController.swift; sourceTree = "<group>"; };
+		54AF04458B57B98FBC0F3928 /* TVPairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVPairingView.swift; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
 		7F5ECAB455CACBBB8E77ECB5 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -49,6 +58,7 @@
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
 		B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockProtocol.swift; sourceTree = "<group>"; };
+		D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVProtocol.swift; sourceTree = "<group>"; };
 		F559181B1DC8444C237039F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -64,6 +74,7 @@
 				895EB1B944638483C701ADDC /* TouchGestureState.swift */,
 				1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */,
 				B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */,
+				AA396E4842395A96D1597827 /* TV */,
 			);
 			path = Core;
 			sourceTree = "<group>";
@@ -83,6 +94,17 @@
 			path = SofaTap;
 			sourceTree = "<group>";
 		};
+		AA396E4842395A96D1597827 /* TV */ = {
+			isa = PBXGroup;
+			children = (
+				4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */,
+				409CB46FC55E930BD22D5436 /* WebOSTVPairingStore.swift */,
+				D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */,
+				4D0C75FD36E4B1EB7AB94922 /* WebOSTVSocket.swift */,
+			);
+			path = TV;
+			sourceTree = "<group>";
+		};
 		AF4772458D0325C5499334E5 = {
 			isa = PBXGroup;
 			children = (
@@ -99,6 +121,7 @@
 				A8F19D4B8423478A9CA42C50 /* PairingView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
 				4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */,
+				54AF04458B57B98FBC0F3928 /* TVPairingView.swift */,
 			);
 			path = Views;
 			sourceTree = "<group>";
@@ -195,10 +218,15 @@
 				84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */,
 				993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */,
 				9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */,
+				93F0C888DB704DABA66D5901 /* TVPairingView.swift in Sources */,
 				2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */,
 				62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */,
 				282012F3931864B44AE6BDED /* UnlockCredentialVault.swift in Sources */,
 				3D5EF8B303AB20CF62A7EAE4 /* UnlockProtocol.swift in Sources */,
+				E545FB7FE173DBF5F9706E06 /* WebOSTVController.swift in Sources */,
+				7DDB633B72618F7923EDE140 /* WebOSTVPairingStore.swift in Sources */,
+				8BCAB73533A219F58CB0B3C6 /* WebOSTVProtocol.swift in Sources */,
+				5D0340905D716092B60EFB61 /* WebOSTVSocket.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

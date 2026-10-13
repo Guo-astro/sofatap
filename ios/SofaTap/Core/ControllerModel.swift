@@ -14,6 +14,9 @@ private enum CommandResult {
 
 @MainActor
 final class ControllerModel: ObservableObject {
+    // A TV selection suspends the desktop transport, including scene/deep-link
+    // reconnects. Input must never fall back to a different device on failure.
+    @Published private(set) var desktopControlEnabled = true
     @Published private(set) var pairing: Pairing?
     @Published private(set) var connected = false
     @Published private(set) var connecting = false
@@ -108,6 +111,7 @@ final class ControllerModel: ObservableObject {
 
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
         self.demo = demo
+        self.desktopControlEnabled = demo || UserDefaults.standard.string(forKey: "manualRemoteTarget") != "webos"
         self.pairing = demo ? nil : PairingStore.read()
         self.draft = demo ? String(localized: "你好，帮我播放今晚想看的电影。") : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
         unlock.setPairing(self.pairing)
@@ -125,7 +129,7 @@ final class ControllerModel: ObservableObject {
 
     // Session/permission availability is stable while a final drag ACK is pending.
     // The UI uses this for disconnect cleanup; canControl gates new input only.
-    var controlAvailable: Bool { demo || (connected && inputAvailable) }
+    var controlAvailable: Bool { desktopControlEnabled && (demo || (connected && inputAvailable)) }
     var canControl: Bool { controlAvailable && !dragReleasePending }
     var remoteTextFocus: RemoteTextFocus { controlAvailable ? receiverState.textFocus : .unknown }
     var focusRevision: Int { receiverState.focusRevision }
@@ -178,6 +182,8 @@ final class ControllerModel: ObservableObject {
         do {
             let newPairing = try Pairing.parse(raw)
             try PairingStore.write(newPairing)
+            desktopControlEnabled = true
+            rememberManualTarget()
             if let previous = pairing, previous != newPairing { unlock.forget(previous) }
             disconnect(message: String(localized: "已保存新的配对。"))
             pairing = newPairing
@@ -203,6 +209,22 @@ final class ControllerModel: ObservableObject {
         if !demo, pairing != nil, !connected, !connecting { connect() }
     }
 
+    func setDesktopControlEnabled(_ enabled: Bool) {
+        guard enabled != desktopControlEnabled else { return }
+        if !enabled { disconnect(message: String(localized: "电脑遥控已暂停，当前选择电视。")) }
+        desktopControlEnabled = enabled
+        rememberManualTarget()
+        if enabled { becameActive() }
+    }
+
+    private func rememberManualTarget() {
+        guard !demo else { return }
+#if SOFATAP_CONTROLLER_TESTING
+        guard testSend == nil && testLiveSend == nil else { return }
+#endif
+        UserDefaults.standard.set(desktopControlEnabled ? "computer" : "webos", forKey: "manualRemoteTarget")
+    }
+
     func becameInactive() {
         unlock.becameInactive()
         guard foreground else { return }
@@ -221,7 +243,7 @@ final class ControllerModel: ObservableObject {
     }
 
     func connect() {
-        guard !demo, foreground, !connecting, !connected,
+        guard desktopControlEnabled, !demo, foreground, !connecting, !connected,
               let pairing, let endpoint = pairing.endpoint else { return }
         generation = UUID()
         let currentGeneration = generation

@@ -130,6 +130,23 @@ struct ControllerDragReleaseTests {
         check("late ACK after disconnect cannot advance the old drag", staleAck.tags == ["down", "move"] && !staleAck.model.connected)
         check("late ACK cannot restore the disconnected availability gate", !staleAck.model.controlAvailable)
 
+        let television = DragFixture()
+        television.begin()
+        television.model.pauseInput()
+        check("switching away releases held desktop input first", television.tags == ["down", "up"])
+        television.model.setDesktopControlEnabled(false)
+        check("TV selection disables computer transport and input", !television.model.desktopControlEnabled && !television.model.connected && !television.model.canControl)
+        television.ack(1)
+        television.model.becameActive()
+        television.model.connect()
+        television.model.move(dx: 100, dy: 20)
+        television.model.testFlushMovement()
+        television.model.click("left")
+        television.model.key("enter")
+        check("scene activation and late ACK cannot resume desktop while TV selected", television.tags == ["down", "up"] && !television.model.canControl && !television.model.connecting)
+        television.model.setDesktopControlEnabled(true)
+        check("explicit computer selection restores mode but does not invent a connection", television.model.desktopControlEnabled && !television.model.connected)
+
         print("Controller drag release: \(passed) recording-transport checks passed without windows or OS input")
     }
 }

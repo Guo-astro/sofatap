@@ -3,6 +3,7 @@ import Foundation
 /// Pure touch semantics. UIKit supplies monotonic timestamps and schedules `nextDeadline`.
 /// No mouse input is sent by this type, which also makes cancellation/timing testable.
 struct TouchGestureState {
+    enum Profile: Equatable { case desktop, tvPointer }
     struct Point: Equatable {
         var x: Double
         var y: Double
@@ -22,8 +23,20 @@ struct TouchGestureState {
     private var holdDeadline: Double?
     private var moved = false
     private var secondTap = false
+    private var suppressLiftClick = false
     private var pendingTap: (point: Point, deadline: Double)?
     private(set) var isDragging = false
+    private(set) var profile: Profile
+
+    init(profile: Profile = .desktop) { self.profile = profile }
+
+    /// Dispatch the returned cancellation to the old target before replacing its callbacks.
+    mutating func changeProfile(to profile: Profile) -> [Action] {
+        guard self.profile != profile else { return [] }
+        let actions = cancel()
+        self = Self(profile: profile)
+        return actions
+    }
 
     var nextDeadline: Double? {
         [holdDeadline, pendingTap?.deadline].compactMap { $0 }.min()
@@ -91,8 +104,9 @@ struct TouchGestureState {
             actions += advance(to: time)
             if isDragging {
                 actions.append(.dragging(false))
-            } else if !moved {
-                if secondTap { actions.append(.rightClick) }
+            } else if !moved && !suppressLiftClick {
+                if profile == .tvPointer { actions.append(.leftClick) }
+                else if secondTap { actions.append(.rightClick) }
                 else { pendingTap = (point, time + Self.doubleTapInterval) }
             }
         }
@@ -110,8 +124,14 @@ struct TouchGestureState {
             self.holdDeadline = nil
             pendingTap = nil
             secondTap = false
-            isDragging = true
-            actions.append(.dragging(true))
+            if profile == .desktop {
+                isDragging = true
+                actions.append(.dragging(true))
+            } else {
+                // TVs have no held pointer button. A resting finger must not click
+                // on lift, but it can still move the pointer if it starts sliding.
+                suppressLiftClick = true
+            }
         }
         return actions
     }
@@ -139,5 +159,6 @@ struct TouchGestureState {
         isDragging = false
         moved = false
         secondTap = false
+        suppressLiftClick = false
     }
 }

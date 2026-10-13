@@ -1,6 +1,6 @@
 # Direct TV control for Sofatap
 
-Research date: **2026-10-13, Asia/Tokyo**. Status: **proposal**, not implemented support. No TV was paired or operated during this research. Protocol implementation, compatibility and store distribution remain to be validated.
+Research date: **2026-10-13, Asia/Tokyo**. Status: **proposal**, not implemented support. No TV was paired or operated during this research. This original research is now followed by a [detailed implementation plan](tv-implementation-plan.md) and [source-preview verification](../verification/webos-pointer-preview.md). Physical-TV compatibility and store distribution remain to be validated.
 
 Product priority: **free manual TV control is the next feature**. Paid voice automation follows on Windows/macOS/Linux first, then on televisions. See the [product roadmap](../ROADMAP.md). This TV work must not depend on an AI model, subscription or autonomous planner. Existing speech-to-text is a basic input method, separate from asking an agent to perform a task.
 

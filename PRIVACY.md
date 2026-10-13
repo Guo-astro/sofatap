@@ -16,6 +16,10 @@ The camera is used when you choose to scan the receiver's pairing QR code. Sofat
 
 A pairing code grants control of the computer. Keep codes and pairing links private. Removing the pairing in the app deletes that phone's saved pairing. Quit the receiver to stop accepting connections. Removing a pairing from one phone does not revoke copies of that code held elsewhere.
 
+## TV development preview
+
+The development-source LG webOS preview also connects directly to a TV you select on the home network. It stores the selected TV's address, approved certificate fingerprint and client key in a separate device-only, unlocked-device Keychain record. Pointer and navigation commands go to the TV over pinned encrypted connections; they are not sent to CHEKUSU. The preview does not collect TV screenshots or text, and has no TV microphone or keyboard feature. Use **Forget TV** in its native pairing screen to remove the phone's TV credentials. This removes local pairing only; the TV's own controller-authority settings are separate. This preview is not part of the previously published app build.
+
 ## Text and live editing
 
 Sofatap can send typed or dictated text to the focused application. With a compatible receiver and supported field, opening the editor imports the field's complete text and selection to the phone. A receiver focus hint may open this editor automatically. Edits, deletions, selection changes and partial speech transcripts then synchronize to the computer. Protected and read-only fields cannot start live editing.
