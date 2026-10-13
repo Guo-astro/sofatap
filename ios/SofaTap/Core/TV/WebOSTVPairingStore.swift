@@ -1,7 +1,7 @@
 import Foundation
 import Security
 
-struct WebOSTVPairing: Codable, Equatable {
+struct WebOSTVPairing: SavedDeviceCredential {
     let host: String
     let fingerprint: String
     let clientKey: String
@@ -11,42 +11,55 @@ protocol WebOSTVPairingStorage {
     func read() -> WebOSTVPairing?
     func write(_ pairing: WebOSTVPairing) throws
     func delete() throws
+    func library() throws -> DeviceLibrary<WebOSTVPairing>
+    func select(_ id: UUID) throws
+    func rename(_ id: UUID, name: String) throws
+    func metadata(_ id: UUID, name: String?, platform: String) throws
+    func remove(_ id: UUID) throws
+}
+
+extension WebOSTVPairing {
+    var deviceIdentity: String { "webos:" + host + ":" + fingerprint }
+    var deviceAddress: String { host }
+    func validateForStorage() throws { guard (try? WebOSTVEndpoint(host: host)) != nil, fingerprint.count == 64,
+              fingerprint.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
+              (try? WebOSTVProtocol.registration(id: "validate", clientKey: clientKey)) != nil
+        else { throw DeviceLibraryError.invalidData } }
+}
+
+// Defaults keep injected single-device test stores compatible. Production uses
+// the complete Keychain collection implementation below.
+extension WebOSTVPairingStorage {
+    func library() throws -> DeviceLibrary<WebOSTVPairing> {
+        var library = DeviceLibrary<WebOSTVPairing>()
+        if let value = read() { library.upsert(value) }
+        return library
+    }
+    func select(_ id: UUID) throws {
+        guard let device = try library().devices.first(where: { $0.id == id }) else { throw DeviceLibraryError.missingDevice }
+        try write(device.credential)
+    }
+    func rename(_ id: UUID, name: String) throws { throw DeviceLibraryError.unavailable }
+    func metadata(_ id: UUID, name: String?, platform: String) throws {}
+    func remove(_ id: UUID) throws {
+        if try library().selectedID == id { try delete() }
+    }
 }
 
 struct WebOSTVKeychain: WebOSTVPairingStorage {
-    private var query: [String: Any] { [
-        kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: "com.chekusu.sofatap.webos",
-        kSecAttrAccount as String: "paired-television"
-    ] }
-    private enum StoreError: Error { case unavailable }
-    func read() -> WebOSTVPairing? {
-        var request = query
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data, let pairing = try? JSONDecoder().decode(WebOSTVPairing.self, from: data),
-              (try? WebOSTVEndpoint(host: pairing.host)) != nil,
-              pairing.fingerprint.count == 64,
-              pairing.fingerprint.utf8.allSatisfy({ (48...57).contains($0) || (97...102).contains($0) }),
-              (try? WebOSTVProtocol.registration(id: "validate", clientKey: pairing.clientKey)) != nil else { return nil }
-        return pairing
+    private let store = KeychainDeviceLibrary<WebOSTVPairing>(service: "com.chekusu.sofatap.webos", legacyAccount: "paired-television")
+    func read() -> WebOSTVPairing? { (try? store.read())?.selected?.credential }
+    func library() throws -> DeviceLibrary<WebOSTVPairing> { try store.read() }
+    func write(_ pairing: WebOSTVPairing) throws { try store.mutate { $0.upsert(pairing) } }
+    func select(_ id: UUID) throws { try store.mutate { try $0.select(id) } }
+    func rename(_ id: UUID, name: String) throws { try store.mutate { try $0.rename(id, name: name) } }
+    func metadata(_ id: UUID, name: String?, platform: String) throws {
+        try store.mutate { try $0.updateMetadata(id, name: name, platform: platform) }
     }
-    func write(_ pairing: WebOSTVPairing) throws {
-        let attributes: [String: Any] = [
-            kSecValueData as String: try JSONEncoder().encode(pairing),
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly
-        ]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var request = query
-            attributes.forEach { request[$0.key] = $0.value }
-            guard SecItemAdd(request as CFDictionary, nil) == errSecSuccess else { throw StoreError.unavailable }
-        } else if status != errSecSuccess { throw StoreError.unavailable }
-    }
+    func remove(_ id: UUID) throws { try store.mutate { $0.remove(id) } }
     func delete() throws {
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw StoreError.unavailable }
+        try store.mutate { library in
+            if let id = library.selectedID { library.remove(id) }
+        }
     }
 }

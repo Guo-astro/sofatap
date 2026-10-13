@@ -36,7 +36,9 @@
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
 		D9564E7710C99F8C4C4A87C8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */; };
 		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
+		E535D68E8BB20BB759348ADE /* RemoteGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */; };
 		E545FB7FE173DBF5F9706E06 /* WebOSTVController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */; };
+		E75D5F66DCD0E08ADAA87B62 /* SavedDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E456A2636B418FE1F7D1358 /* SavedDevice.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -45,11 +47,15 @@
 		0FC98CB31D572AB388B6B719 /* SofaTap.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SofaTap.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCredentialVault.swift; sourceTree = "<group>"; };
 		1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictationController.swift; sourceTree = "<group>"; };
+		28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteGuideView.swift; sourceTree = "<group>"; };
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		2EEF117295FCDC44389DDD7D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		3717B15001E2480956B638CE /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		409CB46FC55E930BD22D5436 /* WebOSTVPairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVPairingStore.swift; sourceTree = "<group>"; };
 		40B40E5AEC58118F1B61EC02 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
+		44E26BF74F9B4D7932F23726 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		478B419DE954528EB626A524 /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/Localizable.strings; sourceTree = "<group>"; };
+		490EEE3892E94840AD0D85A9 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchParticleRenderer.swift; sourceTree = "<group>"; };
 		4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVController.swift; sourceTree = "<group>"; };
 		4D0C75FD36E4B1EB7AB94922 /* WebOSTVSocket.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVSocket.swift; sourceTree = "<group>"; };
@@ -59,21 +65,39 @@
 		54AF04458B57B98FBC0F3928 /* TVPairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVPairingView.swift; sourceTree = "<group>"; };
 		653112145C3AC3F8360E3E33 /* AndroidTVPairingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVPairingStore.swift; sourceTree = "<group>"; };
 		6898F264D24CA602D5304DA0 /* Pairing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Pairing.swift; sourceTree = "<group>"; };
+		6D6C2836646C0413C1E356C7 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/Localizable.strings; sourceTree = "<group>"; };
+		7532C139829670D285007076 /* es */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = es; path = es.lproj/Localizable.strings; sourceTree = "<group>"; };
 		7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControllerModel.swift; sourceTree = "<group>"; };
 		7F5ECAB455CACBBB8E77ECB5 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		81E3EDE19902B6ABF86C1A18 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComputerUnlockView.swift; sourceTree = "<group>"; };
+		85A0739DFF011E38770BF5F4 /* id */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = id; path = id.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		8685034B27ADBAEEC4498D91 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8836BE62D39309B8AF525D9F /* ReceiverState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReceiverState.swift; sourceTree = "<group>"; };
 		895EB1B944638483C701ADDC /* TouchGestureState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchGestureState.swift; sourceTree = "<group>"; };
 		8AF3ED072085CFD8C1ADEB26 /* zh-Hans */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "zh-Hans"; path = "zh-Hans.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		8BBE37D2E9367D549188005C /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		8E456A2636B418FE1F7D1358 /* SavedDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedDevice.swift; sourceTree = "<group>"; };
 		951A32A70DFF898858DD7CDD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		95606E97C5C6FFEA489A4B4B /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		9CD3F8FDD463C84C1A8DE3BD /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
 		B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockProtocol.swift; sourceTree = "<group>"; };
+		B59230887DF9E5DFCEF24AC2 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		BC7A99169E434F59C150C815 /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/Localizable.strings"; sourceTree = "<group>"; };
+		BCF59FBB1CAFE5F12CBD334F /* hi */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = hi; path = hi.lproj/Localizable.strings; sourceTree = "<group>"; };
 		CB516F458F92F797A2D61F61 /* EdgeScrollGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EdgeScrollGesture.swift; sourceTree = "<group>"; };
 		D18FB04130086BA45CCC4601 /* AndroidTVProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVProtocol.swift; sourceTree = "<group>"; };
+		D23E9A4031A8FDF17679A259 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		D5A067E542B227E0740EBF8B /* id */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = id; path = id.lproj/Localizable.strings; sourceTree = "<group>"; };
+		D98BCB215014AA708AE8613E /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		D9F656B1D43CEB3F1C48BB72 /* WebOSTVProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebOSTVProtocol.swift; sourceTree = "<group>"; };
+		E43EF791E54F46420F435750 /* ru */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ru; path = ru.lproj/Localizable.strings; sourceTree = "<group>"; };
 		E6DC33E8052762AFA900FC59 /* AndroidTVPairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVPairingView.swift; sourceTree = "<group>"; };
+		EBB2B2587E4DE6C739D56E5B /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F559181B1DC8444C237039F4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		FA1F25280D52152B4232BF1C /* pt-BR */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = "pt-BR"; path = "pt-BR.lproj/InfoPlist.strings"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -85,6 +109,7 @@
 				CB516F458F92F797A2D61F61 /* EdgeScrollGesture.swift */,
 				6898F264D24CA602D5304DA0 /* Pairing.swift */,
 				8836BE62D39309B8AF525D9F /* ReceiverState.swift */,
+				8E456A2636B418FE1F7D1358 /* SavedDevice.swift */,
 				1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */,
 				895EB1B944638483C701ADDC /* TouchGestureState.swift */,
 				1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */,
@@ -140,6 +165,7 @@
 				0416314FF9ABB35588FD4779 /* EdgeScrollStrip.swift */,
 				073F44E198299E317E1E4D3D /* NativeControls.swift */,
 				A8F19D4B8423478A9CA42C50 /* PairingView.swift */,
+				28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
 				4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */,
 				54AF04458B57B98FBC0F3928 /* TVPairingView.swift */,
@@ -196,7 +222,17 @@
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				Base,
+				ar,
+				de,
 				en,
+				es,
+				fr,
+				hi,
+				id,
+				ja,
+				ko,
+				"pt-BR",
+				ru,
 				"zh-Hans",
 			);
 			mainGroup = AF4772458D0325C5499334E5;
@@ -243,7 +279,9 @@
 				667528AF2714DE0DE71EE75F /* Pairing.swift in Sources */,
 				0C3B35855B50DA22F878C842 /* PairingView.swift in Sources */,
 				DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */,
+				E535D68E8BB20BB759348ADE /* RemoteGuideView.swift in Sources */,
 				84254EA55A038C626D1DFC9A /* RemoteView.swift in Sources */,
+				E75D5F66DCD0E08ADAA87B62 /* SavedDevice.swift in Sources */,
 				993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */,
 				9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */,
 				93F0C888DB704DABA66D5901 /* TVPairingView.swift in Sources */,
@@ -264,7 +302,17 @@
 		09B7623BA020963D10FF6660 /* Localizable.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				478B419DE954528EB626A524 /* ar */,
+				95606E97C5C6FFEA489A4B4B /* de */,
 				2EEF117295FCDC44389DDD7D /* en */,
+				7532C139829670D285007076 /* es */,
+				6D6C2836646C0413C1E356C7 /* fr */,
+				BCF59FBB1CAFE5F12CBD334F /* hi */,
+				D5A067E542B227E0740EBF8B /* id */,
+				8685034B27ADBAEEC4498D91 /* ja */,
+				44E26BF74F9B4D7932F23726 /* ko */,
+				BC7A99169E434F59C150C815 /* pt-BR */,
+				E43EF791E54F46420F435750 /* ru */,
 				8AF3ED072085CFD8C1ADEB26 /* zh-Hans */,
 			);
 			name = Localizable.strings;
@@ -273,7 +321,17 @@
 		1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
+				9CD3F8FDD463C84C1A8DE3BD /* ar */,
+				EBB2B2587E4DE6C739D56E5B /* de */,
 				7F5ECAB455CACBBB8E77ECB5 /* en */,
+				490EEE3892E94840AD0D85A9 /* es */,
+				D98BCB215014AA708AE8613E /* fr */,
+				8BBE37D2E9367D549188005C /* hi */,
+				85A0739DFF011E38770BF5F4 /* id */,
+				D23E9A4031A8FDF17679A259 /* ja */,
+				B59230887DF9E5DFCEF24AC2 /* ko */,
+				FA1F25280D52152B4232BF1C /* pt-BR */,
+				81E3EDE19902B6ABF86C1A18 /* ru */,
 				40B40E5AEC58118F1B61EC02 /* zh-Hans */,
 			);
 			name = InfoPlist.strings;
@@ -287,7 +345,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -307,7 +365,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 14;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

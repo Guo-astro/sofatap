@@ -1,0 +1,9 @@
+{
+  "version": "1.0",
+  "build": "13",
+  "whatToTest": {
+    "en-US": "Build 13 adds a saved-device library, local device names, explicit target switching, disconnect/removal, and a separate illustrated guide. Check that the top-left name always identifies the intended computer or TV. Keyboard controls now toggle with feedback; notices sit beside the composer icons. The interface and permission prompts support the website's 12 languages. Check short/long text and right-to-left Arabic. When switching computers, review retained text before explicitly sending it. Existing TV adapters remain experimental; no TV model is qualified. The current icon is unchanged pending selection of a new logo.",
+    "zh-Hans": "Build 13 新增多设备配对库、本地重命名、明确切换当前设备、断开与移除，以及独立图解指南。请确认左上角名称始终对应正在操作的电脑或电视。键盘按钮增加展开/收起状态与反馈，提示文字与输入区图标并排。界面和权限提示已支持官网的 12 种语言，请检查长短文案及阿拉伯语排版。切换电脑后，保留文字需要查看确认后才可再次发送。电视仍为实验性适配，尚无已验收机型。新 logo 待选，正式图标保持现有版本。",
+    "ja": "Build 13 は複数デバイスの保存、ローカル名の変更、接続先の切り替え、切断・削除、独立した図解ガイドを追加しました。左上の名前が操作するパソコンまたはテレビと一致するか確認してください。キーボードボタンは開閉状態とフィードバックを表示し、状態メッセージは入力欄のアイコンと同じ行に表示します。画面と権限説明は公式サイトと同じ 12 言語に対応します。長い文章とアラビア語の表示もご確認ください。パソコン切り替え後に残った文章は、確認してから明示的に送信してください。テレビ対応は実験段階で、実機認定済み機種はありません。新ロゴは選定待ちのため、現在のアイコンを使用しています。"
+  }
+}

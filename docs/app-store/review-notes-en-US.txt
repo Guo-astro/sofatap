@@ -1,23 +1,23 @@
-Sofatap 1.0 (12) is a manual input remote for the user's own computer on a home network. It does not stream the desktop or require a Sofatap account. No login credentials, in-app purchases or subscription are needed for review.
+Sofatap 1.0 (builds 12/13) is a manual remote for the user's own computer on a home network. No desktop streaming, Sofatap account, login credentials, purchases or subscription are needed.
 
 EQUIPMENT AND SETUP
-Use an iPhone with iOS 17+ and an awake, unlocked computer on the same reachable local network. Desktop receiver 0.7.0 beta.1 remains compatible:
+Use an iPhone with iOS 17+ and an unlocked computer on the same local network. Desktop receiver 0.7.0 beta.1 remains compatible:
 https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1
-Setup and platform download links:
+Downloads:
 https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
-Windows: extract the complete ZIP, run SofaTap.exe and allow its backend on a trusted private network if prompted. Do not disable the firewall.
+Windows: extract the complete ZIP, run SofaTap.exe and allow its backend on a trusted private network if prompted. Keep the firewall on.
 Mac: install the notarized app for the Mac's processor and grant Accessibility permission in System Settings; macOS 15+ is required. Linux depends on the desktop environment.
 
 PAIRING
 1. Open the computer receiver's native window and choose its reachable local-network address.
-2. On iPhone, tap the QR icon, then Scan computer QR code. Scan the receiver's code and allow Camera and Local Network access. Pasting the complete pairing link is an alternative.
-3. Return to the touch surface. Tap the logo for connection status and gesture help.
+2. On iPhone build 13+, tap the top-left device selector, Computer under Add Device, then Scan computer QR code. Build 12 uses the top-right QR icon. Allow Camera and Local Network access. Pasting the full pairing link also works.
+3. Build 13+: the device name shows the active target; its sheet supports switching, local rename/removal and disconnect. The question mark opens a separate guide. Build 12: tap the logo for status/help.
 
 DESKTOP TEST
 1. Open a blank document. Slide to move; tap for left click, double-tap for right click, or hold still for 0.3 seconds then move to drag. Two fingers move content in the fingers' direction. The strip inside the pad's right edge follows scrollbar direction: drag down to scroll down.
 2. Focus a writable native field and open the phone keyboard. Supported Windows/Mac fields import existing text and synchronize typing, Backspace, selection and deletion without Send. Other fields, Linux and older receivers use a local draft and Send. No Enter/form-submit action is appended.
-3. Check the circular Send button inside the editor: wrapping text must remain clear of it. Small Clear and Hide Keyboard icons sit below on the left.
-4. Tap the microphone and allow Microphone/Speech access. Check press feedback and a light haptic on supported hardware. On-device recognition requires a supported device/language; otherwise use the keyboard. Tap again to stop. Supported live fields synchronize recognized text; other fields require Send. Send a draft, append typing or dictation, then send again: only the new suffix should be submitted. Check the computer before retrying uncertain text.
+3. Check the circular Send button inside the editor: wrapping text must remain clear of it. Clear and keyboard-toggle icons sit below on the left; build 13 adds an up/down state.
+4. Tap the microphone and allow Microphone/Speech access. On-device recognition requires a supported device/language; otherwise use the keyboard. Tap again to stop. Supported live fields synchronize recognized text; other fields require Send. Send a draft, append typing or dictation, then send again: only the new suffix should be submitted. Check the computer before retrying uncertain text.
 
 VISIBLE TV PREVIEWS
 Pairing also exposes Android TV (experimental) and LG TV (preview). These are separate optional manual adapters; no physical TV model or third-party TV app is qualified yet.
@@ -25,7 +25,7 @@ Android/Google TV requires the separate development receiver and user-enabled Ac
 https://github.com/chekusu/sofatap/blob/main/android/README.md
 LG webOS uses a manually entered private IP address, explicit certificate trust and approval on the TV; its secure pointer service must be compatible. Setup and limits:
 https://github.com/chekusu/sofatap/blob/main/docs/verification/webos-pointer-preview.md
-Both previews offer limited pointer/click/scroll and Back/Home paths; TV text/dictation, right-click and drag are unavailable. Selecting a TV suspends computer control.
+Both previews offer pointer/click/scroll and Back/Home; TV text/dictation, right-click and drag are unavailable. Selecting a TV suspends computer control.
 
 PRIVACY AND LIMITS
 Pairing credentials stay in Keychain. Input uses local certificate-pinned TLS. Built-in dictation stays on-device. Live editing transfers the supported field's full text and selection between the user's devices; protected/read-only fields cannot start it. The ordinary receiver cannot control Windows login or elevated permission screens. Backgrounding stops capture and disconnects control. AI automation, Bluetooth transport and saved-PIN unlocking are unavailable.

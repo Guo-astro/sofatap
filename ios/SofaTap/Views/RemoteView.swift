@@ -24,12 +24,14 @@ struct RemoteView: View {
 #endif
     }
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.layoutDirection) private var layoutDirection
     @StateObject private var dictation = SpeechDictationController()
     @StateObject private var tv: WebOSTVController
     @StateObject private var androidTV: AndroidTVController
     @State private var androidSelected: Bool
     @State private var pairingSheet = false
-    @State private var statusSheet = false
+    @State private var guideSheet = false
     @State private var showingSpeechError = false
     @State private var touchControl = TouchSurface.Control()
     @State private var edgeScrollControl = EdgeScrollStrip.Control()
@@ -51,7 +53,7 @@ struct RemoteView: View {
     private var androidTVSelected: Bool { televisionSelected && androidSelected }
     private var currentStatusTitle: String { androidTVSelected ? androidTV.title : televisionSelected ? tv.title : model.statusTitle }
     private var inputEnabled: Bool {
-        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !statusSheet &&
+        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !guideSheet &&
         !showingSpeechError && !resendAlert && !clearAlert
     }
 
@@ -81,9 +83,12 @@ struct RemoteView: View {
         layout
         .sheet(isPresented: $pairingSheet) {
             PairingView(model: model, tv: tv, androidTV: androidTV, selectAndroidTV: selectAndroidTelevision,
-                        selectTV: selectTelevision, selectComputer: selectComputer)
+                        selectTV: selectTelevision, selectComputer: { selectComputer(reconnect: false) },
+                        androidSelected: androidTVSelected)
+                .presentationDetents([.medium, .large])
+                .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $statusSheet) { statusDetails }
+        .sheet(isPresented: $guideSheet) { RemoteGuideView() }
         .alert(String(localized: "语音输入暂不可用"), isPresented: $showingSpeechError) {
             Button(String(localized: "使用键盘")) { toggleKeyboard() }
             Button(String(localized: "好"), role: .cancel) {}
@@ -108,17 +113,23 @@ struct RemoteView: View {
             model.becameActive()
             if model.textDelivery == .uncertain { composerVisible = true }
             applyRemoteFocus()
+#if targetEnvironment(simulator)
+            if model.demo {
+                guideSheet = ProcessInfo.processInfo.arguments.contains("--demo-guide")
+                pairingSheet = ProcessInfo.processInfo.arguments.contains("--demo-pairing")
+            }
+#endif
         }
         .onDisappear { stopInteraction() }
         .onOpenURL { url in
             if (try? AndroidTVPairing.parse(url.absoluteString)) != nil {
                 selectAndroidTelevision()
                 androidTV.pair(url.absoluteString)
-                statusSheet = true
+                pairingSheet = true
                 return
             }
             guard (try? Pairing.parse(url.absoluteString)) != nil else { model.acceptPairing(url.absoluteString); return }
-            selectComputer()
+            selectComputer(reconnect: false)
             model.acceptPairing(url.absoluteString)
         }
         .onChange(of: model.focusRevision) { _, _ in applyRemoteFocus() }
@@ -131,14 +142,14 @@ struct RemoteView: View {
         }
         .onChange(of: androidTV.phase) { _, phase in
             if androidTVSelected && phase != .ready { touchControl.cancel() }
-            if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { androidTV.resumeInput() }
+            if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet { androidTV.resumeInput() }
         }
         .onChange(of: androidTV.canControl) { _, available in
             if androidTVSelected && !available { touchControl.cancel() }
         }
         .onChange(of: tv.phase) { _, phase in
             if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel() }
-            if !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !statusSheet { tv.resumeInput() }
+            if televisionSelected && !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet { tv.resumeInput() }
         }
     }
 
@@ -168,12 +179,12 @@ struct RemoteView: View {
             if shown { stopInteraction() }
             else { resumeCurrentInput() }
         }
-        .onChange(of: statusSheet) { _, shown in
+        .onChange(of: guideSheet) { _, shown in
             if shown { stopInteraction() }
             else { resumeCurrentInput() }
         }
         .onChange(of: model.pairingError) { _, error in
-            if !televisionSelected && error != nil && !pairingSheet { interruptTouch(); statusSheet = true }
+            if !televisionSelected && error != nil && !pairingSheet { stopInteraction(); pairingSheet = true }
         }
         .onChange(of: dictation.errorMessage) { _, error in
             if error != nil { interruptTouch(); showingSpeechError = true }
@@ -207,45 +218,75 @@ struct RemoteView: View {
         }
     }
 
+    private var currentDeviceName: String {
+        if androidTVSelected { return androidTV.saved == nil ? String(localized: "选择设备") : androidTV.currentDisplayName }
+        if televisionSelected { return tv.saved == nil ? String(localized: "选择设备") : tv.currentDisplayName }
+        if model.selectedDeviceID == nil { return String(localized: "选择设备") }
+        return model.currentDisplayName
+    }
+
+    private var connectionLabel: String {
+        if androidTVSelected { return androidTV.title }
+        if televisionSelected { return tv.title }
+        if model.demo { return String(localized: "界面演示") }
+        if model.connecting { return String(localized: "正在安全连接…") }
+        if model.connected { return model.inputAvailable ? String(localized: "已连接") : model.receiverState.unavailableTitle }
+        return String(localized: "未连接")
+    }
+
+    private var deviceSymbol: String {
+        if televisionSelected { return "tv" }
+        let platform = model.savedDevices.first(where: { $0.id == model.selectedDeviceID })?.platform
+        return platform == "macos" ? "laptopcomputer" : "desktopcomputer"
+    }
+
     private var header: some View {
-        HStack(spacing: 12) {
+        HStack(alignment: .top, spacing: 8) {
             Button {
                 stopInteraction()
-                statusSheet = true
-            } label: {
-                Image(uiImage: Self.brandImage)
-                    .resizable().scaledToFit()
-                    .frame(width: 52, height: 52)
-                    .contentShape(Rectangle())
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    .overlay(alignment: .bottomTrailing) {
-                        Image(systemName: statusSymbol)
-                            .font(.system(size: 8, weight: .bold))
-                            .foregroundStyle(Palette.background)
-                            .frame(width: 16, height: 16)
-                            .background(statusColor, in: Circle())
-                            .overlay(Circle().stroke(Palette.background, lineWidth: 2))
-                            .offset(x: 2, y: 2)
-                    }
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "Sofatap，连接状态与帮助"))
-            .accessibilityValue(currentStatusTitle)
-            .accessibilityIdentifier("connectionStatus")
-            Spacer(minLength: 8)
-            Button {
-                stopInteraction()
+                UISelectionFeedbackGenerator().selectionChanged()
                 pairingSheet = true
             } label: {
-                Image(systemName: "qrcode.viewfinder")
-                    .font(.system(size: 21, weight: .medium))
-                    .frame(width: 48, height: 48)
-                    .contentShape(Rectangle())
+                HStack(spacing: 9) {
+                    Image(uiImage: Self.brandImage)
+                        .resizable().scaledToFit().frame(width: 38, height: 38)
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 5) {
+                            Image(systemName: deviceSymbol).font(.system(size: 12))
+                            Text(currentDeviceName).font(.system(size: 14, weight: .semibold)).lineLimit(1)
+                            Image(systemName: "chevron.down").font(.system(size: 9, weight: .semibold))
+                        }
+                        HStack(spacing: 4) {
+                            Image(systemName: statusSymbol).font(.system(size: 8, weight: .bold))
+                            Text(connectionLabel).font(.system(size: 11)).lineLimit(2)
+                        }.foregroundStyle(statusColor)
+                    }
+                }
+                .foregroundStyle(.white)
+                .frame(minHeight: 44, alignment: .leading)
+                .padding(.horizontal, 8).padding(.vertical, 5)
+                .background(Palette.background.opacity(0.78), in: RoundedRectangle(cornerRadius: 16))
+                .contentShape(RoundedRectangle(cornerRadius: 16))
+            }
+            .buttonStyle(RemoteIconButtonStyle())
+            .accessibilityLabel(String(localized: "配对设备与连接设置"))
+            .accessibilityValue(currentDeviceName + ", " + connectionLabel)
+            .accessibilityIdentifier("pairingButton")
+            Spacer(minLength: 0)
+            Button {
+                stopInteraction()
+                UISelectionFeedbackGenerator().selectionChanged()
+                guideSheet = true
+            } label: {
+                Image(systemName: "questionmark.circle")
+                    .font(.system(size: 22, weight: .regular))
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
                     .foregroundStyle(Palette.mint.opacity(0.88))
             }
-            .buttonStyle(.plain)
-            .accessibilityLabel(String(localized: "配对设备与连接设置"))
-            .accessibilityIdentifier("pairingButton")
+            .buttonStyle(RemoteIconButtonStyle())
+            .accessibilityLabel(String(localized: "使用指南"))
+            .accessibilityIdentifier("guideButton")
         }
     }
 
@@ -274,21 +315,26 @@ struct RemoteView: View {
                                              startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                 .allowsHitTesting(false)
         }
-        .overlay(alignment: .trailing) {
+        .overlay(alignment: layoutDirection == .rightToLeft ? .leading : .trailing) {
             EdgeScrollStrip(enabled: inputEnabled && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
                             control: edgeScrollControl,
                             interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
                             onInteractionBegan: { touchControl.cancel() },
                             onScroll: scrollCurrentDevice)
                 .frame(width: EdgeScrollStrip.minimumHitWidth)
-                // Keep the scroll target inside the pad and below the QR button.
+                // The scroll target stays on the physical right, including RTL locales.
                 // The lower-right space is intentionally free of other controls.
                 .padding(.top, 80)
                 .padding(.bottom, 16)
-                .padding(.trailing, 8)
+                .padding(layoutDirection == .rightToLeft ? .leading : .trailing, 8)
         }
         .overlay(alignment: .top) { header.padding(.horizontal, 20).padding(.top, 20) }
-        .overlay(alignment: .bottom) { bottomBar.padding(.horizontal, 20).padding(.bottom, 20) }
+        .overlay(alignment: .bottom) {
+            // Physical control positions reserve the right edge for scrolling.
+            // Text elsewhere continues to follow the selected language's direction.
+            bottomBar.environment(\.layoutDirection, .leftToRight)
+                .padding(.horizontal, 20).padding(.bottom, 20)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
     }
 
@@ -319,8 +365,13 @@ struct RemoteView: View {
                     .font(.system(size: 20)).frame(width: 48, height: 52)
                     .contentShape(Rectangle())
                     .foregroundStyle(Palette.mint.opacity(keyboardFocused ? 1 : 0.65))
+                    .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))
+                    .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: keyboardFocused)
+                    .background(keyboardFocused ? Palette.mint.opacity(0.10) : .clear,
+                                in: RoundedRectangle(cornerRadius: 14))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(RemoteIconButtonStyle())
+            .accessibilityValue(keyboardFocused ? String(localized: "键盘已展开") : String(localized: "键盘已收起"))
             .accessibilityLabel(keyboardFocused ? String(localized: "收起键盘") : String(localized: "打开键盘输入"))
             .accessibilityIdentifier("keyboardButton")
             Spacer(minLength: 0)
@@ -374,57 +425,6 @@ struct RemoteView: View {
         return model.canControl ? Palette.mint : Palette.muted
     }
 
-    private var statusDetails: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 22) {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Label(currentStatusTitle, systemImage: statusSymbol)
-                            .font(.title2.weight(.semibold))
-                            .foregroundStyle(statusColor)
-                        Text(androidTVSelected ? androidTV.notice : televisionSelected ? tv.notice : model.notice).foregroundStyle(Palette.muted)
-                        if !televisionSelected, let error = model.pairingError {
-                            Text(error).foregroundStyle(.orange)
-                        }
-                    }
-                    if unlock.savedBinding != nil {
-                        LegacyUnlockCredentialRemovalView(unlock: unlock)
-                    }
-                    if televisionSelected {
-                        if androidTVSelected {
-                            Text(String(localized: "实验性接收端：光标是屏幕指示层，单击操作可访问控件，兼容性取决于电视与应用。暂不支持系统鼠标、右键、拖动、键盘或语音输入。"))
-                        } else {
-                            Text(String(localized: "滑动移动电视光标，单击选择，双指滚动。请在电视上确认操作结果。"))
-                        }
-                        Button(String(localized: "切回电脑遥控")) { selectComputer(); statusSheet = false }
-                    } else {
-                    VStack(alignment: .leading, spacing: 14) {
-                        Label(String(localized: "滑动手指，移动电脑光标"), systemImage: "hand.draw")
-                        Label(String(localized: "单击左键，连续点两下右键"), systemImage: "hand.tap")
-                        Label(String(localized: "按住 0.3 秒开始拖动，抬手松开"), systemImage: "hand.point.up")
-                        Label(String(localized: "双指或右侧单指滑动，滚动页面"), systemImage: "hand.draw.fill")
-                        Label(String(localized: "点麦克风听写；支持的输入框自动同步，其他输入框确认后发送"), systemImage: "mic")
-                    }
-                    .font(.body)
-                    Text(String(localized: "光效跟随你在手机上的手指，电脑光标的位置请看电脑屏幕。"))
-                        .font(.footnote).foregroundStyle(Palette.muted)
-                    }
-                    VStack(alignment: .leading, spacing: 14) {
-                        Link(String(localized: "隐私政策"), destination: URL(string: "https://github.com/chekusu/sofatap/blob/main/PRIVACY.md")!)
-                        Link(String(localized: "帮助与反馈"), destination: URL(string: "https://github.com/chekusu/sofatap/issues")!)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(24)
-            }
-            .background(Palette.background)
-            .navigationTitle("Sofatap")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button(String(localized: "完成")) { statusSheet = false } } }
-        }
-        .tint(Palette.mint)
-    }
-
     private func composer(height: Double) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(alignment: .bottom, spacing: 0) {
@@ -453,7 +453,6 @@ struct RemoteView: View {
             .frame(height: height)
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
             composerActions
-            composerNotice
         }
     }
 
@@ -464,7 +463,9 @@ struct RemoteView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(model.textDelivery == .uncertain ? Color.orange : Palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.horizontal, 2)
+                .multilineTextAlignment(.trailing)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+                .padding(.leading, 8)
                 .accessibilityIdentifier("textDeliveryStatus")
         }
     }
@@ -486,11 +487,10 @@ struct RemoteView: View {
                 interruptTouch(); clearAlert = true
             }
             .disabled(model.draft.isEmpty || model.composing || model.sendingText || speechBusy || (model.usesLiveText && !model.liveTextReady))
-            composerIcon("arrow.down", label: String(localized: "收起键盘"), identifier: "hideKeyboard") {
-                keyboardFocused = false
-                cancelSpeech()
-            }
-            .disabled(!keyboardFocused && !speechBusy)
+            composerIcon(keyboardFocused ? "arrow.down" : "arrow.up",
+                         label: keyboardFocused ? String(localized: "收起键盘") : String(localized: "打开键盘输入"),
+                         identifier: "hideKeyboard") { toggleKeyboard() }
+                .accessibilityValue(keyboardFocused ? String(localized: "键盘已展开") : String(localized: "键盘已收起"))
             if model.liveTextPaused {
                 composerIcon("arrow.clockwise", label: String(localized: "检查电脑后重新读取输入框"), identifier: "resumeLiveText") {
                     model.restartLiveTextEditing()
@@ -502,6 +502,7 @@ struct RemoteView: View {
                 .disabled(model.sendingText || speechBusy)
             }
             Spacer(minLength: 0)
+            composerNotice
         }
         .frame(minHeight: 44)
     }
@@ -528,11 +529,13 @@ struct RemoteView: View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 15, weight: .medium))
+                .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.20), value: keyboardFocused)
                 .frame(width: 44, height: 44)
                 .foregroundStyle(Palette.muted)
                 .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(RemoteIconButtonStyle())
         .accessibilityLabel(label)
         .accessibilityIdentifier(identifier)
     }
@@ -560,12 +563,13 @@ struct RemoteView: View {
         guard !televisionSelected else { return }
         interruptTouch()
         cancelSpeech()
-        if keyboardFocused { keyboardFocused = false; composerVisible = false }
-        else {
+        UISelectionFeedbackGenerator().selectionChanged()
+        // Keep the draft and its toggle visible after dismissing the keyboard.
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.20)) {
             composerVisible = true
-            keyboardFocused = true
-            model.openTextEditor()
+            keyboardFocused.toggle()
         }
+        if keyboardFocused { model.openTextEditor() }
     }
     private func toggleDictation() {
         guard !televisionSelected, model.controlAvailable, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
@@ -602,7 +606,7 @@ struct RemoteView: View {
         }
     }
     private func applyRemoteFocus() {
-        guard !televisionSelected, model.canControl, scenePhase == .active, !pairingSheet, !statusSheet, !showingSpeechError,
+        guard !televisionSelected, model.canControl, scenePhase == .active, !pairingSheet, !guideSheet, !showingSpeechError,
               !resendAlert, !clearAlert,
               handledFocusRevision != model.focusRevision else { return }
         // A desktop field may become focused while the user is selecting text.
@@ -658,14 +662,14 @@ struct RemoteView: View {
         androidSelected = true
         model.setDesktopControlEnabled(false, televisionTarget: "androidtv")
     }
-    private func selectComputer() {
+    private func selectComputer(reconnect: Bool = true) {
         stopInteraction()
         tv.disconnect()
         androidTV.disconnect()
         androidSelected = false
         composerVisible = false
         handledFocusRevision = nil
-        model.setDesktopControlEnabled(true)
+        model.setDesktopControlEnabled(true, reconnect: reconnect)
     }
     private func resumeCurrentInput() {
         if androidTVSelected { androidTV.resumeInput() }

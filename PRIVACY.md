@@ -12,13 +12,13 @@ The receiver uses your computer's operating-system input and accessibility inter
 
 ## Pairing and camera
 
-The camera is used when you choose to scan the receiver's pairing QR code. Sofatap does not save or upload the camera images. The code contains the receiver's network address, a pairing credential and a certificate fingerprint. These are stored in the iPhone Keychain with device-only, unlocked-device access. The receiver stores its credentials locally using Windows account protection or restricted local files on Mac and Linux.
+The camera is used when you choose to scan the receiver's pairing QR code. Sofatap does not save or upload the camera images. The code contains the receiver's network address, a pairing credential and a certificate fingerprint. The app can save multiple pairings, their device names, local nicknames and the selected device identifier. These are stored in the iPhone Keychain with device-only, unlocked-device access. Local nicknames do not rename the computer or TV. The receiver stores its credentials locally using Windows account protection or restricted local files on Mac and Linux.
 
 A pairing code grants control of the computer. Keep codes and pairing links private. Removing the pairing in the app deletes that phone's saved pairing. Quit the receiver to stop accepting connections. Removing a pairing from one phone does not revoke copies of that code held elsewhere.
 
 ## TV development preview
 
-The experimental LG webOS preview also connects directly to a TV you select on the home network. It stores the selected TV's address, approved certificate fingerprint and client key in a separate device-only, unlocked-device Keychain record. Pointer and navigation commands go to the TV over pinned encrypted connections; they are not sent to CHEKUSU. The preview does not collect TV screenshots or text, and has no TV microphone or keyboard feature. Use **Forget TV** in its native pairing screen to remove the phone's TV credentials. This removes local pairing only; the TV's own controller-authority settings are separate. The TV pairing adapters are included in iPhone 1.0 (12) as experimental previews; physical TV model qualification remains pending.
+The experimental LG webOS preview also connects directly to a TV you select on the home network. It stores saved TVs' addresses, approved certificate fingerprints and client keys in a separate device-only, unlocked-device Keychain collection. Pointer and navigation commands go to the TV over pinned encrypted connections; they are not sent to CHEKUSU. The preview does not collect TV screenshots or text, and has no TV microphone or keyboard feature. Remove a TV in the device-management sheet, or use **Forget TV** in its native pairing screen, to remove that phone's TV credentials. This removes local pairing only; the TV's own controller-authority settings are separate. The TV pairing adapters have been included since iPhone 1.0 (12) as experimental previews; physical TV model qualification remains pending.
 
 The Android/Google TV development receiver has a separate native QR pairing flow. Its five-minute enrollment credential is consumed on first pairing and replaced by a persistent random credential. The phone stores only the resulting pairing in its device-only, unlocked-device Keychain. The receiver stores the credential hash and its TLS identity in an encrypted, backup-excluded local file protected by Android Keystore. **Pair another iPhone** revokes the previous pairing; **Stop receiver** disconnects the phone. Disabling the accessibility service removes its input permission.
 
@@ -28,7 +28,7 @@ When you explicitly enable Android TV control, its accessibility service examine
 
 Sofatap can send typed or dictated text to the focused application. With a compatible receiver and supported field, opening the editor imports the field's complete text and selection to the phone. A receiver focus hint may open this editor automatically. Edits, deletions, selection changes and partial speech transcripts then synchronize to the computer. Protected and read-only fields cannot start live editing.
 
-Imported live text is held in the phone's memory rather than saved as a recovery draft. The receiver temporarily holds bounded text-bearing responses in connection memory to handle duplicate requests. Background focus detection sends only field-state metadata, not field contents or screenshots. Sofatap does not log field text or send it to a company server.
+Imported live text is held in the phone's memory and is not automatically saved as a recovery draft. If you switch devices and explicitly choose to allow the retained text to be sent again, that text becomes a local review-and-send draft and is saved for recovery. Switching devices alone never sends the retained text to the new device. The receiver temporarily holds bounded text-bearing responses in connection memory to handle duplicate requests. Background focus detection sends only field-state metadata, not field contents or screenshots. Sofatap does not log field text or send it to a company server.
 
 For unsupported fields or older receivers, the app keeps a separate review-and-send draft on the phone. This draft and delivery markers remain in local app preferences so text can survive an app switch or restart. In this mode, text is sent when you tap Send. Use Clear Draft while in the review-and-send editor to clear the local draft. In an active live editor, deleting text changes the computer's field instead.
 
@@ -41,7 +41,7 @@ If on-device recognition is unavailable for your device or language, you can use
 ## Your choices
 
 - Manage camera, microphone, speech and local-network permissions in iPhone Settings. Camera access is optional if you paste a complete pairing link. Microphone and speech access are optional if you type.
-- Remove a saved pairing from Sofatap's pairing screen before removing the app if you want to delete its Keychain pairing record.
+- Remove saved pairings from Sofatap's device-management sheet before removing the app if you want to delete their Keychain entries.
 - Clear a saved fallback draft in its review-and-send editor. Deleting the app removes its local app preferences; operating-system backups are managed through your device settings.
 - Quit the receiver or revoke its operating-system input permission to stop remote control.
 - Sofatap has no hosted account or company-side archive of your remote-input text or microphone audio to delete.

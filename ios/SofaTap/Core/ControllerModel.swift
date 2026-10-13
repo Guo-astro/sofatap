@@ -18,6 +18,8 @@ final class ControllerModel: ObservableObject {
     // reconnects. Input must never fall back to a different device on failure.
     @Published private(set) var desktopControlEnabled = true
     @Published private(set) var pairing: Pairing?
+    @Published private(set) var savedDevices: [SavedDevice<Pairing>] = []
+    @Published private(set) var selectedDeviceID: UUID?
     @Published private(set) var connected = false
     @Published private(set) var connecting = false
     @Published private(set) var inputAvailable = false
@@ -40,6 +42,7 @@ final class ControllerModel: ObservableObject {
     @Published var draftSelection = NSRange(location: 0, length: 0)
     @Published private(set) var liveTextStatus: LiveTextStatus = .idle
     private var ephemeralDraft = false
+    private var draftRequiresTargetReview = false
     private var liveTextSession: String?
     private var liveTextRevision = 0
     private var liveTextBaseline: LiveTextSnapshot?
@@ -65,6 +68,7 @@ final class ControllerModel: ObservableObject {
     private var sessionDelegate: PinnedSessionDelegate?
     private var generation = UUID()
     private var foreground = true
+    private var manualConnectionPaused = false
     private var keepAliveTask: Task<Void, Never>?
     private var helloTimeout: Task<Void, Never>?
     private var motionTimer: Timer?
@@ -112,6 +116,12 @@ final class ControllerModel: ObservableObject {
         var state = receiverState; state.focusRevision = revision; state.textFocus = editable ? .editable : .other
         updateReceiverState(state)
     }
+    func testSwitchDeviceBoundary(liveCapable: Bool = false) {
+        prepareForDeviceSwitch()
+        connected = true; inputAvailable = true
+        receiverState = ReceiverState(platform: .windows, status: .ready, inputAvailable: true,
+                                      textFocus: .editable, reportsTextFocus: true, supportsLiveText: liveCapable)
+    }
 #endif
 
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
@@ -120,8 +130,96 @@ final class ControllerModel: ObservableObject {
         self.pairing = demo ? nil : PairingStore.read()
         self.draft = demo ? String(localized: "你好，帮我播放今晚想看的电影。") : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
         unlock.setPairing(self.pairing)
-        if demo { notice = String(localized: "界面演示：按钮只展示反馈，没有连接或操作电脑。") }
-        else { restoreDeliveryReceipt() }
+        if demo {
+            notice = String(localized: "界面演示：按钮只展示反馈，没有连接或操作电脑。")
+#if targetEnvironment(simulator)
+            if ProcessInfo.processInfo.arguments.contains("--demo-devices") {
+                var library = DeviceLibrary<Pairing>()
+                for (index, title, platform) in [(1, "Living room PC", "windows"), (2, "Studio Mac", "macos"), (3, "Cinema Linux", "linux")] {
+                    let credential = Pairing(host: "192.0.2.\(index)", port: 53317,
+                                             token: String(repeating: "d", count: 43), fingerprint: String(repeating: String(index), count: 64))
+                    library.upsert(credential)
+                    try? library.updateMetadata(library.selectedID!, name: title, platform: platform)
+                }
+                savedDevices = library.devices
+                selectedDeviceID = library.devices.first?.id
+                computerName = library.devices.first?.displayName ?? computerName
+            }
+#endif
+        }
+        else { refreshSavedDevices(); restoreDeliveryReceipt() }
+    }
+
+    var currentDisplayName: String {
+        savedDevices.first { $0.id == selectedDeviceID }?.displayName ?? pairing?.deviceAddress ?? computerName
+    }
+
+    private func refreshSavedDevices() {
+        do {
+            let library = try PairingStore.library()
+            savedDevices = library.devices
+            selectedDeviceID = library.selectedID
+        } catch { pairingError = error.localizedDescription }
+    }
+
+    func selectDevice(_ id: UUID) {
+        guard !demo, let device = savedDevices.first(where: { $0.id == id }) else { return }
+        do {
+            // Persist the retained-draft review boundary before changing the
+            // durable target, so a process kill between the two is also safe.
+            if selectedDeviceID != id { prepareForDeviceSwitch() }
+            else { disconnect() }
+            try PairingStore.select(id)
+            pairing = device.credential
+            selectedDeviceID = id
+            computerName = device.reportedName ?? device.credential.deviceAddress
+            unlock.setPairing(pairing)
+            manualConnectionPaused = false
+            desktopControlEnabled = true
+            rememberManualTarget()
+            pairingError = nil
+            connect()
+        } catch { pairingError = error.localizedDescription }
+    }
+
+    func renameDevice(_ id: UUID, name: String) {
+        guard !demo else { return }
+        do { try PairingStore.rename(id, name: name); refreshSavedDevices(); pairingError = nil }
+        catch { pairingError = error.localizedDescription }
+    }
+
+    func removeDevice(_ id: UUID) {
+        guard !demo, let device = savedDevices.first(where: { $0.id == id }) else { return }
+        do {
+            try PairingStore.remove(id)
+            if selectedDeviceID == id {
+                prepareForDeviceSwitch()
+                pairing = nil
+                unlock.setPairing(nil)
+            }
+            unlock.forget(device.credential)
+            refreshSavedDevices()
+            pairingError = nil
+        } catch { pairingError = error.localizedDescription }
+    }
+
+    /// User disconnects survive scene changes; only explicit connection or
+    /// device selection resumes this transport.
+    func disconnectDevice() {
+        manualConnectionPaused = true
+        disconnect()
+    }
+
+    private func prepareForDeviceSwitch() {
+        disconnect()
+        // A receipt belongs to its original receiver. An old callback must not
+        // mark a new device's draft sent or suppress an acknowledged prefix.
+        explicitSendAttempt = nil
+        lastSentDraft = nil
+        liveTextStatus = .idle
+        draftRequiresTargetReview = !draft.isEmpty
+        if !draft.isEmpty { textDelivery = .uncertain }
+        else { textDelivery = .ready }
     }
 
     private func restoreDeliveryReceipt() {
@@ -163,6 +261,7 @@ final class ControllerModel: ObservableObject {
         // A local explicit draft belongs to the user, even when a reconnected
         // receiver advertises live editing. Only an already-opening/live session
         // may own imported field text; don't silently replace a retained draft.
+        if draftRequiresTargetReview { return false }
         let retainedExplicitDraft = !ephemeralDraft && !draft.isEmpty && liveTextStatus != .starting
         return !demo && ((receiverState.supportsLiveText && liveTextStatus != .unsupported && !retainedExplicitDraft) || liveTextPaused)
     }
@@ -214,12 +313,22 @@ final class ControllerModel: ObservableObject {
     func acceptPairing(_ raw: String) {
         do {
             let newPairing = try Pairing.parse(raw)
+            let previous = savedDevices.first(where: { $0.credential.deviceIdentity == newPairing.deviceIdentity })?.credential ?? pairing
+            if pairing?.deviceIdentity != newPairing.deviceIdentity { prepareForDeviceSwitch() }
+            else { disconnect(message: String(localized: "已保存新的配对。")) }
             try PairingStore.write(newPairing)
+            if let previous, previous.deviceIdentity == newPairing.deviceIdentity, previous != newPairing {
+                // Retire credentials tied to the replaced token/address only
+                // after saving succeeds. This does not enable the retired
+                // account-password flow or a PIN-unlock feature.
+                unlock.forget(previous)
+            }
             desktopControlEnabled = true
+            manualConnectionPaused = false
             rememberManualTarget()
-            if let previous = pairing, previous != newPairing { unlock.forget(previous) }
-            disconnect(message: String(localized: "已保存新的配对。"))
             pairing = newPairing
+            refreshSavedDevices()
+            computerName = savedDevices.first { $0.id == selectedDeviceID }?.reportedName ?? newPairing.deviceAddress
             unlock.setPairing(newPairing)
             pairingError = nil
             connect()
@@ -229,20 +338,16 @@ final class ControllerModel: ObservableObject {
     }
 
     func forgetPairing() {
-        disconnect(message: String(localized: "配对已移除。"))
-        if let pairing { unlock.forget(pairing) }
-        PairingStore.delete()
-        pairing = nil
-        unlock.setPairing(nil)
+        if let selectedDeviceID { removeDevice(selectedDeviceID) }
     }
 
     func becameActive() {
         unlock.becameActive()
         foreground = true
-        if !demo, pairing != nil, !connected, !connecting { connect() }
+        if !demo, !manualConnectionPaused, pairing != nil, !connected, !connecting { connect() }
     }
 
-    func setDesktopControlEnabled(_ enabled: Bool, televisionTarget: String = "webos") {
+    func setDesktopControlEnabled(_ enabled: Bool, televisionTarget: String = "webos", reconnect: Bool = true) {
         guard enabled != desktopControlEnabled else {
             if !enabled { rememberManualTarget(televisionTarget: televisionTarget) }
             return
@@ -250,7 +355,7 @@ final class ControllerModel: ObservableObject {
         if !enabled { disconnect(message: String(localized: "电脑遥控已暂停，当前选择电视。")) }
         desktopControlEnabled = enabled
         rememberManualTarget(televisionTarget: televisionTarget)
-        if enabled { becameActive() }
+        if enabled && reconnect { becameActive() }
     }
 
     private func rememberManualTarget(televisionTarget: String = "webos") {
@@ -281,6 +386,7 @@ final class ControllerModel: ObservableObject {
     func connect() {
         guard desktopControlEnabled, !demo, foreground, !connecting, !connected,
               let pairing, let endpoint = pairing.endpoint else { return }
+        manualConnectionPaused = false
         generation = UUID()
         let currentGeneration = generation
         connecting = true
@@ -397,6 +503,10 @@ final class ControllerModel: ObservableObject {
             receiverState = state
             inputAvailable = state.inputAvailable
             computerName = name
+            if let selectedDeviceID {
+                try? PairingStore.metadata(selectedDeviceID, name: name, platform: state.platform.rawValue)
+                refreshSavedDevices()
+            }
             // The retired account-password capability is deliberately ignored.
             // Windows Hello PIN support requires a separate verified protocol.
             notice = state.inputAvailable ? String(localized: "已连接。先点选电脑上的输入框，即可发送文字。") : state.unavailableMessage
@@ -645,12 +755,21 @@ final class ControllerModel: ObservableObject {
 
     func allowManualResend() {
         guard !sendingText else { return }
+        if draftRequiresTargetReview {
+            ephemeralDraft = false
+            draftRequiresTargetReview = false
+            // Imported field text remains ephemeral until the user explicitly
+            // promotes it to a draft for this target. Persist that exact draft
+            // before clearing its review receipt, without sending any input.
+            if !demo { draftDefaults?.set(draft, forKey: "localTextDraft") }
+        }
         lastSentDraft = nil
         textDelivery = .ready
     }
 
     func clearDraft() {
         guard !sendingText else { return }
+        if draftRequiresTargetReview { ephemeralDraft = false; draftRequiresTargetReview = false }
         if liveTextReady { editText("", selection: NSRange(location: 0, length: 0), marked: false) }
         else { draft = ""; draftSelection = NSRange(location: 0, length: 0) }
         lastSentDraft = nil

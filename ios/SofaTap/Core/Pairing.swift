@@ -3,7 +3,7 @@ import Security
 import CryptoKit
 import Darwin
 
-struct Pairing: Codable, Equatable {
+struct Pairing: SavedDeviceCredential {
     let host: String
     let port: Int
     let token: String
@@ -67,36 +67,30 @@ enum PairingError: LocalizedError {
     }
 }
 
+extension Pairing {
+    var deviceIdentity: String { "computer:" + fingerprint.lowercased() }
+    var deviceAddress: String { "\(host):\(port)" }
+    func validateForStorage() throws {
+        var link = URLComponents()
+        link.scheme = "sofatap"; link.host = "pair"
+        link.queryItems = [URLQueryItem(name: "host", value: host), URLQueryItem(name: "port", value: String(port)),
+                           URLQueryItem(name: "token", value: token), URLQueryItem(name: "fingerprint", value: fingerprint)]
+        guard let raw = link.string, (try? Self.parse(raw)) == self else { throw PairingError.invalid }
+    }
+}
+
 enum PairingStore {
-    private static let query: [String: Any] = [
-        kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: "com.chekusu.sofatap.pairing",
-        kSecAttrAccount as String: "living-room-pc"
-    ]
-
-    static func read() -> Pairing? {
-        var request = query
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return nil }
-        return try? JSONDecoder().decode(Pairing.self, from: data)
+    private static let store = KeychainDeviceLibrary<Pairing>(service: "com.chekusu.sofatap.pairing", legacyAccount: "living-room-pc")
+    static func read() -> Pairing? { (try? store.read())?.selected?.credential }
+    static func library() throws -> DeviceLibrary<Pairing> { try store.read() }
+    static func write(_ pairing: Pairing) throws { try store.mutate { $0.upsert(pairing) } }
+    static func select(_ id: UUID) throws { try store.mutate { try $0.select(id) } }
+    static func rename(_ id: UUID, name: String) throws { try store.mutate { try $0.rename(id, name: name) } }
+    static func metadata(_ id: UUID, name: String, platform: String) throws {
+        try store.mutate { try $0.updateMetadata(id, name: name, platform: platform) }
     }
-
-    static func write(_ pairing: Pairing) throws {
-        let data = try JSONEncoder().encode(pairing)
-        let attributes: [String: Any] = [kSecValueData as String: data,
-                                       kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
-        let result = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if result == errSecItemNotFound {
-            var request = query
-            attributes.forEach { request[$0.key] = $0.value }
-            guard SecItemAdd(request as CFDictionary, nil) == errSecSuccess else { throw PairingError.storeFailed }
-        } else if result != errSecSuccess { throw PairingError.storeFailed }
-    }
-
-    static func delete() { SecItemDelete(query as CFDictionary) }
+    static func remove(_ id: UUID) throws { try store.mutate { $0.remove(id) } }
+    static func delete() { if let id = try? store.read().selectedID { try? remove(id) } }
 }
 
 /// Trust is limited to the exact paired host, port and DER leaf fingerprint.

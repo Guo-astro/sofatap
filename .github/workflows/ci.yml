@@ -35,14 +35,14 @@ jobs:
       - name: iPhone unlock identity and challenge checks
         shell: bash
         run: |
-          xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+          xcrun swiftc -swift-version 5 ios/SofaTap/Core/SavedDevice.swift ios/SofaTap/Core/Pairing.swift \
             ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
             ios/tests/UnlockProtocolTests.swift -o "$RUNNER_TEMP/sofatap-unlock-tests"
           "$RUNNER_TEMP/sofatap-unlock-tests"
       - name: Retired password flow cannot enroll or send requests
         shell: bash
         run: |
-          xcrun swiftc -swift-version 5 ios/SofaTap/Core/Pairing.swift \
+          xcrun swiftc -swift-version 5 ios/SofaTap/Core/SavedDevice.swift ios/SofaTap/Core/Pairing.swift \
             ios/SofaTap/Core/UnlockCredentialVault.swift ios/SofaTap/Core/UnlockProtocol.swift \
             ios/SofaTap/Core/ComputerUnlockController.swift ios/tests/UnlockRetirementTests.swift \
             -o "$RUNNER_TEMP/sofatap-unlock-retirement-tests"
@@ -57,8 +57,12 @@ jobs:
       - name: Native pairing parser checks
         shell: bash
         run: |
-          swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/sofatap-pairing-tests"
+          swiftc ios/SofaTap/Core/SavedDevice.swift ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o "$RUNNER_TEMP/sofatap-pairing-tests"
           "$RUNNER_TEMP/sofatap-pairing-tests"
+      - name: Saved device migration and target selection without Keychain access
+        run: bash ios/scripts/test-saved-devices.sh
+      - name: Native interface and permission localization coverage
+        run: python3 ios/scripts/check-localizations.py
       - name: Receiver platform and permission-state checks
         shell: bash
         run: |

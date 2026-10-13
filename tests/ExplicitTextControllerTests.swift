@@ -161,6 +161,55 @@ struct ExplicitTextControllerTests {
         modifiedRecovery.model.draft = "待确认"; modifiedRecovery.model.sendText()
         let pendingRecovery = ExplicitFixture(defaults: store)
         check("restart during pending send never permits automatic retry", pendingRecovery.model.textDelivery == .uncertain && !pendingRecovery.model.canSendText)
+
+        let switchPending = ExplicitFixture(); switchPending.fallback()
+        switchPending.model.draft = first; switchPending.model.sendText()
+        switchPending.model.testSwitchDeviceBoundary(liveCapable: true)
+        switchPending.reply(1)
+        check("late send ACK from prior device cannot mark new target draft accepted", switchPending.model.textDelivery == .uncertain && switchPending.model.draft == first)
+        switchPending.model.sendText(); switchPending.model.openTextEditor()
+        check("new live-capable target cannot import or replay retained prior-device draft", switchPending.frames.count == 2 && !switchPending.model.usesLiveText)
+        switchPending.model.allowManualResend(); switchPending.model.sendText()
+        check("explicit review authorizes full retained draft for new device", switchPending.frames.count == 3 && switchPending.frames[2].fields["text"] as? String == first)
+        switchPending.reply(2)
+
+        let liveSwitch = ExplicitFixture(); liveSwitch.model.openTextEditor()
+        let sessionID = UUID().uuidString
+        liveSwitch.reply(0, ["ok": true, "liveText": ["session": sessionID, "revision": 0,
+            "text": first, "selectionStart": first.utf16.count, "selectionLength": 0]])
+        liveSwitch.model.editText(first + second, selection: NSRange(location: (first + second).utf16.count, length: 0), marked: false)
+        liveSwitch.model.testSwitchDeviceBoundary(liveCapable: true)
+        liveSwitch.reply(1, ["ok": true, "liveText": ["session": sessionID, "revision": 1,
+            "text": first + second, "selectionStart": (first + second).utf16.count, "selectionLength": 0]])
+        let afterSwitchFrames = liveSwitch.frames.count
+        liveSwitch.model.openTextEditor(); liveSwitch.model.sendText()
+        check("old remote field and late live ACK stay isolated after target switch", liveSwitch.model.draft == first + second && liveSwitch.model.textDelivery == .uncertain && !liveSwitch.model.usesLiveText && liveSwitch.frames.count == afterSwitchFrames)
+        liveSwitch.model.clearDraft(); liveSwitch.model.openTextEditor()
+        check("clearing retained field permits fresh new-device snapshot only", liveSwitch.model.draft.isEmpty && liveSwitch.frames.last?.type == "textBegin")
+
+        let switchingStored = ExplicitFixture(defaults: store)
+        switchingStored.model.testSwitchDeviceBoundary(liveCapable: true)
+        let switchingRelaunch = ExplicitFixture(defaults: store)
+        switchingRelaunch.model.openTextEditor(); switchingRelaunch.model.sendText()
+        check("relaunch retains target-switch review guard through uncertainty receipt", !switchingRelaunch.model.canSendText && !switchingRelaunch.model.usesLiveText && switchingRelaunch.frames.isEmpty)
+
+        let promotionName = storeName + ".promotion"
+        let promotionStore = UserDefaults(suiteName: promotionName)!
+        defer { promotionStore.removePersistentDomain(forName: promotionName) }
+        let promoted = ExplicitFixture(defaults: promotionStore)
+        promoted.model.openTextEditor()
+        promoted.reply(0, ["ok": true, "liveText": ["session": UUID().uuidString, "revision": 0,
+            "text": first + second, "selectionStart": (first + second).utf16.count, "selectionLength": 0]])
+        promoted.model.testSwitchDeviceBoundary(liveCapable: true)
+        check("imported field stays out of draft storage before explicit target review", promotionStore.string(forKey: "localTextDraft") == nil)
+        let framesBeforeReview = promoted.frames.count
+        promoted.model.allowManualResend()
+        check("explicit target review persists the promoted field without sending it", promotionStore.string(forKey: "localTextDraft") == first + second && promoted.frames.count == framesBeforeReview)
+        let reviewedRelaunch = ExplicitFixture(defaults: promotionStore)
+        check("reviewed draft survives a restart before sending", reviewedRelaunch.model.draft == first + second && reviewedRelaunch.model.canSendText)
+        promoted.model.sendText(); promoted.reply(promoted.frames.count - 1)
+        let promotedRelaunch = ExplicitFixture(defaults: promotionStore)
+        check("promoted draft and receipt recover together after an ACK", promotedRelaunch.model.draft == first + second && promotedRelaunch.model.textDelivery == .sent && !promotedRelaunch.model.canSendText)
         print("Explicit text delivery: \(passed) checks passed without OS input")
     }
 }

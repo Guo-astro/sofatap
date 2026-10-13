@@ -7,6 +7,9 @@ final class AndroidTVController: ObservableObject {
     enum Phase: Equatable { case idle, connecting, ready, failed }
     @Published private(set) var phase: Phase = .idle
     @Published private(set) var saved: AndroidTVPairing?
+    @Published private(set) var savedDevices: [SavedDevice<AndroidTVPairing>] = []
+    @Published private(set) var selectedDeviceID: UUID?
+    @Published private(set) var managementError: String?
     @Published private(set) var name = ""
     @Published private(set) var status: AndroidTVStatus?
     @Published private(set) var notice = String(localized: "扫描 Android TV 接收器中的二维码。")
@@ -36,7 +39,43 @@ final class AndroidTVController: ObservableObject {
     init(enabled: Bool = true, storage: AndroidTVPairingStorage = AndroidTVKeychain(),
          makeSocket: @escaping @MainActor () -> AndroidTVSocket = { AndroidTVNetworkSocket() }) {
         self.enabled = enabled; self.storage = storage; self.makeSocket = makeSocket
-        saved = enabled ? storage.read() : nil
+        if enabled { refreshSavedDevices() }
+    }
+
+    var currentDisplayName: String {
+        if let pairing, pairing.deviceIdentity != saved?.deviceIdentity { return pairing.deviceAddress }
+        return savedDevices.first { $0.id == selectedDeviceID }?.displayName ?? saved?.deviceAddress ?? name
+    }
+    @discardableResult private func refreshSavedDevices() -> Bool {
+        do {
+            let library = try storage.library()
+            savedDevices = library.devices; selectedDeviceID = library.selectedID
+            saved = library.selected?.credential
+            managementError = nil
+            return true
+        } catch { managementError = error.localizedDescription; return false }
+    }
+    func selectDevice(_ id: UUID) {
+        guard enabled else { return }
+        do {
+            try storage.select(id); disconnect()
+            guard refreshSavedDevices(), selectedDeviceID == id else { return }
+            reconnect()
+        }
+        catch { managementError = error.localizedDescription }
+    }
+    func renameDevice(_ id: UUID, name: String) {
+        guard enabled else { return }
+        do { try storage.rename(id, name: name); refreshSavedDevices() }
+        catch { managementError = error.localizedDescription }
+    }
+    func removeDevice(_ id: UUID) {
+        guard enabled else { return }
+        do {
+            try storage.remove(id)
+            if selectedDeviceID == id { disconnect() }
+            refreshSavedDevices()
+        } catch { managementError = error.localizedDescription }
     }
 
     func pair(_ raw: String) {
@@ -77,6 +116,10 @@ final class AndroidTVController: ObservableObject {
                     try storage.write(resumed)
                     saved = resumed; self.pairing = resumed
                 }
+                if let credential = self.pairing {
+                    try? storage.metadata(SavedDevice(credential: credential).id, name: name, platform: "androidtv")
+                }
+                guard refreshSavedDevices(), saved?.deviceIdentity == self.pairing?.deviceIdentity else { throw DeviceLibraryError.unavailable }
                 deadline?.cancel(); deadline = nil
                 self.name = name; self.status = status; phase = .ready
                 updateNotice()
@@ -194,7 +237,7 @@ final class AndroidTVController: ObservableObject {
     func forget() {
         guard enabled else { return }
         disconnect()
-        do { try storage.delete(); saved = nil }
+        do { try storage.delete(); refreshSavedDevices() }
         catch { fail(String(localized: "无法移除电视配对，请稍后重试。")) }
     }
 }

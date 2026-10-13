@@ -5,38 +5,52 @@ protocol AndroidTVPairingStorage {
     func read() -> AndroidTVPairing?
     func write(_ pairing: AndroidTVPairing) throws
     func delete() throws
+    func library() throws -> DeviceLibrary<AndroidTVPairing>
+    func select(_ id: UUID) throws
+    func rename(_ id: UUID, name: String) throws
+    func metadata(_ id: UUID, name: String?, platform: String) throws
+    func remove(_ id: UUID) throws
+}
+
+extension AndroidTVPairing: SavedDeviceCredential {
+    var deviceIdentity: String { "androidtv:" + fingerprint }
+    var deviceAddress: String { "\(host):\(port)" }
+    func validateForStorage() throws { try validate() }
+}
+
+// Defaults keep injected single-device test stores compatible. Production uses
+// the complete Keychain collection implementation below.
+extension AndroidTVPairingStorage {
+    func library() throws -> DeviceLibrary<AndroidTVPairing> {
+        var library = DeviceLibrary<AndroidTVPairing>()
+        if let value = read() { library.upsert(value) }
+        return library
+    }
+    func select(_ id: UUID) throws {
+        guard let device = try library().devices.first(where: { $0.id == id }) else { throw DeviceLibraryError.missingDevice }
+        try write(device.credential)
+    }
+    func rename(_ id: UUID, name: String) throws { throw DeviceLibraryError.unavailable }
+    func metadata(_ id: UUID, name: String?, platform: String) throws {}
+    func remove(_ id: UUID) throws {
+        if try library().selectedID == id { try delete() }
+    }
 }
 
 struct AndroidTVKeychain: AndroidTVPairingStorage {
-    private var query: [String: Any] { [
-        kSecClass as String: kSecClassGenericPassword,
-        kSecAttrService as String: "com.chekusu.sofatap.androidtv",
-        kSecAttrAccount as String: "paired-television"
-    ] }
-    private enum StoreError: Error { case unavailable }
-    func read() -> AndroidTVPairing? {
-        var request = query
-        request[kSecReturnData as String] = true
-        request[kSecMatchLimit as String] = kSecMatchLimitOne
-        var result: CFTypeRef?
-        guard SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data, let pairing = try? JSONDecoder().decode(AndroidTVPairing.self, from: data),
-              (try? pairing.validate()) != nil else { return nil }
-        return pairing
+    private let store = KeychainDeviceLibrary<AndroidTVPairing>(service: "com.chekusu.sofatap.androidtv", legacyAccount: "paired-television")
+    func read() -> AndroidTVPairing? { (try? store.read())?.selected?.credential }
+    func library() throws -> DeviceLibrary<AndroidTVPairing> { try store.read() }
+    func write(_ pairing: AndroidTVPairing) throws { try store.mutate { $0.upsert(pairing) } }
+    func select(_ id: UUID) throws { try store.mutate { try $0.select(id) } }
+    func rename(_ id: UUID, name: String) throws { try store.mutate { try $0.rename(id, name: name) } }
+    func metadata(_ id: UUID, name: String?, platform: String) throws {
+        try store.mutate { try $0.updateMetadata(id, name: name, platform: platform) }
     }
-    func write(_ pairing: AndroidTVPairing) throws {
-        try pairing.validate()
-        let attributes: [String: Any] = [kSecValueData as String: try JSONEncoder().encode(pairing),
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlockedThisDeviceOnly]
-        let status = SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
-        if status == errSecItemNotFound {
-            var request = query
-            attributes.forEach { request[$0.key] = $0.value }
-            guard SecItemAdd(request as CFDictionary, nil) == errSecSuccess else { throw StoreError.unavailable }
-        } else if status != errSecSuccess { throw StoreError.unavailable }
-    }
+    func remove(_ id: UUID) throws { try store.mutate { $0.remove(id) } }
     func delete() throws {
-        let status = SecItemDelete(query as CFDictionary)
-        guard status == errSecSuccess || status == errSecItemNotFound else { throw StoreError.unavailable }
+        try store.mutate { library in
+            if let id = library.selectedID { library.remove(id) }
+        }
     }
 }

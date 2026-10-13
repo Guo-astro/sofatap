@@ -22,7 +22,7 @@ The ordinary receiver requires an unlocked, interactive desktop. A Windows Remot
 
 1. Open the receiver on the computer and choose a home-network address reachable by the phone.
 2. Connect the iPhone to the same home network. A wired computer is fine; guest Wi-Fi client isolation may prevent access.
-3. In Sofatap, tap the QR icon and scan the code in the receiver's native window. You can also paste the complete pairing link.
+3. In build 13 or newer, tap the device selector at the top left, choose Computer under Add Device, then scan the receiver code. In build 12, use the top-right QR icon. You can also paste the complete pairing link.
 4. Allow Local Network access on the phone. If it was denied, enable it for Sofatap in Settings.
 5. Check the connection indicator, then look at the computer screen while controlling it.
 
@@ -41,3 +41,7 @@ If live input pauses after a focus change or a connection problem, check the com
 ## Privacy
 
 [Read the Sofatap Privacy Policy](../../PRIVACY.md). Pairing codes and links are credentials; keep them on your own devices. Camera, microphone and speech permissions can be changed in iPhone Settings. Quit the desktop receiver to stop remote control.
+
+## Managing paired devices (build 13+)
+
+Tap the device name at the top left to switch between saved computers or TVs. Each row shows its name, type and address; the active target is marked explicitly. The ellipsis menu renames the device on this iPhone, disconnects it, or removes its local pairing. Removal does not revoke other phones. The top-right question mark opens the illustrated guide. Interface and permission prompts follow the device language, with the same 12 languages as the website.
