@@ -6,13 +6,17 @@ Research date: **2026-10-13, Asia/Tokyo**. Status: **engineering proposal and so
 
 The product sequence is **free manual TV control → paid Windows/macOS/Linux voice automation → paid TV voice automation**. Manual gestures, typing and speech-to-text remain basic input features. The first TV release must work without an AI model, Codex, subscription or cloud account. See [the roadmap](../ROADMAP.md) and [the preceding TV research](direct-tv-control.md).
 
-## Recommended first complete flow
+## Current priority: Android/Google TV receiver feasibility
 
-Build a native iOS **LG webOS adapter** first: select a named TV, approve pairing on that TV, move its actual pointer, click an item, scroll content, enter a short search, disconnect and reconnect without pairing again. LG's pointer protocol is a closer fit for the requested phone-as-mouse product than Google's directional remote protocol. Qualification requires a real supported-model candidate; source inspection does not identify the user's TV or establish its firmware compatibility.
+Build and qualify a **shared native Android TV receiver** first. This supersedes the earlier LG-first recommendation: the LG protocol preview remains useful, but does not determine the next target platform. Begin with an installable capability probe, then pair it with the existing iPhone touch surface only after the required input routes are demonstrated. No Android receiver APK or hardware qualification is claimed by this document.
 
-Start engineering with manual IP entry and a native pairing screen. Add automatic SSDP discovery when its iOS entitlement and signing are ready. Manual IP entry is an alpha bootstrap/fallback, not the desired final consumer onboarding. Neither path needs a Sofatap application installed on an LG TV that exposes the inspected second-screen service. The TV's own authorization prompt remains part of pairing; do not fabricate a universal TV QR workflow.
+Use one Android codebase with capability detection and model/firmware-specific qualification, rather than separate brand apps. Native TV UI must be operable with the existing remote, show a local pairing QR code without a browser, and explain accessibility and optional input-method setup. A QR code establishes a pairing opportunity, not input permission. Bind the one-time, expiring pairing secret to the receiver's cryptographic identity, authenticate subsequent traffic, provide revocation and reject unauthenticated commands. Keep QR contents, input text and keys out of logs.
 
-In parallel, implement Google/Android TV Remote v2 as a **directional touch remote** if desired. A swipe that moves focus is a distinct capability from a swipe that moves a pointer. Do not treat that adapter as completion of genuine Android TV mouse support.
+The first probe must distinguish native mouse input, overlay-cursor node activation, direction navigation and unsupported operations. Measure clicks and scrolling in launcher, Settings and representative third-party apps; test touch/faketouch availability and accessible-node coverage before committing to gesture injection. A moving overlay alone does not complete the pointer milestone. Add an optional IME only with explicit user enablement and verify editing through the focused `InputConnection`.
+
+Produce an **APK for direct installation/testing** and an **AAB for eventual Google Play TV submission**, from the same app project. Declare the TV launcher and touchscreen-not-required features, support remote-only onboarding, and check current TV quality, architecture and page-size requirements before distribution. Sources: [native TV app structure](https://developer.android.com/training/tv/get-started/create), [Google Play TV distribution](https://developer.android.com/training/tv/publishing/distribute). Packaging does not grant system input permissions or guarantee store acceptance.
+
+Remote v2 remains a separate **directional touch remote** route when the TV already has Android TV Remote Service; that route may need no Sofatap receiver. It is not a substitute for the pointer feasibility milestone. LG webOS retains its native iOS adapter and TV approval flow, without requiring a Sofatap TV app on compatible firmware. Automatic LG SSDP discovery and hardware qualification remain later work.
 
 ## LG webOS protocol and trust
 
@@ -72,7 +76,7 @@ An ordinary Android application cannot obtain the signature-only `INJECT_EVENTS`
 
 A custom Android `InputMethodService` can commit/composite text and delete through the focused editor's `InputConnection`; it requires installation, enabling and selection as an input method. Custom canvases, games and editors that do not expose the expected connection remain limitations. Accessibility node text operations are likewise app-dependent. Neither route grants general raw mouse injection. The initial TV-side setup still needs an existing remote or working direction-control path. Sources: [IME design](https://developer.android.com/develop/ui/views/touch-and-input/creating-input-method), [TV distribution](https://developer.android.com/training/tv/publishing/distribute).
 
-Keep a native Android receiver as a separate experiment only if actual target hardware justifies it. Require normal installation/permission onboarding; developer ADB, root, shell injection or OEM signing cannot be the ordinary-consumer default. If native pointer injection is indispensable, an OEM/system integration or separate hardware input bridge is a distinct product dependency to evaluate, not an implied software-only capability.
+The native Android receiver experiment is now the next feature milestone. Require normal installation/permission onboarding; developer ADB, root, shell injection or OEM signing cannot be the ordinary-consumer default. If the tested accessible-node route cannot deliver the required pointer experience, report that result before promising general support. OEM/system integration or a separate hardware input bridge would be a distinct product dependency to evaluate, not an implied software-only capability.
 
 ## Why direct iPhone Bluetooth HID is not the first route
 
@@ -88,11 +92,11 @@ Use one active target/session and serialize mutations. Selection of another devi
 
 | Stage | Evidence required before proceeding |
 | --- | --- |
-| 1. Protocol implementation | Deterministic fixtures for registration, trust persistence, permission rejection, pointer framing/order, text boundaries, cancellation and reconnect. Build on supported iOS targets. These tests establish software behavior only. |
-| 2. One LG hardware loop | Record exact model/firmware, service availability, first pairing/reuse/revocation, actual pointer movement, click, scroll, Back/Home and short search entry. Start on a confirmed powered-on TV. |
+| 1. Android receiver capability probe | Build an installable native TV APK. On named hardware record OS/firmware, touch/faketouch features, accessibility enablement, node click/scroll coverage and optional IME behavior. Test outside the receiver's own UI. Explicitly decide whether the pointer experience is feasible before advertising it. |
+| 2. Native phone-to-TV loop | Native QR pairing with authenticated transport, permission-denial recovery, first pairing/reuse/revocation, movement, actual target activation, supported scrolling and Back/Home. Test bounded queues, stale sessions and wrong-target rejection. Keep desktop control inactive while TV owns input. |
 | 3. Input robustness | Repeated mixed gestures; Unicode/IME/dictation; focus switches; no dropped/duplicate text or wrong-target input; phone backgrounding, Wi-Fi loss, DHCP change and TV reboot. Record unsupported editor operations explicitly. |
-| 4. Consumer readiness | Native discovery and fallback, signed multicast entitlement, permission-denial recovery, localized onboarding and credential removal. Test at least two named firmware/model families before broadening the list. |
-| 5. Android directional release | Independently qualify Remote Service versions, pairing, key holds/releases, navigation, text and reconnect. Genuine Android pointer support remains a separate gate. |
+| 4. Consumer readiness | Native discovery and fallback, required iOS network permissions/entitlements for the chosen discovery method, localized remote-only onboarding, credential removal and signed APK/AAB distribution checks. Test at least two named firmware/model families before broadening the list. |
+| Separate adapters | Remote v2: qualify service versions, pairing, key holds/releases, navigation, text and reconnect. LG webOS: qualify the existing pointer preview on named hardware. Neither route substitutes for Android receiver acceptance. |
 
 Set and measure a responsiveness target during the spike; do not claim latency from source. Retain short device-visible evidence for every passed capability. A changing phone animation, an SSAP response or a remote focus rectangle does not prove a real TV pointer moved.
 
@@ -106,4 +110,4 @@ After free TV control, execute the [paid desktop automation plan](natural-langua
 
 For any future Android Accessibility-based agent, Google Play explicitly distinguishes deterministic human-defined automation from autonomous planning/execution through AccessibilityService. An initial user goal is not a stated exemption; ordinary Sofatap is not a disability-tool exception. The restriction concerns that API, not every natural-language command sent through a legitimate TV protocol. Evaluate the actual paid-TV implementation before promising cross-app autonomy. Source: [Google Play AccessibilityService policy](https://support.google.com/googleplay/android-developer/answer/10964491?hl=en).
 
-The immediate deliverable remains the free, locally paired LG pointer loop, with Google TV direction control accurately labeled and real hardware acceptance still required.
+The immediate deliverable is the free Android/Google TV receiver capability probe, followed by a locally paired manual-control loop if its input capabilities pass. The LG preview remains separate, and real hardware acceptance is required for every advertised TV capability.

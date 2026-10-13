@@ -37,6 +37,8 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 **电视开发预览：**源码现已加入 LG webOS 的原生 IP 配对，以及移动、单击、滚动、返回和主页适配器。已通过本地协议与 TLS 测试，尚无通过真机验收的电视型号；自动发现、电视打字与听写仍待实现。参见[详细技术方案](docs/research/tv-implementation-plan.zh-CN.md)和[验证范围](docs/verification/webos-pointer-preview.md)。
 
+**下一项电视开发目标：**优先验证共用的原生 Android/Google TV 接收端，随后再扩展 LG 适配。目前尚无可用的 Android 接收包。指针、点击、滚动与文字输入分别验收，不能把安装 APK 等同于获得全局鼠标控制。
+
 兼容接收端识别到提供辅助功能元数据的新可编辑输入框时，手机会自动弹出键盘。后台检测不读取框内内容；随后打开实时编辑会话时，会把受支持字段的完整文字和选区传到配对手机，因此退格、全选后删除也能修改电脑上的已有文字。焦点检测与实时编辑的支持范围不同：Windows 实时编辑当前限原生 Edit/RichEdit 控件；Mac 要求辅助功能提供可写的选中文字及选区。缺少相应能力的浏览器、自绘控件、Linux 及旧接收端采用检查草稿后发送。密码和只读字段不能开启实时编辑。参见[焦点检测、数据处理及平台限制](docs/TEXT-FOCUS.md)。
 
 **Windows 锁屏 PIN 控制（验证中）：** 目标是用 iPhone 触控板操作锁屏并手动输入 PIN，再提供可选的 Face ID 授权自动输入已保存 PIN。Sofatap 不要求 Microsoft 账户密码。此前的账户密码实验已停用，普通接收器和 iPhone UI 不再提供入口。鼠标探测、原生 PIN 接受和手机联合实测分别验收，扫码配对或编译成功不代表已支持。参见[范围与验证](docs/FACE-ID-UNLOCK.md)。

@@ -36,7 +36,7 @@ These are source-inspection findings, not physical-TV acceptance results:
 
 Evidence is pinned to the [Remote v2 message schema](https://github.com/tronikos/androidtvremote2/blob/e664a8e1f14ee458b14c646bfb3ea46f10367051/src/androidtvremote2/remotemessage.proto#L846) and [ConnectSDK webOS mouse socket](https://github.com/ConnectSDK/Connect-SDK-Android-Core/blob/2f7ebbc7eb909321ff41b2c6bcdf6b0881427579/src/com/connectsdk/service/webos/WebOSTVMouseSocketConnection.java#L135). The absence of pointer messages in this Remote v2 implementation is not evidence that every Android-based TV lacks all possible mouse-input routes.
 
-For the requested mouse experience, LG webOS is a candidate for a pointer adapter. Google TV needs additional investigation for genuine mouse control; a direction-navigation adapter alone does not complete that requirement. Select and test named hardware before committing to the first supported TV family. Enable gestures according to verified capabilities rather than copying desktop right-click and drag behavior onto every television.
+For the requested mouse experience, LG webOS is a candidate for a pointer adapter. The current feature priority is the **Android/Google TV receiver capability probe**, as specified in the [implementation plan](tv-implementation-plan.md). A native receiver APK does not automatically grant global mouse input, and a direction-navigation adapter alone does not complete the requirement. Test named hardware before announcing support. Enable gestures according to verified capabilities rather than copying desktop right-click and drag behavior onto every television.
 
 ## Later paid TV automation
 

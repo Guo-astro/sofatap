@@ -11,6 +11,8 @@ Keep the two core functions separate:
 
 The next feature priority is **free manual TV control**, ahead of integrating the paid agent runtime. After that, implement paid desktop automation, followed by paid TV automation. See `docs/ROADMAP.md`. Keep first-release maintenance and acceptance work distinct from this feature sequence.
 
+Within free TV control, prioritize the **Android/Google TV receiver feasibility milestone**. Keep the existing LG webOS preview as a separate adapter; LG hardware qualification is not a prerequisite for Android work. A common Android receiver package does not prove global mouse injection or compatibility with every TV app.
+
 Treat TV mouse/pointer control as a real capability to verify. Directional focus navigation is a separate capability and must not be described as equivalent mouse support. Do not claim every TV model or application is supported before device-level acceptance. Manual control must not silently start an AI task, require a model account or depend on paid inference.
 
 ## Standing synchronization instruction
