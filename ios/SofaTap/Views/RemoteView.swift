@@ -34,6 +34,7 @@ struct RemoteView: View {
     @State private var touchControl = TouchSurface.Control()
     @State private var edgeScrollControl = EdgeScrollStrip.Control()
     @State private var draftEditorControl = NativeDraftEditor.Control()
+    @State private var dictationImpact = UIImpactFeedbackGenerator(style: .light)
     @State private var resendAlert = false
     @State private var clearAlert = false
     @State private var composerVisible = false
@@ -339,7 +340,7 @@ struct RemoteView: View {
                 .foregroundStyle(Palette.background)
                 .shadow(color: Palette.mint.opacity(0.13), radius: 18, y: 1)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(MicrophoneButtonStyle(prepareFeedback: { dictationImpact.prepare() }))
             .disabled(!model.controlAvailable || model.sendingText || model.composing || model.remoteTextFocus == .protected)
             .opacity(model.controlAvailable ? 1 : 0.45)
             .accessibilityLabel(dictation.isRecording ? String(localized: "结束听写") : speechBusy || speechRequest != nil ? String(localized: "取消语音输入") : String(localized: "开始语音输入"))
@@ -561,9 +562,23 @@ struct RemoteView: View {
     }
     private func toggleDictation() {
         guard !televisionSelected, model.controlAvailable, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
+        let releasedDrag = model.dragging
         interruptTouch()
-        if dictation.isRecording { dictation.stop(); return }
-        if speechBusy || speechRequest != nil { cancelSpeech(); return }
+        if dictation.isRecording {
+            // Recording suppresses haptics. Stop capture and release its audio
+            // session before acknowledging the explicit stop tap.
+            dictation.stop()
+            dictationImpact.impactOccurred()
+            return
+        }
+        if speechBusy || speechRequest != nil {
+            cancelSpeech()
+            if !releasedDrag { dictationImpact.impactOccurred() }
+            return
+        }
+        // A drag release already supplies feedback. This confirms the tap,
+        // not microphone authorization or a successful recording start.
+        if !releasedDrag { dictationImpact.impactOccurred() }
         keyboardFocused = false
         composerVisible = true
         let request = UUID(); speechRequest = request
@@ -654,6 +669,26 @@ struct RemoteView: View {
         if androidTVSelected { androidTV.scroll(dy: delta) }
         else if televisionSelected { tv.scroll(dy: delta) }
         else { model.scroll(dy: delta) }
+    }
+}
+
+private struct MicrophoneButtonStyle: ButtonStyle {
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let prepareFeedback: () -> Void
+
+    func makeBody(configuration: Configuration) -> some View {
+        let pressed = isEnabled && configuration.isPressed
+        configuration.label
+            .scaleEffect(pressed && !reduceMotion ? 0.90 : 1)
+            .brightness(pressed ? -0.12 : 0)
+            .animation(reduceMotion ? nil : .easeOut(duration: pressed ? 0.10 : 0.16), value: pressed)
+            // Keep the full target while its visible surface compresses.
+            .frame(width: 64, height: 64)
+            .contentShape(Circle())
+            .onChange(of: pressed) { _, down in
+                if down { prepareFeedback() }
+            }
     }
 }
 

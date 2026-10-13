@@ -14,6 +14,8 @@ Pairing remains an occasional sheet, rather than a second everyday control mode.
 
 ## Touch feedback
 
+The microphone has a distinct pressed state: it compresses to 90% and darkens on touch-down, then restores over 160 ms on release. Its 64-point hit target stays fixed. Reduce Motion keeps the size fixed and uses an immediate brightness change. Valid start, stop and cancel taps request a light haptic; stopping or cancelling releases the recording audio session first. The feedback acknowledges a button action, while the existing recording icon and color report the actual microphone state. Disabled or cancelled presses do not start dictation, and automatic interruptions do not request this tap haptic.
+
 A gently moving dot matrix fills the touch surface, including its resting state. Touch locally displaces and bends nearby dots; dragging strengthens the deformation, and release lets the field settle back. Single and double taps keep distinct expanding ripples that also perturb the field. These effects visualize the phone gesture, not the computer pointer's position or confirmation that a desktop application acted on it. Tapping the logo, QR, microphone or keyboard control must not also send a mouse gesture.
 
 Effects remain inside the touch surface. Reduce Motion keeps the matrix static and uses simpler touch feedback. App inactivity, detachment and disconnect pause ambient animation. Touch cancellation clears the local deformation and releases any held mouse button while the active field can keep drifting. Screen-reader labels describe the icon controls without adding visible instruction text to the surface. The text composer and pairing sheet retain the wording needed to review drafts, errors and connection details.
