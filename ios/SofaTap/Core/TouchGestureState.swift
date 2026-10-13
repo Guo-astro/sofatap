@@ -76,7 +76,9 @@ struct TouchGestureState {
         guard mode == .one || mode == .two else { return [] }
         let dx = point.x - previous.x, dy = point.y - previous.y
         previous = point
-        if mode == .two { return dy == 0 ? [] : [.scroll(-dy)] }
+        // Two fingers drag the content: fingers down pull it down (wheel up).
+        // The edge strip follows scrollbar direction instead and stays separate.
+        if mode == .two { return dy == 0 ? [] : [.scroll(dy)] }
         if origin.distance(to: point) > movementTolerance {
             moved = true
             holdDeadline = nil

@@ -1,6 +1,7 @@
 import Foundation
 
-/// Relative vertical scrolling in the same point units and direction as TouchGestureState.
+/// Relative scrolling in desktop wheel units. Fingers down scroll the document down,
+/// opposite to the touchpad's two-finger content-dragging gesture.
 /// This is not a document scrollbar: there is no remote position, inertia, or queued tail.
 struct EdgeScrollGesture {
     static let movementThreshold = 3.0

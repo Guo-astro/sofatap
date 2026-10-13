@@ -93,10 +93,10 @@ private final class MemoryStore: AndroidTVPairingStorage {
         do {
             let rig = Rig(), socket = rig.ready()
             rig.controller.scroll(dy: -12)
-            check("downward finger emits Android document-down action", socket.sent.count == 1 && socket.sent[0]["type"] as? String == "scroll" && socket.sent[0]["dy"] as? Double == 12)
+            check("negative wheel delta emits Android document-down action", socket.sent.count == 1 && socket.sent[0]["type"] as? String == "scroll" && socket.sent[0]["dy"] as? Double == 12)
             socket.ack(0)
             rig.controller.scroll(dy: 9)
-            check("upward finger emits Android document-up action", socket.sent.count == 2 && socket.sent[1]["dy"] as? Double == -9)
+            check("positive wheel delta emits Android document-up action", socket.sent.count == 2 && socket.sent[1]["dy"] as? Double == -9)
             socket.ack(1)
             rig.controller.scroll(dy: .nan)
             check("direction normalization still rejects nonfinite input", socket.sent.count == 2)
