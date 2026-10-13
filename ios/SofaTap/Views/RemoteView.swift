@@ -60,26 +60,16 @@ struct RemoteView: View {
     // The modifier order remains layout -> presentation -> lifecycle -> dictation.
     private var layout: some View {
         GeometryReader { geometry in
-            HStack(spacing: 0) {
-                VStack(spacing: 10) {
-                    touchpad
-                        .frame(maxWidth: .infinity, minHeight: min(170, geometry.size.height * 0.4), maxHeight: .infinity)
-                    if composerVisible && !televisionSelected {
-                        composer(height: geometry.size.height < 500 ? 64 : 92)
-                            .fixedSize(horizontal: false, vertical: true)
-                            .layoutPriority(1)
-                    }
+            VStack(spacing: 10) {
+                touchpad
+                    .frame(maxWidth: .infinity, minHeight: min(170, geometry.size.height * 0.4), maxHeight: .infinity)
+                if composerVisible && !televisionSelected {
+                    composer(height: geometry.size.height < 500 ? 64 : 92)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .layoutPriority(1)
                 }
-                .padding(.trailing, 2)
-                EdgeScrollStrip(enabled: inputEnabled && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
-                                control: edgeScrollControl,
-                                interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
-                                onInteractionBegan: { touchControl.cancel() },
-                                onScroll: scrollCurrentDevice)
-                    .frame(width: EdgeScrollStrip.minimumHitWidth)
             }
-            .padding(.leading, 12)
-            .padding(.trailing, 2)
+            .padding(.horizontal, 12)
             .padding(.top, 8)
             .padding(.bottom, 4)
         }
@@ -283,6 +273,19 @@ struct RemoteView: View {
                                              startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                 .allowsHitTesting(false)
         }
+        .overlay(alignment: .trailing) {
+            EdgeScrollStrip(enabled: inputEnabled && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
+                            control: edgeScrollControl,
+                            interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
+                            onInteractionBegan: { touchControl.cancel() },
+                            onScroll: scrollCurrentDevice)
+                .frame(width: EdgeScrollStrip.minimumHitWidth)
+                // Keep the scroll target inside the pad and below the QR button.
+                // The lower-right space is intentionally free of other controls.
+                .padding(.top, 80)
+                .padding(.bottom, 16)
+                .padding(.trailing, 8)
+        }
         .overlay(alignment: .top) { header.padding(.horizontal, 20).padding(.top, 20) }
         .overlay(alignment: .bottom) { bottomBar.padding(.horizontal, 20).padding(.bottom, 20) }
         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
@@ -482,7 +485,7 @@ struct RemoteView: View {
                 interruptTouch(); clearAlert = true
             }
             .disabled(model.draft.isEmpty || model.composing || model.sendingText || speechBusy || (model.usesLiveText && !model.liveTextReady))
-            composerIcon("keyboard.chevron.compact.down", label: String(localized: "收起键盘"), identifier: "hideKeyboard") {
+            composerIcon("arrow.down", label: String(localized: "收起键盘"), identifier: "hideKeyboard") {
                 keyboardFocused = false
                 cancelSpeech()
             }
@@ -511,9 +514,8 @@ struct RemoteView: View {
             Image(systemName: symbol)
                 .font(.system(size: 18, weight: .medium))
                 .frame(width: 44, height: 44)
-                .foregroundStyle(Palette.mint)
-                .background(Palette.panel, in: Circle())
-                .contentShape(Circle())
+                .foregroundStyle(Palette.muted)
+                .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(label)

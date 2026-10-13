@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-/// Reserve at least 44 points beside the app content; leave keyboard avoidance to the parent.
+/// Reserve at least 44 points inside the touch surface, clear of its other controls.
 /// The visual thumb tracks the finger only and never represents the remote document position.
 struct EdgeScrollStrip: UIViewRepresentable {
     static let minimumHitWidth: CGFloat = 44
@@ -115,7 +115,10 @@ struct EdgeScrollStrip: UIViewRepresentable {
         private func updateAvailability() {
             active = UIApplication.shared.applicationState == .active
                 && (window?.windowScene?.activationState == .foregroundActive)
-            isUserInteractionEnabled = parent?.enabled == true && active
+            // This view overlays the pointer pad. Consume disabled scroll touches
+            // so they cannot fall through as pointer movement or clicks.
+            // canInput still rejects every scroll when the capability is disabled.
+            isUserInteractionEnabled = active
             if !active { cancelInput() }
             setNeedsDisplay()
         }
