@@ -50,6 +50,9 @@ final class ControllerModel: ObservableObject {
     private var helloTimeout: Task<Void, Never>?
     private var motionTimer: Timer?
     private var motionBusy = false
+    // Keep the remote button down until its final queued movement is acknowledged.
+    @Published private var dragReleasePending = false
+    private var dragTail: (dx: Double, dy: Double)?
     private var scrollBusy = false
     private var queuedDX = 0.0
     private var queuedDY = 0.0
@@ -63,6 +66,19 @@ final class ControllerModel: ObservableObject {
         let completion: ((CommandResult) -> Void)?
     }
     private var pending: [String: Pending] = [:]
+#if SOFATAP_CONTROLLER_TESTING
+    // Recording transport only: compiled solely by the offscreen regression test.
+    private var testSend: ((String, [String: Any], @escaping (Bool) -> Void) -> Void)?
+    init(testSend: @escaping (String, [String: Any], @escaping (Bool) -> Void) -> Void) {
+        demo = false
+        pairing = nil
+        draft = ""
+        connected = true
+        inputAvailable = true
+        self.testSend = testSend
+    }
+    func testFlushMovement() { flushMovement() }
+#endif
 
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
         self.demo = demo
@@ -81,8 +97,11 @@ final class ControllerModel: ObservableObject {
         }
     }
 
-    var canControl: Bool { demo || (connected && inputAvailable) }
-    var remoteTextFocus: RemoteTextFocus { canControl ? receiverState.textFocus : .unknown }
+    // Session/permission availability is stable while a final drag ACK is pending.
+    // The UI uses this for disconnect cleanup; canControl gates new input only.
+    var controlAvailable: Bool { demo || (connected && inputAvailable) }
+    var canControl: Bool { controlAvailable && !dragReleasePending }
+    var remoteTextFocus: RemoteTextFocus { controlAvailable ? receiverState.textFocus : .unknown }
     var focusRevision: Int { receiverState.focusRevision }
     var statusTitle: String {
         if demo { return "界面演示" }
@@ -202,13 +221,15 @@ final class ControllerModel: ObservableObject {
         helloTimeout?.cancel()
         helloTimeout = nil
         // Best effort release before closing; the receiver independently releases on close/idle.
-        if dragging, let socket {
+        if dragging || dragReleasePending, let socket {
             let release: [String: Any] = ["id": UUID().uuidString, "type": "button", "button": "left", "down": false]
             if let data = try? JSONSerialization.data(withJSONObject: release), let text = String(data: data, encoding: .utf8) {
                 socket.send(.string(text)) { _ in }
             }
         }
         dragging = false
+        dragReleasePending = false
+        dragTail = nil
         generation = UUID()
         let oldSocket = socket
         let oldSession = session
@@ -341,6 +362,13 @@ final class ControllerModel: ObservableObject {
 
     private func send(_ type: String, fields: [String: Any], timeout: Double = 8,
                       completion: ((CommandResult) -> Void)? = nil) {
+#if SOFATAP_CONTROLLER_TESTING
+        if let testSend {
+            guard connected else { completion?(.rejected("尚未连接")); return }
+            testSend(type, fields) { completion?($0 ? .accepted : .rejected("test_rejected")) }
+            return
+        }
+#endif
         guard connected, let socket else { completion?(.rejected("尚未连接")); return }
         guard pending.count < 32 else { completion?(.rejected("操作过快，请稍后")); return }
         let id = UUID().uuidString
@@ -394,7 +422,14 @@ final class ControllerModel: ObservableObject {
             queuedDX = 0; queuedDY = 0
             if Date().timeIntervalSince(lastMovement) <= 0.12 {
                 motionBusy = true
-                send("move", fields: ["dx": dx, "dy": dy], timeout: 4) { [weak self] _ in self?.motionBusy = false }
+                let currentGeneration = generation
+                send("move", fields: ["dx": dx, "dy": dy], timeout: 4) { [weak self] result in
+                    guard let self, self.generation == currentGeneration else { return }
+                    self.motionBusy = false
+                    guard self.dragReleasePending else { return }
+                    if case .accepted = result { self.finishDragRelease() }
+                    else { self.disconnect(message: "拖拽移动未得到确认，已断开并释放鼠标。") }
+                }
             }
         }
         if !scrollBusy, abs(queuedScroll) > 0.01 {
@@ -419,10 +454,42 @@ final class ControllerModel: ObservableObject {
         dragging = down
         feedback()
         if demo { notice = down ? "演示：按住拖拽，再用触控板移动。" : "演示：已松开拖拽。"; return }
-        send("button", fields: ["button": "left", "down": down]) { [weak self] result in
-            guard let self else { return }
+        if !down {
+            // Freeze this gesture's tail before the next run-loop tick or UI
+            // cancellation can clear it. It belongs before mouse-up even if an
+            // earlier move is still awaiting its ACK or the sample ages out.
+            dragTail = abs(queuedDX) + abs(queuedDY) > 0.01 ? (queuedDX, queuedDY) : nil
+            queuedDX = 0; queuedDY = 0
+            dragReleasePending = true
+            finishDragRelease()
+            return
+        }
+        let currentGeneration = generation
+        send("button", fields: ["button": "left", "down": true]) { [weak self] result in
+            guard let self, self.generation == currentGeneration else { return }
             if case .accepted = result { return }
             self.disconnect(message: "拖拽状态未得到确认，已断开并释放鼠标。")
+        }
+    }
+
+    private func finishDragRelease() {
+        guard dragReleasePending, !motionBusy else { return }
+        let currentGeneration = generation
+        if let tail = dragTail {
+            dragTail = nil
+            motionBusy = true
+            send("move", fields: ["dx": tail.dx, "dy": tail.dy], timeout: 4) { [weak self] result in
+                guard let self, self.generation == currentGeneration else { return }
+                self.motionBusy = false
+                if case .accepted = result { self.finishDragRelease() }
+                else { self.disconnect(message: "拖拽移动未得到确认，已断开并释放鼠标。") }
+            }
+        } else {
+            send("button", fields: ["button": "left", "down": false]) { [weak self] result in
+                guard let self, self.generation == currentGeneration else { return }
+                if case .accepted = result { self.dragReleasePending = false }
+                else { self.disconnect(message: "拖拽状态未得到确认，已断开并释放鼠标。") }
+            }
         }
     }
 
@@ -501,7 +568,12 @@ final class ControllerModel: ObservableObject {
         queuedDX = 0; queuedDY = 0
     }
 
-    private func feedback() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    private func feedback() {
+#if SOFATAP_CONTROLLER_TESTING
+        if testSend != nil { return }
+#endif
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+    }
 
     private func digest(_ text: String) -> String {
         SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()

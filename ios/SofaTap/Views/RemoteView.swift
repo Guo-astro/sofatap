@@ -82,7 +82,11 @@ struct RemoteView: View {
         }
         .onChange(of: model.canControl) { _, enabled in
             if enabled { applyRemoteFocus() }
-            else { handledFocusRevision = nil; stopInteraction() }
+        }
+        .onChange(of: model.controlAvailable) { _, available in
+            // A pending drag release blocks new input without disconnecting or
+            // stopping dictation. Only session/permission loss resets UI state.
+            if !available { handledFocusRevision = nil; stopInteraction() }
         }
         .onChange(of: pairingSheet) { _, shown in
             if shown { stopInteraction() }
@@ -107,9 +111,12 @@ struct RemoteView: View {
             } else { applyRemoteFocus() }
         }
         .onReceive(dictation.$transcript) { transcript in
-            guard speechOwnsDraft else { return }
-            let separator = speechBaseDraft.isEmpty || speechBaseDraft.last?.isWhitespace == true || transcript.isEmpty ? "" : "\n"
-            model.draft = speechBaseDraft + separator + transcript
+            // @Published replays its current value when SwiftUI subscribes. Ignore
+            // an idle session's previous result and a new session's empty reset.
+            guard let draft = DictationTranscript.draft(base: speechBaseDraft, transcript: transcript,
+                                                       ownsDraft: speechOwnsDraft,
+                                                       sessionIsActive: dictation.state != .idle) else { return }
+            model.draft = draft
         }
         .onChange(of: dictation.state) { _, state in
             if state == .idle { speechOwnsDraft = false }
@@ -212,8 +219,8 @@ struct RemoteView: View {
                 .shadow(color: Palette.mint.opacity(0.13), radius: 18, y: 1)
             }
             .buttonStyle(.plain)
-            .disabled(!model.canControl || model.sendingText || model.composing || model.remoteTextFocus == .protected)
-            .opacity(model.canControl ? 1 : 0.45)
+            .disabled(!model.controlAvailable || model.sendingText || model.composing || model.remoteTextFocus == .protected)
+            .opacity(model.controlAvailable ? 1 : 0.45)
             .accessibilityLabel(dictation.isRecording ? "结束听写" : speechBusy ? "取消语音输入" : "开始语音输入")
             .accessibilityValue(dictation.isRecording ? "麦克风正在录音" : dictation.state == .finishing ? "正在整理听写结果" : "")
             .accessibilityIdentifier("dictationButton")
@@ -354,7 +361,7 @@ struct RemoteView: View {
         }
     }
     private func toggleDictation() {
-        guard model.canControl, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
+        guard model.controlAvailable, !model.sendingText, !model.composing, model.remoteTextFocus != .protected else { return }
         interruptTouch()
         if dictation.isRecording { dictation.stop(); return }
         if speechBusy { dictationStartTask?.cancel(); dictation.cancel(); return }
@@ -365,7 +372,7 @@ struct RemoteView: View {
         speechOwnsDraft = true
         dictationStartTask?.cancel()
         dictationStartTask = Task {
-            guard !Task.isCancelled, model.canControl, scenePhase == .active else { return }
+            guard !Task.isCancelled, model.controlAvailable, scenePhase == .active else { return }
             await dictation.start()
         }
     }

@@ -69,6 +69,14 @@ jobs:
         run: |
           swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
           "$RUNNER_TEMP/sofatap-touch-tests"
+      - name: Native iPhone draft composition without windows or input
+        run: bash ios/scripts/test-draft-editor.sh
+      - name: Preserve dictation results without microphone access
+        run: bash ios/scripts/test-dictation-transcript.sh
+      - name: Finish drag motion before releasing the mouse
+        run: bash ios/scripts/test-drag-release.sh
+      - name: Guard live phone gestures without connecting to a device
+        run: python3 -m unittest discover -s tests/device-harness -p test_live_phone_gesture.py -v
       - name: Mac native-window protocol checks without launching a UI
         shell: bash
         run: |

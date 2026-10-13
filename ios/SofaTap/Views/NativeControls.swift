@@ -32,15 +32,7 @@ struct NativeDraftEditor: UIViewRepresentable {
     func updateUIView(_ view: UITextView, context: Context) {
         let coordinator = context.coordinator
         coordinator.parent = self
-        // Replacing text during an IME/keyboard dictation composition would destroy
-        // the marked range. Also preserve selection on unrelated SwiftUI updates.
-        if view.markedTextRange == nil && view.text != text {
-            let selection = view.selectedRange
-            view.text = text
-            let count = (text as NSString).length
-            view.selectedRange = NSRange(location: min(selection.location, count),
-                                         length: min(selection.length, max(0, count - selection.location)))
-        }
+        coordinator.synchronizeText(view)
         view.isEditable = !disabled
         // Focus changes after this representable update avoid mutating SwiftUI state
         // from UITextViewDelegate synchronously during a rendering pass.
@@ -60,20 +52,79 @@ struct NativeDraftEditor: UIViewRepresentable {
     }
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: NativeDraftEditor
-        weak var textView: UITextView?
-        init(_ parent: NativeDraftEditor) { self.parent = parent }
+        weak var textView: UITextView? {
+            didSet { lastObservedNativeText = textView?.text ?? "" }
+        }
+        private var lastPublishedText: String
+        private var lastObservedNativeText = ""
+        private var pendingExternalText: String?
+        private var applyingModelText = false
+        private var publishingNativeText = false
+        init(_ parent: NativeDraftEditor) {
+            self.parent = parent
+            lastPublishedText = parent.text
+        }
+        func synchronizeText(_ view: UITextView) {
+            guard !applyingModelText, !publishingNativeText else { return }
+            observeExternalText()
+            // Let IME/keyboard dictation finish its marked range before replacing it.
+            guard view.markedTextRange == nil else { return }
+            if let replacement = pendingExternalText {
+                applyModelText(replacement, to: view)
+            } else if view.text == lastObservedNativeText {
+                // UIKit changes text before didChange. An unrelated render in that
+                // interval must not write the previous binding over the new input.
+                applyModelText(lastPublishedText, to: view)
+            }
+        }
+        private func observeExternalText() {
+            let current = parent.text
+            pendingExternalText = current == lastPublishedText ? nil : current
+        }
+        private func applyModelText(_ text: String, to view: UITextView) {
+            applyingModelText = true
+            defer { applyingModelText = false }
+            if view.text != text {
+                let selection = view.selectedRange
+                view.text = text
+                let count = (text as NSString).length
+                view.selectedRange = NSRange(location: min(selection.location, count),
+                                             length: min(selection.length, max(0, count - selection.location)))
+            }
+            lastObservedNativeText = view.text ?? ""
+            lastPublishedText = text
+            pendingExternalText = nil
+        }
+        private func publishNativeText(_ view: UITextView) {
+            guard !applyingModelText, !publishingNativeText else { return }
+            observeExternalText()
+            lastObservedNativeText = view.text ?? ""
+            if pendingExternalText != nil {
+                // A deliberate clear/dictation replacement wins over an older local
+                // callback; while marked, retain it until composition finishes.
+                synchronizeText(view)
+            } else {
+                publishingNativeText = true
+                lastPublishedText = lastObservedNativeText
+                if parent.text != lastPublishedText { parent.text = lastPublishedText }
+                publishingNativeText = false
+            }
+            let marked = view.markedTextRange != nil
+            if parent.composing != marked { parent.composing = marked }
+        }
         func textViewDidBeginEditing(_ textView: UITextView) { parent.isFocused = true }
         func textViewDidEndEditing(_ textView: UITextView) {
+            publishNativeText(textView)
             parent.isFocused = false
             parent.composing = false
-            parent.text = textView.text
         }
         func textViewDidChange(_ textView: UITextView) {
-            parent.composing = textView.markedTextRange != nil
-            parent.text = textView.text
+            publishNativeText(textView)
         }
         func textViewDidChangeSelection(_ textView: UITextView) {
+            guard !applyingModelText, !publishingNativeText else { return }
             let marked = textView.markedTextRange != nil
+            if !marked && pendingExternalText != nil { synchronizeText(textView) }
             if parent.composing != marked { parent.composing = marked }
         }
         @objc func done() {

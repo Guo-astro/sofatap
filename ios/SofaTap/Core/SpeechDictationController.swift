@@ -3,6 +3,26 @@ import Combine
 import Speech
 import UIKit
 
+/// Recognition may finish without a new transcription. An empty result is not
+/// a user edit and must not erase the usable partial result already displayed.
+struct DictationTranscript {
+    private(set) var text = ""
+
+    mutating func receive(_ candidate: String?) -> Bool {
+        guard let candidate, !candidate.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+              candidate != text else { return false }
+        text = candidate
+        return true
+    }
+
+    static func draft(base: String, transcript: String, ownsDraft: Bool, sessionIsActive: Bool) -> String? {
+        guard ownsDraft, sessionIsActive,
+              !transcript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        let separator = base.isEmpty || base.last?.isWhitespace == true ? "" : "\n"
+        return base + separator + transcript
+    }
+}
+
 /// Explicit, foreground dictation. Audio stays on this iPhone; results remain a
 /// local draft until the user sends them through ControllerModel.
 @MainActor
@@ -25,6 +45,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
     private var finishTimeout: Task<Void, Never>?
     private var durationLimit: Task<Void, Never>?
     private var observers: [NSObjectProtocol] = []
+    private var recognizedTranscript = DictationTranscript()
 
     override init() {
         super.init()
@@ -86,6 +107,7 @@ final class SpeechDictationController: NSObject, ObservableObject {
         let token = UUID()
         generation = token
         errorMessage = nil
+        recognizedTranscript = DictationTranscript()
         transcript = ""
         state = .requestingPermission
 
@@ -136,7 +158,9 @@ final class SpeechDictationController: NSObject, ObservableObject {
                 let failed = error != nil
                 Task { @MainActor [weak self] in
                     guard let self, self.generation == token else { return }
-                    if let text { self.transcript = text }
+                    if self.recognizedTranscript.receive(text) {
+                        self.transcript = self.recognizedTranscript.text
+                    }
                     if final {
                         self.complete()
                     } else if failed {
