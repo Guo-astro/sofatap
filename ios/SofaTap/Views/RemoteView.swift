@@ -65,7 +65,7 @@ struct RemoteView: View {
                 touchpad
                     .frame(maxWidth: .infinity, minHeight: min(170, geometry.size.height * 0.4), maxHeight: .infinity)
                 if composerVisible && !televisionSelected {
-                    composer(height: geometry.size.height < 500 ? 64 : 92)
+                    composer(height: geometry.size.height < 500 ? 76 : 92)
                         .fixedSize(horizontal: false, vertical: true)
                         .layoutPriority(1)
                 }
@@ -427,51 +427,70 @@ struct RemoteView: View {
 
     private func composer(height: Double) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            ZStack(alignment: .topLeading) {
-                if model.draft.isEmpty {
-                    Text(dictation.isRecording ? String(localized: "正在听…") : model.usesLiveText ? String(localized: "输入或听写，自动同步到电脑") : String(localized: "输入或听写，确认后发送到电脑"))
-                        .font(.system(size: 16)).foregroundStyle(Palette.muted.opacity(0.7))
-                        .padding(14).allowsHitTesting(false)
+            HStack(alignment: .bottom, spacing: 0) {
+                ZStack(alignment: .topLeading) {
+                    if model.draft.isEmpty {
+                        Text(dictation.isRecording ? String(localized: "正在听…") : model.usesLiveText ? String(localized: "输入或听写，自动同步到电脑") : String(localized: "输入或听写，确认后发送到电脑"))
+                            .font(.system(size: 16)).foregroundStyle(Palette.muted.opacity(0.7))
+                            .padding(14).allowsHitTesting(false)
+                    }
+                    NativeDraftEditor(text: $model.draft, composing: $model.composing,
+                                      isFocused: $keyboardFocused,
+                                      disabled: speechBusy || model.editorLoading || (model.usesLiveText && !model.liveTextReady),
+                                      selection: model.usesLiveText ? $model.draftSelection : nil,
+                                      onEdit: { text, selection, marked in model.editText(text, selection: selection, marked: marked) },
+                                      preservesFocusWhileLoading: model.editorLoading,
+                                      liveEditing: model.usesLiveText,
+                                      control: draftEditorControl)
                 }
-                NativeDraftEditor(text: $model.draft, composing: $model.composing,
-                                  isFocused: $keyboardFocused,
-                                  disabled: speechBusy || model.editorLoading || (model.usesLiveText && !model.liveTextReady),
-                                  selection: model.usesLiveText ? $model.draftSelection : nil,
-                                  onEdit: { text, selection, marked in model.editText(text, selection: selection, marked: marked) },
-                                  preservesFocusWhileLoading: model.editorLoading,
-                                  liveEditing: model.usesLiveText,
-                                  control: draftEditorControl)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                // A separate column reserves room for Send, including while the
+                // native editor scrolls or wraps text. Nothing overlays its text.
+                composerSendButton
+                    .padding(.trailing, 10)
+                    .padding(.bottom, 10)
             }
             .frame(height: height)
             .background(Palette.panel, in: RoundedRectangle(cornerRadius: 18))
-            composerNotice
             composerActions
+            composerNotice
         }
     }
 
+    @ViewBuilder
     private var composerNotice: some View {
-        VStack(alignment: .leading, spacing: 3) {
-            if !model.usesLiveText {
-                Text(fallbackInputNotice)
-                    .accessibilityIdentifier("textInputCapability")
-            }
-            // Keep the capability notice visible during dictation and delivery.
-            // Ordinary fallback instructions already appear in that notice.
-            if model.usesLiveText || speechBusy || model.composing || !model.draftWithinLimit || model.sentTextWasEdited || model.textDelivery != .ready {
-                Text(composerStatus)
-                    .foregroundStyle(model.textDelivery == .uncertain ? Color.orange : Palette.muted)
-                    .accessibilityIdentifier("textDeliveryStatus")
-            }
+        if let message = composerMessage {
+            Text(message)
+                .font(.system(size: 11))
+                .foregroundStyle(model.textDelivery == .uncertain ? Color.orange : Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.horizontal, 2)
+                .accessibilityIdentifier("textDeliveryStatus")
         }
-        .font(.system(size: 11))
-        .foregroundStyle(Palette.muted)
-        .fixedSize(horizontal: false, vertical: true)
-        .padding(.horizontal, 2)
+    }
+
+    private var composerMessage: String? {
+        // Keep actionable delivery/connection states, without a permanent
+        // capability label under the editor.
+        if model.textDelivery == .uncertain || model.liveTextPaused { return model.textStatus }
+        if !model.controlAvailable { return String(localized: "未连接电脑，草稿会保留在手机上。") }
+        if model.remoteTextFocus == .protected || model.editorLoading || speechBusy || model.composing || !model.draftWithinLimit || model.sentTextWasEdited || model.textDelivery != .ready {
+            return composerStatus
+        }
+        return nil
     }
 
     private var composerActions: some View {
-        HStack(spacing: 6) {
-            Spacer(minLength: 0)
+        HStack(spacing: 2) {
+            composerIcon("trash", label: String(localized: "清空草稿"), identifier: "clearTextDraft") {
+                interruptTouch(); clearAlert = true
+            }
+            .disabled(model.draft.isEmpty || model.composing || model.sendingText || speechBusy || (model.usesLiveText && !model.liveTextReady))
+            composerIcon("arrow.down", label: String(localized: "收起键盘"), identifier: "hideKeyboard") {
+                keyboardFocused = false
+                cancelSpeech()
+            }
+            .disabled(!keyboardFocused && !speechBusy)
             if model.liveTextPaused {
                 composerIcon("arrow.clockwise", label: String(localized: "检查电脑后重新读取输入框"), identifier: "resumeLiveText") {
                     model.restartLiveTextEditing()
@@ -482,38 +501,33 @@ struct RemoteView: View {
                 }
                 .disabled(model.sendingText || speechBusy)
             }
-            composerIcon("trash", label: String(localized: "清空草稿"), identifier: "clearTextDraft") {
-                interruptTouch(); clearAlert = true
-            }
-            .disabled(model.draft.isEmpty || model.composing || model.sendingText || speechBusy || (model.usesLiveText && !model.liveTextReady))
-            composerIcon("arrow.down", label: String(localized: "收起键盘"), identifier: "hideKeyboard") {
-                keyboardFocused = false
-                cancelSpeech()
-            }
-            .disabled(!keyboardFocused && !speechBusy)
-            Button(action: sendCurrentDraft) {
-                Group {
-                    if model.sendingText { ProgressView().tint(Palette.background) }
-                    else { Image(systemName: model.liveTextReady ? "checkmark" : "arrow.up").font(.system(size: 19, weight: .semibold)) }
-                }
-                .frame(width: 48, height: 44)
-                .foregroundStyle(Palette.background)
-                .background(Palette.mint, in: Capsule())
-                .contentShape(Capsule())
-            }
-            .buttonStyle(.plain)
-            .disabled(!canAttemptSend)
-            .opacity(canAttemptSend || model.sendingText ? 1 : 0.45)
-            .accessibilityLabel(model.usesLiveText ? String(localized: "实时同步") : String(localized: "发送"))
-            .accessibilityIdentifier("sendText")
+            Spacer(minLength: 0)
         }
         .frame(minHeight: 44)
+    }
+
+    private var composerSendButton: some View {
+        Button(action: sendCurrentDraft) {
+            Group {
+                if model.sendingText || model.liveTextStatus == .syncing { ProgressView().tint(Palette.background) }
+                else { Image(systemName: model.liveTextReady ? "checkmark" : "arrow.up").font(.system(size: 19, weight: .semibold)) }
+            }
+            .frame(width: 44, height: 44)
+            .foregroundStyle(Palette.background)
+            .background(Palette.mint, in: Circle())
+            .contentShape(Circle())
+        }
+        .buttonStyle(.plain)
+        .disabled(!canAttemptSend)
+        .opacity(canAttemptSend || model.sendingText ? 1 : 0.45)
+        .accessibilityLabel(model.usesLiveText ? String(localized: "实时同步") : String(localized: "发送"))
+        .accessibilityIdentifier("sendText")
     }
 
     private func composerIcon(_ symbol: String, label: String, identifier: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: symbol)
-                .font(.system(size: 18, weight: .medium))
+                .font(.system(size: 15, weight: .medium))
                 .frame(width: 44, height: 44)
                 .foregroundStyle(Palette.muted)
                 .contentShape(Rectangle())
@@ -527,13 +541,6 @@ struct RemoteView: View {
         // Keep the control stable, including after an ACK. A native keyboard can
         // update its text storage before publishing the binding; flush it first.
         !model.usesLiveText && inputEnabled && !model.sendingText && !speechBusy && model.textDelivery != .uncertain
-    }
-
-    private var fallbackInputNotice: String {
-        if !model.controlAvailable { return String(localized: "未连接电脑，草稿会保留在手机上。") }
-        if !model.receiverState.supportsLiveText { return String(localized: "当前设备不支持实时输入，请确认后发送。") }
-        if model.liveTextStatus == .unsupported { return String(localized: "当前输入框不支持实时输入，请确认后发送。") }
-        return String(localized: "草稿尚未实时同步，请确认后发送。")
     }
 
     private func sendCurrentDraft() {
