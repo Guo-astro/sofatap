@@ -27,7 +27,7 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 - 3 つのデスクトップ受信アプリは、選定済みの **Mint Calm（暮色薄荷）** デザインを使用します。チャコールの背景、淡いミント色の操作ボタン、白地の QR 領域と現在の Sofatap アイコンを、今回のベータパッケージに含めています。[デザイン仕様](docs/RECEIVER-DESIGN.md)をご覧ください。
 - 家庭内ネットワークで接続し、WSS/TLS、証明書の固定検証、ローカルのペアリング認証情報を使用します。パソコン側の編集との競合や切断時にはリアルタイム入力を一時停止し、結果が不明な編集を自動再送しません。
 
-**現在のベータ版：** iPhone **1.0 (12)** は Apple の処理が完了（`VALID`）し、内部 TestFlight テスト中です。[受信アプリ 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) に対応します。審査用の連絡先が未入力のため、外部ベータ審査には**未提出**です。[公開招待リンク](https://testflight.apple.com/join/e6MuKx9S)は上限 100 人で設定済みですが、審査承認まではインストールできません。App Store 正式公開や新たな実機検証の完了を意味するものではありません。[ビルドと審査の状況](docs/verification/testflight-1.0-12.md)をご確認ください。
+**現在のベータ版：** iPhone **1.0 (12)** は Apple の処理が完了（`VALID`）し、内部 TestFlight テスト中です。[受信アプリ 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) に対応します。外部ベータ審査には**提出済み**で、Apple の審査待ちです（`WAITING_FOR_REVIEW`）。[公開招待リンク](https://testflight.apple.com/join/e6MuKx9S)は上限 100 人で設定済みですが、審査承認まではインストールできません。App Store 正式公開や新たな実機検証の完了を意味するものではありません。[ビルドと審査の状況](docs/verification/testflight-1.0-12.md)をご確認ください。
 
 以前の [0.7.0 (10) の iPhone・Windows 限定実機検証](docs/verification/realtime-input-0.7.0.md)では、ネイティブ RichEdit の既存文章の読み込み、多言語・絵文字・改行の追記、キーボードでの削除、全選択、空欄までの削除を確認しました。最終ビルドでのリアルタイム音声と追加項目は未検証です。[0.6.0 の記録](docs/verification/2026-10-13-iphone-input.md)にはジェスチャー、マイク認識、明示的な文字送信を別途記載しています。パッケージと公証の確認は実入力の検証とは別です。Bluetooth とクラウド中継は未実装です。[操作仕様と今後の独立 CUA 構想](docs/INTERACTION.md)をご覧ください。
 
@@ -49,7 +49,7 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 | プラットフォーム | 現在の状況 |
 | --- | --- |
-| iPhone | iOS 17 以降。1.0 (12) は内部 TestFlight テスト中で、英語・簡体字中国語の UI を含みます。外部審査への提出は連絡先の入力待ちで、公開テストは未開始です。以前の 0.7.0 (10) の RichEdit 実機検証とは別に、ビルド 12 の実機検証が必要です。 |
+| iPhone | iOS 17 以降。1.0 (12) は内部 TestFlight テスト中で、英語・簡体字中国語の UI を含みます。外部ベータ審査は提出済みで Apple の審査待ちのため、公開テストは未開始です。以前の 0.7.0 (10) の RichEdit 実機検証とは別に、ビルド 12 の実機検証が必要です。 |
 | Windows | 受信アプリ 0.7.0 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目は未検証です。Windows バイナリに Authenticode 署名はありません。 |
 | Mac | macOS 15 以降。0.7.0 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済み。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
 | Linux | 0.7.0 beta.1 の x64・ARM64 GTK3 パッケージを公開済み。以前の X11 入力は隔離デスクトップで検証済み。Wayland は実験的対応で、実機 iPhone 連携、実際の Wayland コンポジター、ARM64 での動作は未検証です。 |
@@ -72,7 +72,7 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 ### iPhone アプリをインストールしてペアリング
 
-1. 招待済みの内部テスターは TestFlight から iPhone 1.0 (12) を利用できます。[公開招待リンク](https://testflight.apple.com/join/e6MuKx9S)は設定済みですが未開放で、審査用の連絡先の入力と外部ベータ審査が必要です。[現在の状況](docs/verification/testflight-1.0-12.md)をご確認ください。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
+1. 招待済みの内部テスターは TestFlight から iPhone 1.0 (12) を利用できます。[公開招待リンク](https://testflight.apple.com/join/e6MuKx9S)は設定済みですが未開放で、外部ベータ審査の提出後、Apple の承認を待っています。[現在の状況](docs/verification/testflight-1.0-12.md)をご確認ください。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
 2. iPhone とパソコンを、互いに通信できる家庭内ネットワークにつなぎます。ゲスト Wi-Fi の端末分離設定によっては接続できません。
 3. 受信アプリのネイティブウインドウに表示された QR コードを iPhone アプリで読み取るか、完全なペアリングリンクを貼り付けます。
 4. パソコンで入力欄を選び、iPhone のキーボードまたはマイクを開きます。対応する欄では文字、削除、音声認識の結果を自動同期します。未対応の欄では下書きを確認して**送信**します。フォーカスの競合や切断で一時停止した場合は、パソコン側を確認してから明示的に編集を再開してください。不明な編集は自動再送しません。

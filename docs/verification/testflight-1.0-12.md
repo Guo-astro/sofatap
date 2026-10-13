@@ -7,9 +7,9 @@ Checked October 14, 2026 (Japan time).
 - App Store Connect app: `6822188472`, bundle `com.chekusu.sofatap`.
 - Build `823ff14a-847c-4097-8569-f515032436b8`: version **1.0 (12)**, processing **VALID**.
 - Internal group **Sofatap Team**: build assigned; **IN_BETA_TESTING**.
-- External group **Sofatap Public Beta**: build assigned; **READY_FOR_BETA_SUBMISSION**.
-- [Public invitation](https://testflight.apple.com/join/e6MuKx9S): configured, with a 100-tester limit. It is **not yet open for installation**. The beta-review contact is empty; the required name, email and phone have been requested from the owner. External review has **not been submitted** and Apple has not approved this build for external testing.
-- English, Simplified Chinese and Japanese beta descriptions and What to Test notes were saved and read back. [Canonical beta text](../app-store/testflight-1.0-12.json) and [reviewer setup instructions](../app-store/review-notes-en-US.txt) are available. Reviewer notes are prepared locally until the required contact is provided.
+- External group **Sofatap Public Beta**: build assigned; **WAITING_FOR_BETA_REVIEW**. TestFlight App Review submission is **WAITING_FOR_REVIEW**, submitted October 14, 2026 at 03:02 JST; both states were confirmed by fresh API reads.
+- [Public invitation](https://testflight.apple.com/join/e6MuKx9S): configured, with a 100-tester limit. It is **not yet open for installation**. The owner-confirmed contact and prepared reviewer instructions have been saved. External review has been submitted; Apple has not approved this build for external testing. Automatic tester notification is enabled.
+- English, Simplified Chinese and Japanese beta descriptions and What to Test notes were saved and read back. [Canonical beta text](../app-store/testflight-1.0-12.json) and [reviewer setup instructions](../app-store/review-notes-en-US.txt) are available. Reviewer notes are saved in App Store Connect, and the owner-selected beta feedback email is applied to all three locales. Personal contact details are kept out of the repository.
 - Formal App Store review was not submitted by this release task.
 
 ## Build evidence
@@ -34,7 +34,6 @@ The iPhone Release UI includes separate Android/Google TV experimental and LG we
 
 ## Remaining release steps
 
-1. Save the owner's real review contact and prepared reviewer instructions; set the beta feedback email.
-2. Submit this exact build for TestFlight App Review and read back its submission state.
-3. After approval, verify public-link installation before advertising the beta as available to friends.
-4. Complete final-build physical installation and the remaining phone/receiver acceptance separately, preserving Yomado input isolation on the shared Mac.
+1. Wait for Apple's external beta review result.
+2. After approval, verify public-link installation before advertising the beta as available to friends.
+3. Complete final-build physical installation and the remaining phone/receiver acceptance separately, preserving Yomado input isolation on the shared Mac.
