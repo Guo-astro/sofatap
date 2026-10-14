@@ -1,0 +1,28 @@
+Sofatap 1.0 (15) is a free manual touchpad and text-input remote for a user's own computer on a home network. It does not stream the computer screen or run autonomous AI tasks. No Sofatap account, demo login, account password, subscription or purchase is required.
+
+EQUIPMENT AND RECEIVER
+Use an iPhone with iOS 17+ and an awake, unlocked computer on the same reachable local network. Install receiver 0.7.1 beta.1:
+https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1
+Direct download links and installation instructions:
+https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
+Windows: extract the complete ZIP and run SofaTap.exe. Allow its receiver on a trusted private network if prompted; keep the firewall enabled.
+Mac: choose Apple Silicon or Intel, move the signed/notarized Sofatap Receiver.app to Applications and grant Accessibility permission. Requires macOS 15+.
+Linux: install the guide's GTK/input dependencies; support depends on the desktop. Wayland is experimental.
+
+PAIR AND NAME
+1. Open the receiver's native window and choose a local-network address reachable by the iPhone.
+2. Open Sofatap. Tap the device selector at the top left, then Scan QR Code under Add Device. The camera is above the supported-platform information; no device-type selection is required.
+3. Allow Camera and Local Network access, then scan. A complete pairing link can be pasted instead. Receiver 0.7.1 identifies its platform and name; the phone still validates its pinned certificate and pairing credential.
+4. After authentication, keep the suggested device name or enter another and save. My Devices supports switching, renaming, disconnecting and removing a local pairing. Renaming does not rename the computer; removal affects only this iPhone. The top-right question mark opens the guide.
+
+FUNCTIONAL TEST
+1. Open a blank document on the computer. Slide one finger to move the pointer, tap to click, double-tap for right click, and hold 0.3 seconds before moving to drag. Two fingers move content naturally; the strip inside the touchpad's right edge scrolls down when dragged down.
+2. Focus a writable native text field and open the phone keyboard. Supported Windows/Mac fields import existing text and synchronize typing, Backspace, selection and deletion without Send. Unsupported fields, including many browser and custom controls, use review-and-send; Linux and older receivers use this mode. Sofatap does not append an extra Return after your text. Line breaks you include may be handled as Enter by the destination app.
+3. Tap the microphone and allow Microphone/Speech access. Built-in dictation requires supported on-device recognition; otherwise use the keyboard. Tap again to stop. Recognized text follows the same live/draft behavior. In draft mode, send text, append more, then send again; only the added suffix should arrive. Check the computer before retrying uncertain delivery.
+
+TV DEVELOPMENT PREVIEWS
+The app also includes explicitly experimental adapters. No physical TV model or third-party TV app is qualified. Android/Google TV needs its development receiver and user-enabled Accessibility service; its overlay pointer activates exposed accessible controls, not global mouse injection. LG webOS uses manual IP entry, certificate approval and TV authorization. TV typing, dictation, right-click and drag are unavailable. The computer path above is the release's primary review path.
+
+PRIVACY AND LIMITS
+Pairings remain in device-only Keychain. Input travels directly over pinned TLS. Built-in speech stays on the iPhone. Live editing transfers the supported field's full text and selection; protected/read-only fields cannot start it. The receiver cannot control login or elevated permission screens. Backgrounding stops recording and disconnects control. Bluetooth, PIN unlocking and paid AI automation are unavailable.
+https://github.com/chekusu/sofatap/blob/main/PRIVACY.md

@@ -1,0 +1,223 @@
+{
+  "version": 1,
+  "status": "Draft copy and capture slots; bind real physical-device assets before rendering",
+  "screenshots": [
+    {
+      "id": "touchpad",
+      "sources": {
+        "en-US": "touchpad.en-US",
+        "zh-Hans": "touchpad.zh-Hans",
+        "ja": "touchpad.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Your couch.\nYour control.",
+          "subhead": "Your iPhone becomes your computer’s touchpad."
+        },
+        "zh-Hans": {
+          "headline": "窝在沙发里，\n电脑随手控。",
+          "subhead": "把 iPhone 变成电脑的触控板。"
+        },
+        "ja": {
+          "headline": "ソファから、\n思いのまま。",
+          "subhead": "iPhone がパソコンのトラックパッドに。"
+        }
+      }
+    },
+    {
+      "id": "keyboard",
+      "sources": {
+        "en-US": "keyboard.en-US",
+        "zh-Hans": "keyboard.zh-Hans",
+        "ja": "keyboard.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Type here.\nIt appears there.",
+          "subhead": "Use your familiar iPhone keyboard for your computer."
+        },
+        "zh-Hans": {
+          "headline": "手机上输入，\n电脑上显示。",
+          "subhead": "用你熟悉的 iPhone 键盘输入文字。"
+        },
+        "ja": {
+          "headline": "手元で入力。\nパソコンへ。",
+          "subhead": "使い慣れた iPhone のキーボードで文字入力。"
+        }
+      }
+    },
+    {
+      "id": "devices",
+      "sources": {
+        "en-US": "devices.en-US",
+        "zh-Hans": "devices.zh-Hans",
+        "ja": "devices.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Your devices.\nOne touchpad.",
+          "subhead": "Switch between saved Windows, Mac and Linux computers."
+        },
+        "zh-Hans": {
+          "headline": "多台电脑，\n一个触控板。",
+          "subhead": "在已配对的 Windows、Mac 和 Linux 之间切换。"
+        },
+        "ja": {
+          "headline": "パソコンを切り替え。\n操作はこの一台で。",
+          "subhead": "登録した Windows・Mac・Linux に切り替え。"
+        }
+      }
+    },
+    {
+      "id": "scanner",
+      "sources": {
+        "en-US": "scanner.en-US",
+        "zh-Hans": "scanner.zh-Hans",
+        "ja": "scanner.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Scan once.\nStart controlling.",
+          "subhead": "Open the receiver on your computer, then scan its code."
+        },
+        "zh-Hans": {
+          "headline": "扫一扫，\n连接你的电脑。",
+          "subhead": "打开电脑上的接收器，再扫描配对二维码。"
+        },
+        "ja": {
+          "headline": "スキャンして、\nつながる。",
+          "subhead": "パソコンの受信アプリを開いて、QR コードを読み取るだけ。"
+        }
+      }
+    },
+    {
+      "id": "guide",
+      "sources": {
+        "en-US": "guide.en-US",
+        "zh-Hans": "guide.zh-Hans",
+        "ja": "guide.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Simple gestures.\nAll in one place.",
+          "subhead": "Tap, double-tap, hold and scroll."
+        },
+        "zh-Hans": {
+          "headline": "轻点、长按，\n操作自然上手。",
+          "subhead": "点击、右键、拖动和滚动，一页看懂。"
+        },
+        "ja": {
+          "headline": "いつものジェスチャーで\nかんたん操作。",
+          "subhead": "タップ、ダブルタップ、長押し、スクロール。"
+        }
+      }
+    }
+  ],
+  "preview": [
+    {
+      "id": "touchpad",
+      "durationSeconds": 6,
+      "startSeconds": 0,
+      "sources": {
+        "en-US": "preview-touchpad.en-US",
+        "zh-Hans": "preview-touchpad.zh-Hans",
+        "ja": "preview-touchpad.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Your iPhone. Your touchpad."
+        },
+        "zh-Hans": {
+          "headline": "你的 iPhone，就是触控板。"
+        },
+        "ja": {
+          "headline": "iPhone がトラックパッドに。"
+        }
+      }
+    },
+    {
+      "id": "keyboard",
+      "durationSeconds": 6,
+      "startSeconds": 0,
+      "sources": {
+        "en-US": "preview-keyboard.en-US",
+        "zh-Hans": "preview-keyboard.zh-Hans",
+        "ja": "preview-keyboard.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Type with your familiar keyboard."
+        },
+        "zh-Hans": {
+          "headline": "用熟悉的键盘输入。"
+        },
+        "ja": {
+          "headline": "使い慣れたキーボードで入力。"
+        }
+      }
+    },
+    {
+      "id": "send",
+      "durationSeconds": 4,
+      "startSeconds": 0,
+      "sources": {
+        "en-US": "preview-send.en-US",
+        "zh-Hans": "preview-send.zh-Hans",
+        "ja": "preview-send.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Send text to your computer."
+        },
+        "zh-Hans": {
+          "headline": "把文字发送到电脑。"
+        },
+        "ja": {
+          "headline": "入力した文字をパソコンへ。"
+        }
+      }
+    },
+    {
+      "id": "guide",
+      "durationSeconds": 4,
+      "startSeconds": 0,
+      "sources": {
+        "en-US": "preview-guide.en-US",
+        "zh-Hans": "preview-guide.zh-Hans",
+        "ja": "preview-guide.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Every gesture, explained."
+        },
+        "zh-Hans": {
+          "headline": "每一种手势，都简单明了。"
+        },
+        "ja": {
+          "headline": "ジェスチャーをわかりやすく。"
+        }
+      }
+    },
+    {
+      "id": "scanner",
+      "durationSeconds": 4,
+      "startSeconds": 0,
+      "sources": {
+        "en-US": "preview-scanner.en-US",
+        "zh-Hans": "preview-scanner.zh-Hans",
+        "ja": "preview-scanner.ja"
+      },
+      "copy": {
+        "en-US": {
+          "headline": "Add a computer with its QR code."
+        },
+        "zh-Hans": {
+          "headline": "扫描二维码，添加电脑。"
+        },
+        "ja": {
+          "headline": "QR コードでパソコンを追加。"
+        }
+      }
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 Sofatap 1.0 (builds 12–15) is a manual remote for the user's computer on a home network. No streaming, Sofatap account, account password, purchase or subscription is required.
 
 SETUP
-Use iOS 17+ and an unlocked computer on the same reachable network. Published receiver 0.7.0 beta.1 and installation guides:
+Use iOS 17+ and an unlocked computer on the same reachable network. Use receiver 0.7.0 beta.1 for builds 12–14, or 0.7.1 beta.1 for build 15. Downloads and installation guides:
 https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
 Windows: extract the full ZIP, run SofaTap.exe, and allow its backend on a trusted private network if prompted. Keep the firewall on. Mac: install the notarized app for its processor and grant Accessibility permission; macOS 15+ is required. Linux depends on the desktop environment.
 
@@ -9,14 +9,14 @@ PAIRING BY BUILD
 Open the receiver's native window and choose a reachable local address. Allow Camera and Local Network access on iPhone. Full pairing links can also be pasted.
 - Build 12 (currently in external beta review): use the top-right QR icon. Tap the logo for status/help.
 - Builds 13–14: top-left device selector → Computer under Add Device → Scan Computer QR Code.
-- Build 15: top-left device selector → Scan QR Code under Add Device. Camera is above platform information. Scan computer or Android TV codes without choosing a type. The app routes automatically and displays available platform/name metadata. After authenticated connection, keep or change the name.
+- Build 15: top-left device selector → Scan QR Code under Add Device. Camera is above platform information. Scan computer or Android TV codes without choosing a type. The app detects the type/name. Name the device after authentication.
 Build 13+ supports switching, local rename/removal and disconnect in My Devices, with a separate question-mark guide. Removing a pairing affects only this iPhone.
-Build 15 accepts the published receiver's four-field codes. New receiver source emits six-field codes with platform/name and requires phone build 15+; those receiver binaries are not yet released. QR metadata is not authentication; certificate and credential checks still apply.
+Build 15 accepts older four-field codes. Released receiver 0.7.1 emits six-field codes with platform/name and requires phone build 15+. QR metadata is not authentication; certificate and credential checks still apply.
 
 DESKTOP TEST
 1. Open a document. Slide to move; tap for left click; double-tap for right click; hold 0.3 seconds, then move to drag. Two fingers move content in their direction. The strip inside the touchpad's right edge follows scrollbar direction: drag down to scroll down.
-2. Focus a writable native field and open the phone keyboard. Supported Windows/Mac fields import text and sync typing, Backspace, selection and deletion without Send. Other fields, Linux and older receivers use a draft and Send. No Enter/form-submit action is appended.
-3. Send sits inside the editor without covering text. Clear and keyboard-toggle icons sit below on the left; build 13+ adds up/down toggle states.
+2. Focus a writable native field and open the phone keyboard. Supported Windows/Mac fields import text and sync typing, Backspace, selection and deletion without Send. Unsupported fields, including many browser and custom controls, use review-and-send; Linux and older receivers use this mode. Sofatap does not append an extra Return after your text. Line breaks you include may be handled as Enter by the destination app.
+3. Send is inside the editor; Clear and keyboard toggle are below.
 4. Tap the microphone, allow Microphone/Speech access, and tap again to stop. On-device recognition needs a supported device/language; otherwise use the keyboard. Live fields sync recognized text; other fields need Send. Send a draft, append text, then send again: only the new suffix should arrive. Check the computer before retrying uncertain text.
 
 OPTIONAL TV PREVIEWS

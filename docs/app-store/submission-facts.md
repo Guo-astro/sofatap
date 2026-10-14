@@ -1,5 +1,7 @@
 # Sofatap first-release submission facts
 
+For the current formal App Store preparation, use the [1.0 (15) readiness audit](readiness-1.0-15.md), [12-language canonical metadata](metadata/README.md), [build-specific review notes](app-store-1.0-15-review-notes.txt) and [privacy evidence](privacy-assessment-1.0-15.md). The October 13 sections below are preserved historical evidence, including their then-missing contact, build and media gaps.
+
 ## Receiver and phone update — October 14, 2026
 
 The companion downloads now use [receiver 0.7.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1): Windows x64, signed/notarized Mac Apple Silicon and Intel, and Linux x64/ARM64. Exact package hashes, source revision and completed checks are recorded in [receiver 0.7.1 verification](../verification/receiver-0.7.1.md); the [support page](support.md) links each archive and installation guide.
