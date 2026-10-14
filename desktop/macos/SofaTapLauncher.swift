@@ -6,11 +6,30 @@ import SwiftUI
 @main
 enum SofaTapLauncher {
     @MainActor static func main() {
+        let options: ReceiverLaunchOptions
+        do { options = try ReceiverLaunchOptions.parse(Array(CommandLine.arguments.dropFirst())) }
+        catch { failLaunch(error) }
         let application = NSApplication.shared
-        let delegate = LauncherDelegate()
+        // Resolve before entering the application loop or creating a window/helper.
+        if let id = options.testDisplayID {
+            do { _ = try ReceiverTestScreen.frame(displayID: id) }
+            catch { failLaunch(error) }
+        }
+        let delegate = LauncherDelegate(options: options)
         application.delegate = delegate
-        application.setActivationPolicy(.regular)
+        if options.testDisplayID != nil {
+            guard application.setActivationPolicy(.accessory) else {
+                failLaunch(ReceiverLaunchError.displayUnavailable)
+            }
+        } else {
+            application.setActivationPolicy(.regular)
+        }
         withExtendedLifetime(delegate) { application.run() }
+    }
+
+    private static func failLaunch(_ error: Error) -> Never {
+        FileHandle.standardError.write(Data("Sofatap: \(error)\n".utf8))
+        exit(64)
     }
 }
 
@@ -19,9 +38,23 @@ enum SofaTapLauncher {
 @MainActor
 final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let receiver = ReceiverController()
+    private let options: ReceiverLaunchOptions
     private var window: NSWindow?
+    private var isTerminating = false
+
+    init(options: ReceiverLaunchOptions) {
+        self.options = options
+        super.init()
+    }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let testFrame: NSRect?
+        do { testFrame = try options.testDisplayID.map { try ReceiverTestScreen.frame(displayID: $0) } }
+        catch {
+            FileHandle.standardError.write(Data("Sofatap: \(error)\n".utf8))
+            NSApp.terminate(nil)
+            return
+        }
         let mainMenu = NSMenu()
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
@@ -33,8 +66,20 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         mainMenu.addItem(appItem)
         NSApp.mainMenu = mainMenu
 
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 700),
-            styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        let window: NSWindow
+        if testFrame != nil {
+            let panel = ReceiverTestPanel(contentRect: NSRect(x: 0, y: 0, width: 470, height: 700),
+                styleMask: [.titled, .closable, .nonactivatingPanel], backing: .buffered, defer: false)
+            panel.isFloatingPanel = false
+            panel.level = .normal
+            panel.hidesOnDeactivate = false
+            panel.isMovable = false
+            panel.animationBehavior = .none
+            window = panel
+        } else {
+            window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 470, height: 700),
+                styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
+        }
         window.title = "Sofatap"
         window.appearance = NSAppearance(named: .darkAqua)
         window.titlebarAppearsTransparent = true
@@ -43,16 +88,39 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         window.isReleasedWhenClosed = false
         window.delegate = self
         window.contentView = NSHostingView(rootView: ReceiverView(receiver: receiver))
-        window.center()
         self.window = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        if let testFrame {
+            window.setFrame(testFrame, display: false)
+            window.orderFrontRegardless()
+            NotificationCenter.default.addObserver(self, selector: #selector(testDisplayChanged),
+                name: NSApplication.didChangeScreenParametersNotification, object: nil)
+        } else {
+            window.center()
+            window.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
         receiver.start()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
-        if !flag { window?.makeKeyAndOrderFront(nil) }
+        if !flag {
+            if options.testDisplayID != nil { testDisplayChanged() }
+            else { window?.makeKeyAndOrderFront(nil) }
+        }
         return true
+    }
+
+    @objc private func testDisplayChanged() {
+        guard !isTerminating, let id = options.testDisplayID else { return }
+        do {
+            let frame = try ReceiverTestScreen.frame(displayID: id)
+            window?.setFrame(frame, display: false)
+            window?.orderFrontRegardless()
+        } catch {
+            // Never let AppKit recover a missing QA display onto a personal screen.
+            window?.orderOut(nil)
+            NSApp.terminate(nil)
+        }
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
@@ -63,14 +131,40 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+        isTerminating = true
         receiver.stop { [weak self] stopped in
             // Reply on the next main-loop turn, after AppKit receives terminateLater.
             DispatchQueue.main.async {
                 sender.reply(toApplicationShouldTerminate: stopped)
-                if !stopped { self?.window?.makeKeyAndOrderFront(nil) }
+                if !stopped { self?.isTerminating = false }
+                if !stopped, self?.options.testDisplayID == nil { self?.window?.makeKeyAndOrderFront(nil) }
             }
         }
         return .terminateLater
+    }
+}
+
+/// A visible, nonactivating receiver for camera/transport QA only. It cannot take
+/// key focus, and the corresponding launch option always forces dry-run input.
+private final class ReceiverTestPanel: NSPanel {
+    override var canBecomeKey: Bool { false }
+    override var canBecomeMain: Bool { false }
+}
+
+@MainActor
+private enum ReceiverTestScreen {
+    static func frame(displayID: UInt32) throws -> NSRect {
+        let displays = NSScreen.screens.compactMap { screen -> ReceiverDisplaySnapshot? in
+            guard let id = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber else { return nil }
+            let value = id.uint32Value
+            return ReceiverDisplaySnapshot(id: value, visibleFrame: screen.visibleFrame,
+                isPrimary: value == CGMainDisplayID(), isMirrored: CGDisplayIsInMirrorSet(value) != 0,
+                isActive: CGDisplayIsActive(value) != 0)
+        }
+        let style: NSWindow.StyleMask = [.titled, .closable, .nonactivatingPanel]
+        return try ReceiverTestPlacement.frame(displayID: displayID, displays: displays,
+            preferredSize: NSWindow.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 470, height: 700), styleMask: style).size,
+            minimumSize: NSWindow.frameRect(forContentRect: NSRect(x: 0, y: 0, width: 380, height: 440), styleMask: style).size)
     }
 }
 

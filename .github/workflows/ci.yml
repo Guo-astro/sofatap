@@ -54,6 +54,10 @@ jobs:
         run: |
           xcrun clang++ -std=c++17 -Wall -Wextra -Werror desktop/windows-secure-input-probe/ProbeChecks.cpp -o "$RUNNER_TEMP/sofatap-secure-input-policy-tests"
           "$RUNNER_TEMP/sofatap-secure-input-policy-tests"
+      - name: Mac virtual-display launch safety without opening windows
+        run: |
+          swiftc desktop/macos/ReceiverLaunchOptions.swift desktop/macos/tests/ReceiverLaunchOptionsTests.swift -o "$RUNNER_TEMP/sofatap-launch-tests"
+          "$RUNNER_TEMP/sofatap-launch-tests"
       - name: Native pairing parser checks
         shell: bash
         run: |
