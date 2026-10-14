@@ -34,4 +34,13 @@ This task used dedicated headless simulators and recording transports, with no s
 
 ## Companion downloads
 
-[Receiver 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) remains compatible through its older four-field codes. New receiver source adds platform/name metadata and requires phone build 15 or newer; new receiver binaries have not been published. See the [support page](../app-store/support.md) for the existing Windows, notarized Mac and Linux downloads.
+[Receiver 0.7.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1) is now published for Windows, notarized Mac and Linux. Its QR platform/name metadata requires phone build 15 or newer; older 0.7.0 four-field codes remain compatible with build 15. See the [support page](../app-store/support.md) for downloads and the [receiver acceptance record](receiver-0.7.1.md) for the later physical Linux scan, identification, naming, renaming and reconnect results. Mac/Windows optical acceptance remains pending; the initial archive-only verification above does not include those later tests.
+
+
+## Submission follow-up: October 14, 15:05 JST
+
+After the owner explicitly authorized submitting build 15, a fresh submission attempt returned Apple's queue conflict: “Another build in the same train is already in beta review.” Live readback still showed build 12 as `WAITING_FOR_REVIEW`, build 15 as `READY_FOR_BETA_SUBMISSION`, and no build-15 review submission. Both its internal and public beta group assignments remain present.
+
+The shared TestFlight reviewer instructions were updated from the current [review notes](../app-store/review-notes-en-US.txt), preserving build-12 setup instructions and all existing contact/demo-account fields. All three build-15 [What to Test](../app-store/testflight-1.0-15.json) translations now point to released receiver 0.7.1 and distinguish verified Linux physical pairing from pending Mac/Windows and TV acceptance. All notes were read back exactly.
+
+The existing hourly monitor now has the owner's authorization to submit this exact build 15 after Apple's queue permits it, then verify the resulting review record. It will not withdraw or expire build 12, invite testers, change groups or submit a formal App Store review. A rejection or missing prerequisite requires attention rather than an automatic submission. Submission and approval notifications remain distinct.
