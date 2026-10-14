@@ -29,7 +29,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。见[语言覆盖](docs/APP-LANGUAGES.md)与[验证记录](docs/verification/device-library-2026-10-14.md)。
 
-**当前 beta：**iPhone **1.0 (15)** 已通过 Apple 处理（`VALID`），已获邀请的内部 TestFlight 测试人员可以安装（`IN_BETA_TESTING`），配套[接收器 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。**构建 12** 仍在等待外部审核（`WAITING_FOR_REVIEW`）。Apple 因同一版本已有构建在审，拒绝了构建 15 的送审请求；构建 15 目前为 `READY_FOR_BETA_SUBMISSION`，需等构建 12 审结后再提交。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)名额上限为 100 人，目前尚不能通过它安装。此状态不代表 App Store 正式发布或新增真机验收。见[构建与审核状态](docs/verification/testflight-1.0-15.md)。
+**当前 beta：**iPhone **1.0 (15)** 已向获邀内部 TestFlight 测试人员开放，并已安装到常驻测试 iPhone。[接收器 0.7.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1) 的二维码新增设备类型和名称；**升级接收器前，请先把手机更新到构建 15 或更新版本**。[10 月 14 日分发记录](docs/verification/testflight-1.0-15.md)记载：构建 12 正在等待外部审核，因此 Apple 暂未接受构建 15 的送审；[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)当时尚不能用于安装。实际完成的验证范围见[接收器发布与设备测试记录](docs/verification/receiver-0.7.1.md)。
 
 此前的 [0.7.0 (10) 真机到 Windows 限定验收](docs/verification/realtime-input-0.7.0.md)已通过原生 RichEdit 字段的已有文字导入、多语言／emoji／换行追加、键盘删除、全选和清空；最终构建的实时语音及其他项目仍待验收。[0.6.0 记录](docs/verification/2026-10-13-iphone-input.md)另有手势、麦克风听写和明确发送的结果。接收器打包与公证检查不等于真实输入验收。蓝牙连接和云中继尚未实现。参见[交互规格与后续独立 CUA 方向](docs/INTERACTION.md)。
 
@@ -39,7 +39,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 **构建 15 更新：**添加设备统一进入**扫描二维码**页面，上半部为相机，下方为支持的平台说明。扫描或粘贴电脑、Android/Google TV 的配对码，无需先选设备类型。App 自动选择连接适配器，显示二维码中提供的平台和名称，认证连接成功后再进入命名步骤。可保留建议名称或保存新名称，之后仍可在“我的设备”中本地重命名。LG webOS 仍需手动输入 IP 并在电视上授权。Android/Google TV 仍属实验性功能，尚无通过验收的电视型号或第三方电视应用。
 
-构建 15 兼容已发布接收器 0.7.0 beta.1 的旧四字段电脑配对码。新接收器源码增加 `platform` 和 `name`，生成六字段码，要求 iPhone 构建 15 或更新版本。接收器尚未发布新版二进制，现有下载仍使用旧格式。二维码中的标签用于识别候选设备；实际连接仍须通过证书和配对凭据校验。
+接收器 0.7.1 beta.1 的电脑配对码包含 `platform` 和 `name`，手机可自动识别 Windows、Mac 或 Linux。新码要求 **iPhone 1.0 构建 15 或更新版本**，旧手机构建无法读取。构建 15 同时兼容[接收器 0.7.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1) 的旧格式。二维码中的标签用于识别候选设备；实际连接仍须通过证书和配对凭据校验。
 
 **路线图：**免费提供手动鼠标／触控遥控，当前支持电脑，下一步扩展直连电视；电视的真实光标能力需要单独验证，方向键导航不等同于鼠标。基础语音转文字仍是免费输入。付费的语音目标自动化先面向 Windows、macOS、Linux 的多步任务，之后再扩展电视。本次 beta 的电视遥控仍是实验性预览；自动化与订阅尚未启用。参见[路线图与验收目标](docs/ROADMAP.md)和[自动化研究](docs/research/natural-language-pro.md)。
 
@@ -55,10 +55,10 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。1.0 (15) 已可通过内部 TestFlight 安装，界面支持 12 种语言。构建 12 正在等待外部审核，构建 15 需等其审结后才能提交；公开测试未开放。此前 0.7.0 (10) 的 RichEdit 键盘验收是独立结果，构建 15 的真机验收仍待完成。 |
-| Windows | 接收器 0.7.0 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。Windows 程序尚无 Authenticode 签名。 |
-| Mac | macOS 15+。0.7.0 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
-| Linux | 0.7.0 beta.1 的 x64、ARM64 GTK3 包已发布。此前 X11 输入通过隔离桌面检查；Wayland 为实验支持，真手机联调、真实 Wayland 合成器和 ARM64 运行待测。 |
+| iPhone | iOS 17+。1.0 (15) 支持 12 种界面语言，已向内部 TestFlight 开放，并验证安装到测试 iPhone。[分发记录](docs/verification/testflight-1.0-15.md)单独记载外部审核状态。安装成功不代表相机扫码或接收端输入已验收，实际范围见[当前验证记录](docs/verification/receiver-0.7.1.md)。 |
+| Windows | 接收器 0.7.1 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目仍待完成。Windows 程序尚无 Authenticode 签名。 |
+| Mac | macOS 15+。0.7.1 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
+| Linux | 0.7.1 beta.1 的 x64、ARM64 GTK3 包已发布。ARM64 接收器已在隔离 Xvfb 中运行，真 iPhone 已通过限定的相机配对、Linux 识别、命名及重命名持久化检查。此前 X11 输入检查是独立结果；真实 Wayland 合成器及实体 Linux 桌面输入仍待验收，见[当前记录](docs/verification/receiver-0.7.1.md)。 |
 
 [Mac 验收记录](docs/verification/macos-0.3.0.md)覆盖了 2026-10-11 的真实相机扫码、TLS 连接、文字精确读回和部分按键、指针操作。[Linux 验收记录](docs/verification/linux-0.4.0.md)覆盖原生 GTK 渲染、独立 Xvfb 桌面上的 X11 输入，以及私有 D-Bus 上的模拟 Wayland portal。这些记录不代表所有应用的兼容性均已验证。
 
@@ -70,17 +70,17 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 | 电脑 | 下载 | 安装说明 |
 | --- | --- | --- |
-| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Windows-x64.zip) | 解压并运行 `SofaTap.exe`，防火墙只允许可信家庭专用网络访问。[Windows 启动说明](docs/WINDOWS-START.md) |
-| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-macOS-x64-notarized.zip) | 两者均已公证。见 [Mac 安装与授权说明](docs/MAC-START.md)。 |
-| Linux x64 / ARM64 | [x64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.0-beta.1/SofaTap-Linux-arm64.tar.gz) | 安装系统 GTK 和输入依赖后，解压并运行 `./sofatap`；原生窗口包含 Wayland 授权入口。[Linux 启动说明](desktop/linux/README.md) |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Windows-x64.zip) | 解压并运行 `SofaTap.exe`，防火墙只允许可信家庭专用网络访问。[Windows 启动说明](docs/WINDOWS-START.md) |
+| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-macOS-x64-notarized.zip) | 两者均已公证。见 [Mac 安装与授权说明](docs/MAC-START.md)。 |
+| Linux x64 / ARM64 | [x64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 压缩包](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Linux-arm64.tar.gz) | 安装系统 GTK 和输入依赖后，解压并运行 `./sofatap`；原生窗口包含 Wayland 授权入口。[Linux 启动说明](desktop/linux/README.md) |
 
-以上均为 [0.7.0 beta.1，附对应 SHA256 文件与发布说明](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。电脑端包已包含 .NET 运行时，Linux 仍需安装列出的系统依赖。`--dry-run` 可演练连接流程，不产生桌面输入。此前验收记录保留实际测试时的版本标签。
+以上均为 [0.7.1 beta.1，附对应 SHA256 文件与发布说明](https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1)。电脑端包已包含 .NET 运行时，Linux 仍需安装列出的系统依赖。`--dry-run` 可演练连接流程，不产生桌面输入。此前验收记录保留实际测试时的版本标签。
 
 ### 安装 iPhone App 并配对
 
-1. 已获邀请的内部测试人员可通过 TestFlight 安装 iPhone 1.0 (15)。[公开邀请链接](https://testflight.apple.com/join/e6MuKx9S)尚未开放：构建 12 正在等待外部审核，构建 15 需等其审结后再提交。见[当前状态](docs/verification/testflight-1.0-15.md)。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
+1. **安装接收器 0.7.1 beta.1 前，请先安装 iPhone 1.0 (15) 或更新版本**。获邀内部测试人员可使用 TestFlight；外部审核与[公开邀请](https://testflight.apple.com/join/e6MuKx9S)的待办状态见[10 月 14 日分发记录](docs/verification/testflight-1.0-15.md)。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
 2. 将 iPhone 与电脑接入可互通的家庭网络。访客 Wi-Fi 的设备隔离可能阻止连接。
-3. 构建 15：点击左上角设备选择入口，在**添加设备**下选择**扫描二维码**。电脑与 Android/Google TV 共用扫码页，认证成功后进入命名步骤。构建 13–14 仍先在**添加设备**下选择**电脑**；构建 12 的入口为右上角二维码图标。各版本均扫描接收端原生窗口里的二维码，或使用完整配对链接。
+3. 点击左上角设备选择入口，在**添加设备**下选择**扫描二维码**。电脑与 Android/Google TV 共用扫码页，认证成功后进入命名步骤。扫描接收端原生窗口里的二维码，或粘贴完整配对链接。
 4. 在电脑上选中输入框，再打开手机键盘或麦克风。受支持的字段自动同步打字、删除和识别文字；其他字段显示**发送**按钮，供检查草稿后发送。焦点冲突或断线导致实时输入暂停时，先检查电脑，再明确重新打开编辑器；不确定的编辑不会自动重放。
 
 配对链接含有控制凭据，应只保留在自己的设备上。如果从最早使用 **Tiltro** 名称的版本升级，请阅读[升级说明](docs/WINDOWS-START.md#从旧名称版本升级)：这些版本的标识和存储位置不同，其配对和草稿不会自动迁移。本次 Sofatap 品牌拼写统一会保留现有 Sofatap 配对。

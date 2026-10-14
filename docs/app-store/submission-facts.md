@@ -1,6 +1,18 @@
 # Sofatap first-release submission facts
 
-Historical first-upload snapshot, October 13, 2026. The latest 1.0 (12) upload and external-beta preparation are recorded in [TestFlight 1.0 (12)](../verification/testflight-1.0-12.md).
+## Receiver and phone update — October 14, 2026
+
+The companion downloads now use [receiver 0.7.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.1-beta.1): Windows x64, signed/notarized Mac Apple Silicon and Intel, and Linux x64/ARM64. Exact package hashes, source revision and completed checks are recorded in [receiver 0.7.1 verification](../verification/receiver-0.7.1.md); the [support page](support.md) links each archive and installation guide.
+
+The new desktop QR includes `platform` and `name` and requires **iPhone 1.0 build 15 or newer**. Build 15 also accepts the original four-field codes from receiver 0.7.0 beta.1. QR metadata selects and labels the candidate; certificate pinning and credential authentication establish the connection. The phone offers local naming after authentication, and My Devices supports later renaming. Aliases do not rename the computer itself.
+
+**Physical installation:** the resident test iPhone now has TestFlight **1.0 (15)** installed, verified through the TestFlight interface and device installation metadata. This supersedes the incomplete build 11 download below. It does not establish optical QR scanning, automatic device identification, renaming or real desktop input; use the separate receiver verification record for those results.
+
+**Review snapshot:** [TestFlight 1.0 (15)](../verification/testflight-1.0-15.md) records Apple processing `VALID` and internal distribution `IN_BETA_TESTING`. At that snapshot, build 12 was `WAITING_FOR_REVIEW` for external testing and Apple rejected build 15's submission because the same version already had a build in review. Build 15 remained `READY_FOR_BETA_SUBMISSION`; public installation was not open. This receiver documentation update does not recheck or change Apple review state.
+
+## Historical first-upload snapshot — October 13, 2026
+
+The rest of this document preserves the original first-upload evidence and gaps; it is not a current release-status checklist. Later distribution records are [TestFlight 1.0 (12)](../verification/testflight-1.0-12.md), [1.0 (14)](../verification/testflight-1.0-14.md) and [1.0 (15)](../verification/testflight-1.0-15.md).
 
 At this snapshot: iPhone 1.0 (11) is uploaded, processed `VALID` and `READY_FOR_BETA_TESTING` for internal testing. Four authentic screenshots and English store materials are saved. App Privacy responses are saved as a draft, not published. Formal App Store review has not been submitted; the internal invitation has been accepted on a test iPhone, but its TestFlight download has not completed.
 
