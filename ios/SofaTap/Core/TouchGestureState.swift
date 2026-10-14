@@ -4,6 +4,8 @@ import Foundation
 /// No mouse input is sent by this type, which also makes cancellation/timing testable.
 struct TouchGestureState {
     enum Profile: Equatable { case desktop, tvPointer }
+    /// Invisible halves of the pad, supplied from the native view's actual bounds.
+    enum Region: Equatable { case left, right }
     struct Point: Equatable {
         var x: Double
         var y: Double
@@ -23,8 +25,9 @@ struct TouchGestureState {
     private var holdDeadline: Double?
     private var moved = false
     private var secondTap = false
+    private var tapRegion: Region?
     private var suppressLiftClick = false
-    private var pendingTap: (point: Point, deadline: Double)?
+    private var pendingTap: (point: Point, region: Region?, deadline: Double)?
     private(set) var isDragging = false
     private(set) var profile: Profile
 
@@ -42,7 +45,7 @@ struct TouchGestureState {
         [holdDeadline, pendingTap?.deadline].compactMap { $0 }.min()
     }
 
-    mutating func begin(at point: Point, count: Int, time: Double) -> [Action] {
+    mutating func begin(at point: Point, count: Int, time: Double, region: Region = .left) -> [Action] {
         guard count > 0 else { return [] }
         if count != 1 || mode != .idle {
             return switchContactCount(count, point: point)
@@ -50,7 +53,7 @@ struct TouchGestureState {
         var actions = advance(to: time)
         secondTap = false
         if let pendingTap {
-            if time < pendingTap.deadline && pendingTap.point.distance(to: point) <= doubleTapDistance {
+            if time < pendingTap.deadline && pendingTap.region == region && pendingTap.point.distance(to: point) <= doubleTapDistance {
                 secondTap = true
             } else {
                 actions.append(.leftClick)
@@ -61,11 +64,12 @@ struct TouchGestureState {
         origin = point
         previous = point
         moved = false
+        tapRegion = region
         holdDeadline = time + Self.holdDuration
         return actions
     }
 
-    mutating func move(to point: Point, count: Int, time: Double) -> [Action] {
+    mutating func move(to point: Point, count: Int, time: Double, region: Region = .left) -> [Action] {
         // Apply movement first: a delayed main-run-loop timer must not begin a drag
         // after the finger has already crossed the stationary tolerance.
         guard count > 0 else { return [] }
@@ -79,6 +83,7 @@ struct TouchGestureState {
         // Two fingers drag the content: fingers down pull it down (wheel up).
         // The edge strip follows scrollbar direction instead and stays separate.
         if mode == .two { return dy == 0 ? [] : [.scroll(dy)] }
+        if tapRegion != region { tapRegion = nil }
         if origin.distance(to: point) > movementTolerance {
             moved = true
             holdDeadline = nil
@@ -91,7 +96,7 @@ struct TouchGestureState {
         return actions
     }
 
-    mutating func end(at point: Point, remainingCount: Int, time: Double) -> [Action] {
+    mutating func end(at point: Point, remainingCount: Int, time: Double, region: Region = .left) -> [Action] {
         if remainingCount > 0 {
             // Never turn the remaining finger of a scroll into a tap or a drag.
             let actions: [Action] = isDragging ? [.dragging(false)] : []
@@ -102,14 +107,24 @@ struct TouchGestureState {
         }
         var actions: [Action] = []
         if mode == .one {
+            if tapRegion != region { tapRegion = nil }
             if origin.distance(to: point) > movementTolerance { moved = true; holdDeadline = nil }
             actions += advance(to: time)
             if isDragging {
                 actions.append(.dragging(false))
             } else if !moved && !suppressLiftClick {
                 if profile == .tvPointer { actions.append(.leftClick) }
-                else if secondTap { actions.append(.rightClick) }
-                else { pendingTap = (point, time + Self.doubleTapInterval) }
+                else if secondTap, let tapRegion {
+                    // Each action becomes one ordinary click with a distinct wire
+                    // request. Send exactly two, never a preceding single plus two.
+                    let click: Action = tapRegion == .left ? .leftClick : .rightClick
+                    actions += [click, click]
+                } else {
+                    // Crossing the invisible divider cancels the double-click
+                    // candidate. Preserve each valid tap as an ordinary left click.
+                    if secondTap { actions.append(.leftClick) }
+                    pendingTap = (point, tapRegion, time + Self.doubleTapInterval)
+                }
             }
         }
         resetContact()
@@ -161,6 +176,7 @@ struct TouchGestureState {
         isDragging = false
         moved = false
         secondTap = false
+        tapRegion = nil
         suppressLiftClick = false
     }
 }

@@ -312,3 +312,13 @@
 "重试连接" = "Verbindung erneut versuchen";
 "已自动识别" = "Automatisch erkannt";
 "继续" = "Weiter";
+
+/* Physical touchpad halves and explicit computer Backspace. */
+"单击左键，左右分区双击" = "Tippen für Linksklick, Doppeltippen je Hälfte";
+"任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。" = "Einmaliges Tippen an beliebiger Stelle löst einen Linksklick aus. Doppeltes Tippen auf der linken Hälfte sendet zwei Linksklicks, auf der rechten zwei Rechtsklicks. Die Hälften werden nur in dieser Anleitung dargestellt.";
+"左键 ×2" = "Links ×2";
+"右键 ×2" = "Rechts ×2";
+"电脑退格" = "Rücktaste am Computer";
+"草稿与电脑退格" = "Entwürfe und Rücktaste am Computer";
+"先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Wähle zuerst das Textfeld am Computer. Bei der Live-Bearbeitung wird die Rücktaste synchronisiert; ungesendeter Entwurfstext wird zuerst auf dem iPhone gelöscht. Nach dem Leeren des lokalen Entwurfs kann die Rücktaste Text am Computer löschen. Die Taste unter dem Editor wirkt am Computer, ohne den iPhone-Entwurf zu löschen.";
+"滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Wischen bewegt den Zeiger; einmal tippen für Linksklick; links doppelt tippen für zwei Linksklicks, rechts für zwei Rechtsklicks; 0,3 Sekunden halten zum Ziehen; mit zwei Fingern wischen zum Scrollen.";

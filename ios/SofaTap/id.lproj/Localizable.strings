@@ -312,3 +312,13 @@
 "重试连接" = "Coba Hubungkan Lagi";
 "已自动识别" = "Dikenali Otomatis";
 "继续" = "Lanjutkan";
+
+/* Physical touchpad halves and explicit computer Backspace. */
+"单击左键，左右分区双击" = "Ketuk untuk klik kiri; ketuk dua kali per sisi";
+"任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。" = "Ketuk di mana saja untuk klik kiri. Ketuk dua kali dengan cepat di separuh kiri untuk mengirim dua klik kiri, atau di separuh kanan untuk dua klik kanan. Pembagian sisi hanya ditampilkan dalam panduan ini.";
+"左键 ×2" = "Kiri ×2";
+"右键 ×2" = "Kanan ×2";
+"电脑退格" = "Backspace di Komputer";
+"草稿与电脑退格" = "Draf dan Backspace di Komputer";
+"先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Pilih kolom teks di komputer terlebih dahulu. Backspace disinkronkan saat mengedit langsung; teks draf yang belum dikirim dihapus di ponsel terlebih dahulu. Setelah draf lokal dikosongkan, Backspace dapat menghapus teks di komputer. Tombol di bawah editor bekerja di komputer tanpa menghapus draf ponsel.";
+"滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Geser untuk memindahkan penunjuk; ketuk untuk klik kiri; ketuk dua kali di separuh kiri untuk dua klik kiri, atau di separuh kanan untuk dua klik kanan; tahan 0,3 detik untuk menyeret; geser dua jari untuk menggulir.";

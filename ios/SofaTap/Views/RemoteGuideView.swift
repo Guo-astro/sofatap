@@ -15,8 +15,8 @@ struct RemoteGuideView: View {
                               title: String(localized: "滑动手指，移动电脑光标"),
                               detail: String(localized: "光效跟随你在手机上的手指，电脑光标的位置请看电脑屏幕。"))
                     guideCard("hand.tap", gesture: .tap,
-                              title: String(localized: "单击左键，连续点两下右键"),
-                              detail: String(localized: "单击选择；两次快速轻点打开电脑右键菜单。"))
+                              title: String(localized: "单击左键，左右分区双击"),
+                              detail: String(localized: "任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。"))
                     guideCard("hand.point.up", gesture: .hold,
                               title: String(localized: "按住 0.3 秒开始拖动，抬手松开"),
                               detail: String(localized: "按住后滑动手指，拖动物件或选择文字。"))
@@ -26,6 +26,9 @@ struct RemoteGuideView: View {
                     guideCard("keyboard", gesture: .text,
                               title: String(localized: "键盘与语音输入"),
                               detail: String(localized: "先选中电脑输入框，再点键盘或麦克风。支持的输入框自动同步，其他输入框用发送按钮提交。箭头可收起或展开键盘。"))
+                    guideCard("delete.left", gesture: .backspace,
+                              title: String(localized: "草稿与电脑退格"),
+                              detail: String(localized: "先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。"))
                     VStack(alignment: .leading, spacing: 10) {
                         Label {
                             Text(verbatim: "Android TV / Google TV")
@@ -63,7 +66,7 @@ struct RemoteGuideView: View {
     }
 }
 
-private enum GuideGesture { case move, tap, hold, scroll, text }
+private enum GuideGesture { case move, tap, hold, scroll, text, backspace }
 
 private struct GuideGestureDiagram: View {
     let gesture: GuideGesture
@@ -80,10 +83,18 @@ private struct GuideGestureDiagram: View {
                 }
             }
             HStack(spacing: 16) {
-                if gesture == .text {
+                if gesture == .tap {
+                    // Show the invisible physical halves only in this guide. Keep
+                    // their positions stable in right-to-left interface languages.
+                    tapHalf(String(localized: "左键 ×2"))
+                    Rectangle().fill(Palette.mint.opacity(0.25)).frame(width: 1, height: 58)
+                    tapHalf(String(localized: "右键 ×2"))
+                } else if gesture == .text {
                     Image(systemName: "keyboard"); Image(systemName: "mic.fill"); Image(systemName: "arrow.up.circle.fill")
+                } else if gesture == .backspace {
+                    Image(systemName: "delete.left"); Image(systemName: "arrow.right"); Image(systemName: "desktopcomputer")
                 } else {
-                    if gesture == .tap || gesture == .hold {
+                    if gesture == .hold {
                         Circle().stroke(Palette.mint.opacity(0.30), lineWidth: 2).frame(width: 46, height: 46)
                             .overlay(Circle().fill(Palette.mint).frame(width: 17, height: 17))
                     } else {
@@ -93,12 +104,20 @@ private struct GuideGestureDiagram: View {
                         }
                     }
                     if gesture == .hold { Text(verbatim: "0.3 s").font(.system(size: 17, weight: .medium, design: .rounded)) }
-                    Image(systemName: gesture == .scroll ? "arrow.up.arrow.down" : gesture == .tap ? "hand.tap" : "arrow.right")
+                    Image(systemName: gesture == .scroll ? "arrow.up.arrow.down" : "arrow.right")
                 }
             }
             .font(.system(size: 24, weight: .medium)).foregroundStyle(Palette.mint)
             .environment(\.layoutDirection, .leftToRight)
         }
+    }
+
+    private func tapHalf(_ label: String) -> some View {
+        VStack(spacing: 6) {
+            Image(systemName: "hand.tap")
+            Text(label).font(.system(size: 12, weight: .semibold))
+        }
+        .frame(maxWidth: .infinity)
     }
 }
 

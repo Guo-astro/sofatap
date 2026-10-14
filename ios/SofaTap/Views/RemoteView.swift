@@ -437,7 +437,8 @@ struct RemoteView: View {
                                       onEdit: { text, selection, marked in model.editText(text, selection: selection, marked: marked) },
                                       preservesFocusWhileLoading: model.editorLoading,
                                       liveEditing: model.usesLiveText,
-                                      control: draftEditorControl)
+                                      control: draftEditorControl,
+                                      onEmptyBackspace: { model.keyboardBackspaceFromEmptyDraft() })
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 // A separate column reserves room for Send, including while the
@@ -487,6 +488,12 @@ struct RemoteView: View {
                          label: keyboardFocused ? String(localized: "收起键盘") : String(localized: "打开键盘输入"),
                          identifier: "hideKeyboard") { toggleKeyboard() }
                 .accessibilityValue(keyboardFocused ? String(localized: "键盘已展开") : String(localized: "键盘已收起"))
+            composerIcon("delete.left", label: String(localized: "电脑退格"), identifier: "remoteBackspace") {
+                guard draftEditorControl.flushForSend() else { return }
+                interruptTouch()
+                model.remoteBackspace()
+            }
+            .disabled(!model.canRemoteBackspace || speechBusy)
             if model.liveTextPaused {
                 composerIcon("arrow.clockwise", label: String(localized: "检查电脑后重新读取输入框"), identifier: "resumeLiveText") {
                     model.restartLiveTextEditing()

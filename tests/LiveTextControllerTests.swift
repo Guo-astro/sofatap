@@ -35,7 +35,7 @@ private final class LiveFixture {
 @MainActor
 private final class LiveEditorFixture {
     let transport = LiveFixture()
-    let view = UITextView()
+    let view = NativeDraftEditor.TextView()
     var coordinator: NativeDraftEditor.Coordinator!
     init(_ text: String) {
         transport.begin(text)
@@ -44,7 +44,9 @@ private final class LiveEditorFixture {
                                        composing: Binding(get: { model.composing }, set: { model.composing = $0 }),
                                        isFocused: .constant(false), disabled: false,
                                        selection: Binding(get: { model.draftSelection }, set: { model.draftSelection = $0 }),
-                                       onEdit: { model.editText($0, selection: $1, marked: $2) })
+                                       onEdit: { model.editText($0, selection: $1, marked: $2) },
+                                       liveEditing: true,
+                                       onEmptyBackspace: { model.keyboardBackspaceFromEmptyDraft() })
         coordinator = editor.makeCoordinator(); coordinator.textView = view
         coordinator.synchronizeText(view); view.delegate = coordinator
     }
@@ -188,6 +190,24 @@ struct LiveTextControllerTests {
         check("native UIKit selectAll sends remote selection without duplicate text", editor.transport.frames.last?.fields["selectionLength"] as? Int == 3)
         editor.view.deleteBackward(); editor.ackAll()
         check("native delete after selectAll clears remote field", editor.transport.frames.last?.fields["text"] as? String == "" && editor.transport.model.draft.isEmpty)
+        let emptyLiveCount = editor.transport.frames.count
+        editor.view.deleteBackward(); editor.transport.model.remoteBackspace()
+        check("empty live Backspace produces neither another snapshot nor a raw key", editor.transport.frames.count == emptyLiveCount)
+
+        let shortcut = LiveFixture(); shortcut.begin("前缀 👨‍👩‍👧‍👦")
+        shortcut.model.remoteBackspace()
+        check("remote shortcut deletes the complete preceding emoji through textSync", shortcut.frames.count == 2 && shortcut.frames[1].type == "textSync" && shortcut.frames[1].fields["text"] as? String == "前缀 ")
+        shortcut.model.remoteBackspace()
+        check("shortcut during pending live ACK coalesces instead of sending a raw key", shortcut.frames.count == 2 && shortcut.model.draft == "前缀")
+        shortcut.reply(1)
+        check("ACK flushes exactly one latest deletion snapshot", shortcut.frames.count == 3 && shortcut.frames[2].fields["text"] as? String == "前缀")
+        shortcut.reply(2)
+        shortcut.model.selectAll(); shortcut.reply(3)
+        shortcut.model.remoteBackspace(); shortcut.reply(4)
+        check("remote shortcut deletes live selected text without closing its session", shortcut.model.draft.isEmpty && shortcut.model.liveTextReady && shortcut.frames.allSatisfy { $0.type == "textBegin" || $0.type == "textSync" })
+        let startingBackspace = LiveFixture(); startingBackspace.model.openTextEditor(); startingBackspace.model.remoteBackspace()
+        check("initial live snapshot cannot race the remote Backspace shortcut", startingBackspace.frames.count == 1 && !startingBackspace.model.canRemoteBackspace)
+
         let beginIMECount = editor.transport.frames.count
         editor.view.setMarkedText("shice", selectedRange: NSRange(location: 5, length: 0))
         check("actual UIKit marked range is not transmitted", editor.transport.frames.count == beginIMECount && editor.transport.model.composing)

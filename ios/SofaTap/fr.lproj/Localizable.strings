@@ -312,3 +312,13 @@
 "重试连接" = "Réessayer la connexion";
 "已自动识别" = "Identifié automatiquement";
 "继续" = "Continuer";
+
+/* Physical touchpad halves and explicit computer Backspace. */
+"单击左键，左右分区双击" = "Touchez pour cliquer ; touchez deux fois chaque moitié";
+"任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。" = "Touchez n’importe où pour un clic gauche. Touchez deux fois la moitié gauche pour envoyer deux clics gauches, ou la moitié droite pour deux clics droits. Les moitiés sont illustrées uniquement dans ce guide.";
+"左键 ×2" = "Gauche ×2";
+"右键 ×2" = "Droit ×2";
+"电脑退格" = "Retour arrière sur l’ordinateur";
+"草稿与电脑退格" = "Brouillons et retour arrière sur l’ordinateur";
+"先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Sélectionnez d’abord le champ de texte sur l’ordinateur. Le retour arrière est synchronisé en saisie directe ; le texte non envoyé du brouillon est d’abord effacé sur le téléphone. Après avoir vidé le brouillon local, la touche peut effacer du texte sur l’ordinateur. Le bouton sous l’éditeur agit sur l’ordinateur sans effacer le brouillon du téléphone.";
+"滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Glissez pour déplacer le pointeur ; touchez pour un clic gauche ; touchez deux fois la moitié gauche pour deux clics gauches, ou la droite pour deux clics droits ; maintenez 0,3 seconde pour faire glisser ; glissez avec deux doigts pour faire défiler.";

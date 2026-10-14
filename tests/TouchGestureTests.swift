@@ -29,8 +29,71 @@ struct TouchGestureTests {
         var double = State()
         _ = begin(&double); _ = end(&double, 0.04)
         check("second touch consumes pending single", begin(&double, 0.14).isEmpty)
-        check("one finger double tap sends ONLY right click", end(&double, 0.20) == [.rightClick])
-        check("double tap has no delayed left click", double.advance(to: 2).isEmpty)
+        check("left-half double tap sends exactly two left clicks", end(&double, 0.20) == [.leftClick, .leftClick])
+        check("double tap has no delayed or third click", double.advance(to: 2).isEmpty && double.nextDeadline == nil)
+
+        var rightSingle = State()
+        _ = rightSingle.begin(at: origin, count: 1, time: 0, region: .right)
+        check("right-half single tap is deferred without clicking", rightSingle.end(at: origin, remainingCount: 0, time: 0.04, region: .right).isEmpty)
+        check("right-half single tap remains exactly one left click", rightSingle.advance(to: 0.33) == [.leftClick])
+
+        var rightDouble = State()
+        _ = rightDouble.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = rightDouble.end(at: origin, remainingCount: 0, time: 0.04, region: .right)
+        check("second right-half touch consumes pending single without stray left click", rightDouble.begin(at: origin, count: 1, time: 0.14, region: .right).isEmpty)
+        check("right-half double tap sends exactly two right clicks", rightDouble.end(at: origin, remainingCount: 0, time: 0.20, region: .right) == [.rightClick, .rightClick])
+        check("right double has no delayed or third click", rightDouble.advance(to: 2).isEmpty && rightDouble.nextDeadline == nil)
+
+        for region in [State.Region.left, .right] {
+            var triple = State()
+            var actions: [Action] = []
+            for index in 0..<3 {
+                let time = Double(index) * 0.1
+                actions += triple.begin(at: origin, count: 1, time: time, region: region)
+                actions += triple.end(at: origin, remainingCount: 0, time: time + 0.03, region: region)
+            }
+            let pair: [Action] = region == .left ? [.leftClick, .leftClick] : [.rightClick, .rightClick]
+            check("triple tap completes only one double click before timeout in \(region)", actions == pair)
+            check("third tap is a fresh single left click in \(region)", triple.advance(to: 1) == [.leftClick] && triple.advance(to: 2).isEmpty)
+        }
+
+        for first in [State.Region.left, .right] {
+            let second: State.Region = first == .left ? .right : .left
+            var crossing = State()
+            _ = crossing.begin(at: origin, count: 1, time: 0, region: first)
+            _ = crossing.end(at: origin, remainingCount: 0, time: 0.04, region: first)
+            check("different-half second tap preserves first single left click from \(first)", crossing.begin(at: origin, count: 1, time: 0.14, region: second) == [.leftClick])
+            check("different-half second tap is a separate single from \(first)", crossing.end(at: origin, remainingCount: 0, time: 0.20, region: second).isEmpty)
+            check("different-half taps never form a right or mixed-button double from \(first)", crossing.advance(to: 1) == [.leftClick] && crossing.advance(to: 2).isEmpty)
+        }
+
+        var crossingFirst = State()
+        _ = crossingFirst.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = crossingFirst.move(to: origin, count: 1, time: 0.02, region: .left)
+        _ = crossingFirst.end(at: origin, remainingCount: 0, time: 0.04, region: .right)
+        check("crossing then returning cannot arm first half of double", crossingFirst.begin(at: origin, count: 1, time: 0.14, region: .right) == [.leftClick])
+        _ = crossingFirst.end(at: origin, remainingCount: 0, time: 0.20, region: .right)
+        check("crossed first tap stays an independent left click", crossingFirst.advance(to: 1) == [.leftClick])
+
+        var crossingSecond = State()
+        _ = crossingSecond.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = crossingSecond.end(at: origin, remainingCount: 0, time: 0.04, region: .right)
+        _ = crossingSecond.begin(at: origin, count: 1, time: 0.14, region: .right)
+        check("crossing second tap produces no premature click", crossingSecond.move(to: origin, count: 1, time: 0.16, region: .left).isEmpty)
+        check("crossing second tap cancels right double and restores first left single", crossingSecond.end(at: origin, remainingCount: 0, time: 0.20, region: .right) == [.leftClick])
+        check("crossed second tap finishes as independent left single", crossingSecond.advance(to: 1) == [.leftClick])
+
+        var lateSecond = State()
+        _ = lateSecond.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = lateSecond.end(at: origin, remainingCount: 0, time: 0.04, region: .right)
+        check("second touch at timeout is separate, even if timer was delayed", lateSecond.begin(at: origin, count: 1, time: 0.321, region: .right) == [.leftClick])
+        _ = lateSecond.end(at: origin, remainingCount: 0, time: 0.36, region: .right)
+        check("late second right-half tap sends one left single", lateSecond.advance(to: 1) == [.leftClick])
+
+        var cancelledRight = State()
+        _ = cancelledRight.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = cancelledRight.end(at: origin, remainingCount: 0, time: 0.04, region: .right)
+        check("overlay cancellation drops pending right-half tap", cancelledRight.cancel().isEmpty && cancelledRight.advance(to: 1).isEmpty)
 
         var separated = State()
         _ = begin(&separated); _ = end(&separated, 0.04)
@@ -83,6 +146,9 @@ struct TouchGestureTests {
         check("scroll finger lift is silent", scroll.end(at: origin, remainingCount: 1, time: 0.25).isEmpty)
         check("remaining scroll finger cannot move pointer", scroll.move(to: far, count: 1, time: 0.3).isEmpty)
         check("scroll release never clicks", end(&scroll, 0.4).isEmpty && scroll.advance(to: 2).isEmpty)
+        var twoTap = State()
+        _ = twoTap.begin(at: origin, count: 2, time: 0, region: .right)
+        check("stationary two-finger tap remains silent", twoTap.end(at: origin, remainingCount: 0, time: 0.1, region: .right).isEmpty && twoTap.advance(to: 1).isEmpty)
 
         var scrollAfterDrag = State()
         _ = begin(&scrollAfterDrag); _ = scrollAfterDrag.advance(to: 0.3)
@@ -95,6 +161,12 @@ struct TouchGestureTests {
         check("holding second touch starts drag without phantom left click", secondHold.advance(to: 0.43) == [.dragging(true)])
         check("holding second touch does not right click", end(&secondHold, 0.5) == [.dragging(false)])
         check("holding second touch leaves no delayed action", secondHold.advance(to: 3).isEmpty)
+        var rightSecondHold = State()
+        _ = rightSecondHold.begin(at: origin, count: 1, time: 0, region: .right)
+        _ = rightSecondHold.end(at: origin, remainingCount: 0, time: 0.03, region: .right)
+        _ = rightSecondHold.begin(at: origin, count: 1, time: 0.12, region: .right)
+        check("right-half second hold begins drag without right or left click", rightSecondHold.advance(to: 0.43) == [.dragging(true)])
+        check("right-half second hold releases exactly once", rightSecondHold.end(at: origin, remainingCount: 0, time: 0.5, region: .right) == [.dragging(false)] && rightSecondHold.advance(to: 1).isEmpty)
 
         var thirdFinger = State()
         _ = thirdFinger.begin(at: origin, count: 3, time: 0)
@@ -108,6 +180,11 @@ struct TouchGestureTests {
         _ = begin(&tvTap, 0.14)
         check("TV second quick tap confirms again instead of right clicking", end(&tvTap, 0.20) == [.leftClick])
         check("TV taps never repeat later", tvTap.advance(to: 2).isEmpty)
+        var tvRightTap = State(profile: .tvPointer)
+        _ = tvRightTap.begin(at: origin, count: 1, time: 0, region: .right)
+        check("TV right-half single confirms immediately", tvRightTap.end(at: origin, remainingCount: 0, time: 0.04, region: .right) == [.leftClick])
+        _ = tvRightTap.begin(at: origin, count: 1, time: 0.14, region: .right)
+        check("TV right-half rapid tap never emits right clicks", tvRightTap.end(at: origin, remainingCount: 0, time: 0.20, region: .right) == [.leftClick] && tvRightTap.advance(to: 1).isEmpty)
 
         var tvHold = State(profile: .tvPointer)
         _ = begin(&tvHold)

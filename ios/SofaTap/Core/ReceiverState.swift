@@ -146,6 +146,19 @@ struct LiveTextSnapshot: Equatable {
         let result = Self(text: text, selection: NSRange(location: selection.location + transcript.utf16.count, length: 0))
         return result.valid ? result : nil
     }
+    /// Match native Backspace: erase the selection, or the composed character
+    /// immediately before the caret. Preserve UTF-16 positions and emoji.
+    func deletingBackward() -> LiveTextSnapshot? {
+        guard valid else { return nil }
+        var range = selection
+        if range.length == 0 {
+            guard range.location > 0 else { return self }
+            range = (text as NSString).rangeOfComposedCharacterSequence(at: range.location - 1)
+        }
+        let result = Self(text: (text as NSString).replacingCharacters(in: range, with: ""),
+                          selection: NSRange(location: range.location, length: 0))
+        return result.valid ? result : nil
+    }
 }
 
 enum LiveTextStatus: Equatable {

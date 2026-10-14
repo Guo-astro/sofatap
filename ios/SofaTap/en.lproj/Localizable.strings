@@ -316,3 +316,13 @@
 "重试连接" = "Retry Connection";
 "已自动识别" = "Identified Automatically";
 "继续" = "Continue";
+
+/* Physical touchpad halves and explicit computer Backspace. */
+"单击左键，左右分区双击" = "Tap to click; double-tap either half";
+"任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。" = "Tap anywhere for a left click. Double-tap the left half for two left clicks, or the right half for two right clicks. The halves are illustrated only in this guide.";
+"左键 ×2" = "Left ×2";
+"右键 ×2" = "Right ×2";
+"电脑退格" = "Backspace on Computer";
+"草稿与电脑退格" = "Drafts and Computer Backspace";
+"先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Focus the computer’s text field first. Backspace syncs during live editing; unsent draft text is deleted on the phone first. After clearing the local draft, keyboard Backspace can delete computer text. The computer Backspace button below the editor acts on the computer without deleting the phone draft.";
+"滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Slide to move the pointer; tap for a left click; double-tap the left half for two left clicks, or the right half for two right clicks; hold for 0.3 seconds to drag; slide two fingers to scroll.";

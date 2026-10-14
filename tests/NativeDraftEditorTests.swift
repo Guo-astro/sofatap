@@ -12,7 +12,8 @@ private final class DraftFixture: NSObject, UITextViewDelegate {
     var beforeRender: (() -> Void)?
     var renderDuringPublication = false
     var edits: [(String, NSRange, Bool)] = []
-    let view = UITextView()
+    var emptyBackspaces = 0
+    let view = NativeDraftEditor.TextView()
     var coordinator: NativeDraftEditor.Coordinator!
 
     init(_ text: String = "", control: NativeDraftEditor.Control? = nil) {
@@ -28,7 +29,8 @@ private final class DraftFixture: NSObject, UITextViewDelegate {
             onEdit: control == nil ? nil : { [weak self] text, selection, marked in
                 self?.edits.append((text, selection, marked))
             },
-            control: control)
+            control: control,
+            onEmptyBackspace: { [weak self] in self?.emptyBackspaces += 1 })
         coordinator = editor.makeCoordinator()
         coordinator.textView = view
         coordinator.attachControl(control)
@@ -78,6 +80,33 @@ struct NativeDraftEditorTests {
         deletion.view.selectedRange = NSRange(location: 0, length: 2)
         deletion.view.deleteBackward()
         check("selection deletion reaches the binding without restoring old text", deletion.text == " " && deletion.view.text == " ")
+
+        let emptyKeyboard = DraftFixture()
+        emptyKeyboard.view.deleteBackward()
+        check("native empty Backspace reports one remote-key intent", emptyKeyboard.emptyBackspaces == 1)
+        emptyKeyboard.view.insertText("草稿")
+        emptyKeyboard.view.deleteBackward(); emptyKeyboard.view.deleteBackward()
+        check("deleting unsent characters including the last one is local only", emptyKeyboard.text.isEmpty && emptyKeyboard.emptyBackspaces == 1)
+        emptyKeyboard.view.deleteBackward()
+        check("the next empty Backspace reports exactly one new intent", emptyKeyboard.emptyBackspaces == 2)
+        emptyKeyboard.coordinator.parent.liveEditing = true
+        emptyKeyboard.view.deleteBackward()
+        check("empty live snapshot never emits a second OS Backspace", emptyKeyboard.emptyBackspaces == 2)
+        emptyKeyboard.coordinator.parent.liveEditing = false
+        emptyKeyboard.composing = true
+        emptyKeyboard.view.deleteBackward()
+        check("composition suppresses empty Backspace intent", emptyKeyboard.emptyBackspaces == 2)
+        emptyKeyboard.composing = false
+        emptyKeyboard.coordinator.parent.disabled = true
+        emptyKeyboard.view.deleteBackward()
+        check("disabled editor suppresses empty Backspace intent", emptyKeyboard.emptyBackspaces == 2)
+        emptyKeyboard.coordinator.parent.disabled = false
+        emptyKeyboard.text = "尚未渲染的草稿"
+        emptyKeyboard.view.deleteBackward()
+        check("an unpublished model draft cannot delete remote text", emptyKeyboard.emptyBackspaces == 2)
+        emptyKeyboard.coordinator.textView = nil
+        emptyKeyboard.view.deleteBackward()
+        check("a detached native editor cannot issue a remote key", emptyKeyboard.emptyBackspaces == 2)
 
         let clear = DraftFixture("待清空的草稿")
         clear.text = ""

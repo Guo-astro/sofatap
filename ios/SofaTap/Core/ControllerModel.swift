@@ -122,8 +122,8 @@ final class ControllerModel: ObservableObject {
         restoreDeliveryReceipt()
     }
     func testFlushMovement() { flushMovement() }
-    func testReceiveFocus(_ revision: Int, editable: Bool = true) {
-        var state = receiverState; state.focusRevision = revision; state.textFocus = editable ? .editable : .other
+    func testReceiveFocus(_ revision: Int, editable: Bool = true, kind: RemoteTextFocus? = nil) {
+        var state = receiverState; state.focusRevision = revision; state.textFocus = kind ?? (editable ? .editable : .other)
         updateReceiverState(state)
     }
     func testSwitchDeviceBoundary(liveCapable: Bool = false) {
@@ -767,6 +767,36 @@ final class ControllerModel: ObservableObject {
         guard !composing else { return }
         if liveTextReady { editText(draft, selection: NSRange(location: 0, length: draft.utf16.count), marked: false) }
         else { key("a", modifiers: [receiverState.commandModifier]) }
+    }
+
+    var canRemoteBackspace: Bool {
+        canControl && foreground && !dragging && !composing && !sendingText &&
+        textDelivery != .uncertain && !draftRequiresTargetReview && !editorLoading && !liveTextPaused &&
+        remoteTextFocus != .protected && remoteTextFocus != .other && (!usesLiveText || liveTextReady)
+    }
+
+    /// An empty fallback draft has nothing local to erase, so its keyboard key
+    /// can act on the current computer field. Editing any retained draft stays
+    /// local; a confirmed sent prefix is never guessed to mirror the remote caret.
+    func keyboardBackspaceFromEmptyDraft() {
+        guard draft.isEmpty, lastSentDraft == nil, !usesLiveText else { return }
+        remoteBackspace()
+    }
+
+    /// The explicit shortcut targets the computer. A live session changes its
+    /// acknowledged snapshot path, not a second OS key that could delete twice.
+    /// In fallback mode, the local send receipt remains an append-only receipt;
+    /// remote key presses never make previously submitted text sendable again.
+    func remoteBackspace() {
+        guard canRemoteBackspace else { return }
+        if liveTextReady {
+            let snapshot = LiveTextSnapshot(text: draft, selection: draftSelection)
+            guard let deletion = snapshot.deletingBackward(), deletion != snapshot else { return }
+            feedback()
+            editText(deletion.text, selection: deletion.selection, marked: false)
+        } else {
+            key("backspace")
+        }
     }
 
     func sendText() {

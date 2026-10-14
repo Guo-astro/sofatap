@@ -11,7 +11,19 @@ struct NativeDraftEditor: UIViewRepresentable {
     var preservesFocusWhileLoading = false
     var liveEditing = false
     var control: Control? = nil
+    var onEmptyBackspace: (() -> Void)? = nil
     var editorAccessibilityLabel: String { liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿") }
+
+    /// UITextView does not report a text change when Backspace is pressed on an
+    /// empty draft. Keep that key distinct from deleting local/marked text.
+    final class TextView: UITextView {
+        var onEmptyBackspace: (() -> Void)?
+        override func deleteBackward() {
+            let empty = isEditable && text.isEmpty && selectedRange.length == 0 && markedTextRange == nil
+            super.deleteBackward()
+            if empty { onEmptyBackspace?() }
+        }
+    }
 
     /// Send must read the latest native edit even if UIKit has not delivered its
     /// delegate callback yet. Unconfirmed IME text is never committed implicitly.
@@ -23,7 +35,7 @@ struct NativeDraftEditor: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator { Coordinator(self) }
     func makeUIView(context: Context) -> UITextView {
-        let view = UITextView()
+        let view = TextView()
         view.delegate = context.coordinator
         view.backgroundColor = .clear
         view.textColor = UIColor(white: 0.94, alpha: 1)
@@ -66,7 +78,11 @@ struct NativeDraftEditor: UIViewRepresentable {
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: NativeDraftEditor
         weak var textView: UITextView? {
-            didSet { lastObservedNativeText = textView?.text ?? "" }
+            willSet { (textView as? TextView)?.onEmptyBackspace = nil }
+            didSet {
+                lastObservedNativeText = textView?.text ?? ""
+                (textView as? TextView)?.onEmptyBackspace = { [weak self] in self?.emptyBackspace() }
+            }
         }
         private var lastPublishedSelection: NSRange?
         private var lastPublishedText: String
@@ -86,6 +102,17 @@ struct NativeDraftEditor: UIViewRepresentable {
                 control = next
             }
             next?.coordinator = self
+        }
+        private func emptyBackspace() {
+            guard !parent.disabled, !parent.liveEditing, !parent.composing,
+                  !applyingModelText, !publishingNativeText,
+                  parent.text.isEmpty, let view = textView,
+                  view.text.isEmpty, view.markedTextRange == nil else { return }
+            // A deliberate model replacement must render before keyboard input
+            // may act on the remote field; never delete behind a retained draft.
+            observeExternalText()
+            guard pendingExternalText == nil else { return }
+            parent.onEmptyBackspace?()
         }
         @discardableResult
         func flushForSend() -> Bool {
@@ -256,7 +283,7 @@ struct TouchSurface: UIViewRepresentable {
             parent.control?.view = self
             accessibilityLabel = parent.profile == .desktop ? String(localized: "电脑触控板") : String(localized: "电视触控板")
             accessibilityHint = parent.profile == .desktop
-                ? String(localized: "滑动移动光标；轻点左键；连续轻点两下右键；按住零点三秒拖动；双指滑动滚动")
+                ? String(localized: "滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动")
                 : String(localized: "滑动移动电视光标；轻点确认；双指滑动滚动")
             accessibilityCustomActions = [
                 UIAccessibilityCustomAction(name: parent.profile == .desktop ? String(localized: "左键单击") : String(localized: "确认"), target: self, selector: #selector(accessibleLeftClick))
@@ -315,7 +342,7 @@ struct TouchSurface: UIViewRepresentable {
             guard parent?.enabled == true, active else { return }
             for touch in touches { contacts[ObjectIdentifier(touch)] = touch.location(in: self) }
             effectPoint = CGPoint(x: centroid.x, y: centroid.y)
-            dispatch(state.begin(at: centroid, count: contacts.count, time: event?.timestamp ?? now))
+            dispatch(state.begin(at: centroid, count: contacts.count, time: event?.timestamp ?? now, region: touchRegion))
             effects.beginContact(at: effectPoint)
             scheduleDeadline()
         }
@@ -329,7 +356,7 @@ struct TouchSurface: UIViewRepresentable {
                 effectPoint = CGPoint(x: centroid.x, y: centroid.y)
                 effects.updateContact(at: effectPoint)
             }
-            dispatch(state.move(to: centroid, count: contacts.count, time: event?.timestamp ?? now))
+            dispatch(state.move(to: centroid, count: contacts.count, time: event?.timestamp ?? now, region: touchRegion))
             scheduleDeadline()
         }
         override func touchesEnded(_ touches: Set<UITouch>, with event: UIEvent?) {
@@ -341,13 +368,14 @@ struct TouchSurface: UIViewRepresentable {
                 contacts[ObjectIdentifier(touch)] = touch.location(in: self)
             }
             let finalPoint = centroid
+            let finalRegion = touchRegion
             if !contacts.isEmpty {
                 effectPoint = CGPoint(x: finalPoint.x, y: finalPoint.y)
                 lastLiftPoint = effectPoint
                 effects.updateContact(at: effectPoint)
             }
             for touch in touches { contacts.removeValue(forKey: ObjectIdentifier(touch)) }
-            dispatch(state.end(at: finalPoint, remainingCount: contacts.count, time: event?.timestamp ?? now))
+            dispatch(state.end(at: finalPoint, remainingCount: contacts.count, time: event?.timestamp ?? now, region: finalRegion))
             effects.endContact()
             scheduleDeadline()
         }
@@ -357,6 +385,7 @@ struct TouchSurface: UIViewRepresentable {
         }
 
         private var now: Double { ProcessInfo.processInfo.systemUptime }
+        private var touchRegion: TouchGestureState.Region { centroid.x < bounds.midX ? .left : .right }
         private var centroid: TouchGestureState.Point {
             guard !contacts.isEmpty else { return .init(x: 0, y: 0) }
             return .init(x: contacts.values.reduce(0) { $0 + $1.x } / Double(contacts.count),

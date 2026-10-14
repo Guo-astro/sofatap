@@ -312,3 +312,13 @@
 "重试连接" = "Tentar conectar novamente";
 "已自动识别" = "Identificado automaticamente";
 "继续" = "Continuar";
+
+/* Physical touchpad halves and explicit computer Backspace. */
+"单击左键，左右分区双击" = "Toque para clicar; toque duas vezes em cada metade";
+"任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。" = "Toque em qualquer ponto para um clique esquerdo. Toque duas vezes na metade esquerda para enviar dois cliques esquerdos, ou na direita para enviar dois cliques direitos. As metades são ilustradas apenas neste guia.";
+"左键 ×2" = "Esquerdo ×2";
+"右键 ×2" = "Direito ×2";
+"电脑退格" = "Backspace no computador";
+"草稿与电脑退格" = "Rascunhos e Backspace no computador";
+"先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Selecione primeiro o campo de texto no computador. O Backspace é sincronizado na edição ao vivo; o texto não enviado do rascunho é apagado primeiro no celular. Depois de limpar o rascunho local, o Backspace pode apagar texto no computador. O botão abaixo do editor atua no computador sem apagar o rascunho do celular.";
+"滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Deslize para mover o ponteiro; toque para clicar com o botão esquerdo; toque duas vezes na metade esquerda para dois cliques esquerdos ou na direita para dois cliques direitos; segure por 0,3 segundo para arrastar; deslize dois dedos para rolar.";
