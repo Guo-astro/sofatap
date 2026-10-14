@@ -46,12 +46,15 @@ The resident test iPhone has **TestFlight 1.0 (15)** installed. The TestFlight i
 | Rename from My Devices | Passed: changed the alias to **客厅 Linux** through the device-management action. |
 | Persistence and final-package reconnect | Passed: after a cold app restart, **客厅 Linux** remained saved and the phone authenticated to the final published Linux receiver. The receiver independently recorded the connection at 00:35 UTC. |
 | Mac optical scan, identification and naming | Pending. Native dry-run receiver placement is verified separately below. |
-| Windows optical scan, identification and naming | Pending. Packaging and CI do not establish installed-receiver or physical-phone acceptance. |
-| Real desktop mouse/keyboard input in this run | Not tested; test receivers used dry-run mode. |
+| Windows installation | Passed: the release ZIP hash and installed 0.7.1/source revision were verified on the test PC; the receiver started on its existing port and its pairing profile remained unchanged. |
+| Windows optical scan, identification and naming | Pending. The remote agent could not obtain a decodable native-window capture; installed-receiver checks do not establish physical-phone acceptance. |
+| Real desktop mouse/keyboard input in this run | Not tested. Mac and Linux used dry-run mode; no Windows input actions were issued. |
 
 The first Linux optical scan preceded replacement with the final release archive. The final receiver retained the test pairing profile and accepted the subsequent reconnection. This record distinguishes that optical scan from a fresh scan of the final running package; it does not imply every package or architecture was independently scanned.
 
 Linux ran the actual packaged ARM64 backend and GTK frontend in an owned Ubuntu container with an isolated Xvfb desktop. The phone used the production pinned TLS connection through a TCP passthrough; TLS was not intercepted. This establishes scoped ARM64 runtime and phone-pairing behavior. It does not establish physical Linux desktop input, a real Wayland compositor, or universal Linux distribution compatibility.
+
+After the first successful scan, the phone's rear view became nearly black in both Sofatap and Apple's Camera app, while the iPad still displayed the QR. Reopening the scanner and restarting Sofatap did not restore a visible target. Further optical tests are awaiting physical camera alignment; this observation does not establish a Sofatap camera defect. Mac and Windows QR relays were prepared read-only from the running receivers' existing identities using the production format, checked by image decoding and against the live TLS certificates. Those reconstructed images are not native-window screenshots and do not count as phone scans.
 
 ## Shared-Mac isolation
 
