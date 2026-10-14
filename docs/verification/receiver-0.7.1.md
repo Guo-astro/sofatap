@@ -62,6 +62,8 @@ The Mac receiver's explicit `--dry-run --test-display-id <ID>` QA mode placed it
 
 No real Mac mouse or keyboard events were sent. Window placement alone is not claimed as input isolation; dry-run operation and the isolated Linux desktop provide the boundary for these pairing tests. This run does not replace earlier or future production input acceptance.
 
+During cleanup, querying the closed app through the UI tool unexpectedly relaunched it without the QA arguments. It was immediately quit again; no remote input was sent. Final process/window checks confirmed no test receiver remained, the original foreground app and physical main display were restored, and the temporary QR servers and Linux relay were stopped. This cleanup incident is separate from the verified nonactivating QA launch and means the entire session should not be described as having no transient UI effect.
+
 ## Evidence and remaining scope
 
 Local evidence includes `public-download-verification.json`, `package-summary.json`, `unchanged-check-source-proof.json`, `MAC-PUBLIC-RELEASE-VERIFICATION.json`, architecture-specific notarization/archive receipts, `mac-isolation-verification.json`, phone installation/cold-launch receipts and the Linux connection confirmation. Private QR images, pairing credentials, local addresses, hardware identifiers and raw device observations are excluded from this public record.
