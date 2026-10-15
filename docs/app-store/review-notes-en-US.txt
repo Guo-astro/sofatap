@@ -1,29 +1,30 @@
-Sofatap 1.0 (builds 12–15) is a manual remote for the user's computer on a home network. No streaming, Sofatap account, account password, purchase or subscription is required.
+Sofatap 1.0 (builds 12–16) is a manual home-network remote. No streaming, Sofatap account, account password, purchase or subscription.
 
 SETUP
-Use iOS 17+ and an unlocked computer on the same reachable network. Use receiver 0.7.0 beta.1 for builds 12–14, or 0.7.1 beta.1 for build 15. Downloads and installation guides:
+Use iOS 17+ and an unlocked computer on a shared network. Receiver: 0.7.0 beta.1 for builds 12–14; 0.7.1 beta.1 for build 15; 0.7.2 beta.1 for build 16.
 https://github.com/chekusu/sofatap/blob/main/docs/app-store/support.md
-Windows: extract the full ZIP, run SofaTap.exe, and allow its backend on a trusted private network if prompted. Keep the firewall on. Mac: install the notarized app for its processor and grant Accessibility permission; macOS 15+ is required. Linux depends on the desktop environment.
+Windows: extract the ZIP, run SofaTap.exe, allow its backend on a trusted private network if prompted. Keep the firewall on. Mac: install the notarized app for its processor and grant Accessibility; macOS 15+ required. Linux support depends on its desktop.
 
-PAIRING BY BUILD
-Open the receiver's native window and choose a reachable local address. Allow Camera and Local Network access on iPhone. Full pairing links can also be pasted.
-- Build 12 (currently in external beta review): use the top-right QR icon. Tap the logo for status/help.
-- Builds 13–14: top-left device selector → Computer under Add Device → Scan Computer QR Code.
-- Build 15: top-left device selector → Scan QR Code under Add Device. Camera is above platform information. Scan computer or Android TV codes without choosing a type. The app detects the type/name. Name the device after authentication.
-Build 13+ supports switching, local rename/removal and disconnect in My Devices, with a separate question-mark guide. Removing a pairing affects only this iPhone.
-Build 15 accepts older four-field codes. Released receiver 0.7.1 emits six-field codes with platform/name and requires phone build 15+. QR metadata is not authentication; certificate and credential checks still apply.
+PAIRING
+Open the native receiver, choose a reachable address, allow iPhone Camera/Local Network. Pairing links can also be pasted.
+- Build 12: top-right QR icon; logo for status/help.
+- Builds 13–14: top-left device selector → Computer → Scan Computer QR Code.
+- Builds 15–16: top-left device selector → Scan QR Code. Camera is above platform information; no device-type choice. Codes supply type/name; rename after authentication.
+Build 13+ has switching, rename/removal/disconnect in My Devices, and a question-mark guide. Removal affects only this iPhone.
+Build 15+ accepts older four-field codes. Receiver 0.7.1+ emits six-field codes requiring phone build 15+. Type/name never replaces certificate/credential checks.
 
 DESKTOP TEST
-1. Open a document. Slide to move; tap for left click; double-tap for right click; hold 0.3 seconds, then move to drag. Two fingers move content in their direction. The strip inside the touchpad's right edge follows scrollbar direction: drag down to scroll down.
-2. Focus a writable native field and open the phone keyboard. Supported Windows/Mac fields import text and sync typing, Backspace, selection and deletion without Send. Unsupported fields, including many browser and custom controls, use review-and-send; Linux and older receivers use this mode. Sofatap does not append an extra Return after your text. Line breaks you include may be handled as Enter by the destination app.
-3. Send is inside the editor; Clear and keyboard toggle are below.
-4. Tap the microphone, allow Microphone/Speech access, and tap again to stop. On-device recognition needs a supported device/language; otherwise use the keyboard. Live fields sync recognized text; other fields need Send. Send a draft, append text, then send again: only the new suffix should arrive. Check the computer before retrying uncertain text.
+1. Slide to move; tap for left click; hold 0.3 seconds then move to drag. Builds 12–15: double-tap for right click. Build 16: double-tap within the left half for two left clicks, within the right half for two right clicks. Two fingers move content in their direction; the right-edge strip follows scrollbar direction (down scrolls down).
+2. Focus a writable native field and open the phone keyboard. Supported Windows/Mac fields import text and sync typing, Backspace, selection and deletion. Unsupported fields (many browser/custom controls), Linux and older receivers use review-and-send. Send is inside the editor. No Return is appended; included line breaks may act as Enter.
+3. Build 16 adds a computer Backspace icon. In fallback mode it sends the key without altering the phone draft; deleting a nonempty draft stays local. Keyboard Backspace on an empty fallback draft forwards only with no retained sent-text receipt: clear the draft first or use the icon. Live editing uses synchronized deletion.
+4. Tap the microphone, grant Microphone/Speech access, tap again to stop. Recognition needs a supported device/language; otherwise use the keyboard. Live fields sync dictation; other fields need Send. Send, append, send again: only the suffix should arrive.
+5. Build 16/receiver 0.7.2: keep the phone app foreground, quit/reopen the receiver. The selected computer reconnects without rescanning while its address/identity remain valid; retries back off to 30 seconds. Added adapters alone preserve pairing; real address replacement/certificate renewal needs re-pairing. Existing duplicates are not merged. Manual disconnect/backgrounding stops retries. Pending input is not replayed; check uncertain text before resending.
 
-OPTIONAL TV PREVIEWS
-No physical TV model or third-party TV app is qualified yet. Android/Google TV needs the development receiver and user-enabled Accessibility service. Its overlay cursor activates exposed accessible controls; scrolling uses exposed container actions. This is not general system mouse injection.
+TV PREVIEWS
+No physical TV model/app is qualified. Android/Google TV needs the development receiver and enabled Accessibility. Its overlay activates exposed accessible controls; scrolling uses container actions. No general mouse injection.
 https://github.com/chekusu/sofatap/blob/main/android/README.md
-LG webOS uses manual private IP entry, explicit certificate trust and TV approval; QR pairing is unsupported. Its secure pointer service must be compatible. TV text/dictation, right-click and drag are unavailable in both previews. Selecting a TV suspends computer control.
+LG webOS needs manual private IP entry, explicit certificate trust, TV approval and a compatible secure pointer service; no QR. Both previews lack TV text/dictation, right-click and drag. Selecting TV suspends computer control.
 
-PRIVACY AND LIMITS
-Pairing credentials stay in Keychain. Input uses local pinned TLS; built-in dictation stays on-device. Live editing transfers the supported field's full text and selection; protected/read-only fields cannot start it. The receiver cannot control Windows login or elevated permission screens. Backgrounding stops capture and disconnects control. AI automation, Bluetooth transport and saved-PIN unlocking are unavailable.
+PRIVACY/LIMITS
+Credentials stay in Keychain; input uses local pinned TLS; built-in dictation is on-device. Live editing transfers field text/selection; protected/read-only fields cannot use it. No Windows login/elevated screens, AI automation, Bluetooth or saved-PIN unlocking. Backgrounding stops capture/control.
 https://github.com/chekusu/sofatap/blob/main/PRIVACY.md

@@ -14,7 +14,7 @@ For help, [open a Sofatap issue](https://github.com/chekusu/sofatap/issues/new).
 | Mac, macOS 15+ | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-macOS-x64-notarized.zip) | Both packages are signed and notarized. Place `Sofatap Receiver.app` in Applications, open it normally, and grant it Accessibility permission. [Mac permission guide](../MAC-START.md); older examples there use the historical app name. |
 | Linux | [x64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 archive](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Linux-arm64.tar.gz) | [Linux setup and dependencies](../../desktop/linux/README.md). X11 is the initial desktop path; Wayland is experimental and depends on the desktop's RemoteDesktop portal. |
 
-The iPhone **1.0 (15)** build is available to invited internal TestFlight testers, and installation on the resident test iPhone has been verified. The [October 14 distribution snapshot](../verification/testflight-1.0-15.md) records build 12 waiting for external review; Apple deferred build 15 while that review remained open. The [public TestFlight invitation](https://testflight.apple.com/join/e6MuKx9S) was not yet open for installation. TestFlight installation and receiver pairing/input acceptance are separate checks; see the [current verification record](../verification/receiver-0.7.1.md).
+iPhone **1.0 (15)** has passed external review and is available through the [public TestFlight invitation](https://testflight.apple.com/join/e6MuKx9S), with a limit of 10,000 testers. The [October 14 distribution snapshot](../verification/testflight-1.0-15.md) is historical. The separate formal App Store submission for 1.0 (15) is still waiting for review. Build 16 and receiver 0.7.2 beta.1 are being prepared for distribution; their public availability has not yet been confirmed. TestFlight distribution and receiver pairing/input acceptance are separate checks; see the [0.7.1 verification record](../verification/receiver-0.7.1.md).
 
 The ordinary receiver requires an unlocked, interactive desktop. A Windows Remote Desktop session and the desktop shown on a TV can be different sessions. Sofatap does not unlock the computer or enter a Windows sign-in PIN in this release.
 
@@ -33,7 +33,7 @@ Receiver 0.7.1 beta.1 includes `platform` and `name` in its desktop codes. **iPh
 ## Gestures and text
 
 - Slide one finger to move the pointer.
-- Tap once for a left click; tap twice in succession for a right click.
+- Tap once for a left click. Build 15 uses a double-tap anywhere for one right click. In build 16, double-tap the invisible left half for two left clicks, or the right half for two right clicks.
 - Hold still for 0.3 seconds, then move to drag; lift your finger to release.
 - Slide two fingers to drag content naturally. The strip inside the touchpad's right edge follows scrollbar direction: slide down to scroll down.
 - Tap the keyboard icon to type, or the microphone to dictate where on-device recognition is supported.
@@ -41,6 +41,14 @@ Receiver 0.7.1 beta.1 includes `platform` and `name` in its desktop codes. **iPh
 A compatible receiver can open the keyboard when a supported text field gains focus. Live editing is available only for certain native Windows and Mac fields. It imports the field's text and synchronizes editing automatically. Unsupported fields, including many browser and custom controls, use review-and-send; Linux and older receivers use this mode. Sofatap does not append an extra Return after your text. Line breaks you include may be handled as Enter by the destination app.
 
 If live input pauses after a focus change or a connection problem, check the computer and reopen the editor. Do not resend uncertain text before checking whether it already arrived. If the microphone is unavailable, check the permissions or use keyboard input; Sofatap does not silently switch to a cloud recognizer.
+
+## Reconnect after restarting the receiver (build 16 + receiver 0.7.2)
+
+This repair is being prepared for distribution. Keep the saved computer selected and Sofatap open on the iPhone while reopening the receiver. The phone retries temporary failures with increasing delays of up to 30 seconds; no new QR scan should be needed when the receiver still has the original certificate and pairing credentials. Manual disconnection or switching devices stops these retries. Reconnection does not resend unconfirmed typing or mouse actions; inspect the destination before resuming an editor.
+
+The new receiver preserves pairing when network addresses are only added, only removed, or temporarily unavailable. A real address replacement or certificate renewal can still require explicit pairing. Existing duplicate entries are preserved; use My Devices to remove an obsolete entry after checking which saved device connects. See the [automated reconnection verification](../verification/reconnect-2026-10-15.md). Physical iPhone-to-Windows restart acceptance remains pending.
+
+Build 16 also adds a computer Backspace icon below the composer. It deletes at the computer's focused input position without changing the phone draft. Keyboard Backspace edits an unsent fallback draft locally; after clearing that draft, it can forward Backspace to the computer. Live editing continues to synchronize deletions. See the [scoped build 16 development checks](../verification/input-1.0-16.md).
 
 ## Privacy
 
