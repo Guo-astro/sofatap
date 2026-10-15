@@ -47,7 +47,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 **电视开发预览：**源码现已加入 LG webOS 的原生 IP 配对，以及移动、单击、滚动、返回和主页适配器。已通过本地协议与 TLS 测试，尚无通过真机验收的电视型号；自动发现、电视打字与听写仍待实现。参见[详细技术方案](docs/research/tv-implementation-plan.zh-CN.md)和[验证范围](docs/verification/webos-pointer-preview.md)。
 
-**Android/Google TV 原型：**源码已加入共用的原生接收端与 iPhone 扫码配对适配器，可按照 [Android 指南](android/README.md) 构建开发版 APK。它提供无障碍叠加光标、依赖目标控件的点击与滚动，以及独立的返回、主页和焦点导航；暂不支持电视打字、听写、拖动和右键。[软件验证与电视真机验收](docs/verification/android-tv-probe.md) 分别记录，目前没有对外宣称支持的电视型号。
+**Android/Google TV 测试版：**[接收器 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) 提供开发签名 APK。配合 iPhone 构建 17 或更高版本，App 在前台时会自动重连当前保存的电视；重启接收器和无关网卡变化会保留有效配对。原生接收器提供无障碍叠加光标、依赖目标控件的点击与滚动，以及独立的返回、主页和焦点导航；电视打字、听写、拖动和右键仍未支持。**家里的索尼和小米电视尚未现场测试。**参见[安装指南](android/README.md)、[重连软件测试](docs/verification/android-tv-reconnect-2026-10-16.md)与[待完成的硬件验收](docs/ACCEPTANCE.md)。
 
 兼容接收端识别到提供辅助功能元数据的新可编辑输入框时，手机会自动弹出键盘。后台检测不读取框内内容；随后打开实时编辑会话时，会把受支持字段的完整文字和选区传到配对手机，因此退格、全选后删除也能修改电脑上的已有文字。焦点检测与实时编辑的支持范围不同：Windows 实时编辑当前限原生 Edit/RichEdit 控件；Mac 要求辅助功能提供可写的选中文字及选区。缺少相应能力的浏览器、自绘控件、Linux 及旧接收端采用检查草稿后发送。密码和只读字段不能开启实时编辑。参见[焦点检测、数据处理及平台限制](docs/TEXT-FOCUS.md)。
 

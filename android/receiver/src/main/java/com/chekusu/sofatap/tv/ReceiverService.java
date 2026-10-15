@@ -2,11 +2,13 @@ package com.chekusu.sofatap.tv;
 
 import android.app.*;
 import android.content.*;
+import android.net.*;
 import android.os.*;
 import com.chekusu.sofatap.tv.input.InputBridge;
 import org.json.JSONObject;
 import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
+import java.util.List;
 
 /** Started from native UI only. No boot receiver, wake lock or background auto-start. */
 public final class ReceiverService extends Service {
@@ -19,6 +21,12 @@ public final class ReceiverService extends Service {
     volatile PairingAuthority authority;
     volatile String error;
     private boolean starting;
+    private boolean refreshPending;
+    interface AddressSource { List<String> read() throws Exception; }
+    volatile AddressSource addressSource = ReceiverIdentity::localAddresses;
+    private ConnectivityManager connectivity;
+    private ConnectivityManager.NetworkCallback networkCallback;
+    private final Runnable refreshNetwork = this::requestRefresh;
 
     @Override public void onCreate() {
         super.onCreate(); instance = this;
@@ -32,16 +40,52 @@ public final class ReceiverService extends Service {
             .setContentTitle("Sofatap").setContentText(getString(R.string.notification_active)).setContentIntent(pending)
             .setOngoing(true).addAction(new Notification.Action.Builder(null, getString(R.string.stop), stopPending).build()).build();
         startForeground(41, note);
-        InputBridge.setInterruptionListener(() -> { if (server != null) server.disconnectController(); });
+        InputBridge.setInterruptionListener(() -> { ReceiverServer active = server; if (active != null) active.disconnectController(); });
+        connectivity = getSystemService(ConnectivityManager.class);
+        networkCallback = new ConnectivityManager.NetworkCallback() {
+            @Override public void onAvailable(Network network) { scheduleRefresh(); }
+            @Override public void onLost(Network network) { scheduleRefresh(); }
+            @Override public void onLinkPropertiesChanged(Network network, LinkProperties properties) { scheduleRefresh(); }
+        };
+        // Remove the builder's defaults explicitly for Android 8.0/API 26 support.
+        // Local-only LANs and VPN adapter changes must also refresh the SAN address set.
+        NetworkRequest networks = new NetworkRequest.Builder()
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_RESTRICTED)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
+            .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build();
+        connectivity.registerNetworkCallback(networks, networkCallback, main);
     }
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent != null && "stop".equals(intent.getAction())) { stopSelf(); return START_NOT_STICKY; }
-        if (starting || server != null) return START_NOT_STICKY;
+        requestRefresh();
+        return START_NOT_STICKY;
+    }
+    private void scheduleRefresh() {
+        if (stopped) return;
+        main.removeCallbacks(refreshNetwork);
+        main.postDelayed(refreshNetwork, 400);
+    }
+    /** Main-thread entry point; network callbacks run only while the user-started service exists. */
+    void requestRefresh() {
+        if (stopped) return;
+        if (starting) { refreshPending = true; return; }
         starting = true;
         setup.execute(() -> {
             ReceiverServer candidate = null;
             try {
-                ReceiverIdentity credentials = new ReceiverIdentity(this);
+                List<String> addresses = addressSource.read();
+                if (stopped) return;
+                ReceiverIdentity credentials = identity;
+                if (credentials != null && !credentials.refreshAddresses(addresses, System.currentTimeMillis())) {
+                    // Retire old callbacks before replacing the persisted identity.
+                    closeRuntime(); identity = null; credentials = null;
+                }
+                if (credentials == null) credentials = new ReceiverIdentity(this, addresses, System.currentTimeMillis());
+                identity = credentials;
+                if (credentials.addresses.isEmpty()) {
+                    closeRuntime(); error = "no_private_network"; return;
+                }
+                if (server != null) { error = null; return; }
                 PairingAuthority auth = new PairingAuthority(credentials.pairedDigest(), SystemClock::elapsedRealtime, credentials::saveDigest);
                 if (!auth.paired()) auth.newPairing();
                 String name = PairingUri.deviceName(Build.MODEL);
@@ -64,33 +108,50 @@ public final class ReceiverService extends Service {
                         });
                     }
                     @Override public void disconnected() {
-                        main.post(() -> { if (server == null || !server.connected()) InputBridge.disconnect(); });
+                        main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
                     }
                 }, name);
                 synchronized (this) {
                     if (stopped) { candidate.close(); return; }
                     identity = credentials; authority = auth; server = candidate; candidate.start();
+                    error = null;
                 }
             } catch (Exception failure) {
-                if (candidate != null) candidate.close();
+                synchronized (this) {
+                    if (candidate != null && server == candidate) closeRuntime();
+                    else if (candidate != null) candidate.close();
+                }
                 error = "no_private_network".equals(failure.getMessage()) ? "no_private_network" : "start_failed";
+            } finally {
+                main.post(() -> {
+                    starting = false;
+                    if (!stopped && refreshPending) { refreshPending = false; requestRefresh(); }
+                });
             }
         });
-        return START_NOT_STICKY;
+    }
+    private synchronized void closeRuntime() {
+        // authorize() and retire() share the authority lock, so a previous listener
+        // can never save a new credential after a replacement identity is written.
+        if (authority != null) authority.retire();
+        authority = null;
+        ReceiverServer previous = server; server = null;
+        if (previous != null) previous.close();
+        main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
     }
     private <T> T onMain(Callable<T> action) throws Exception {
         FutureTask<T> task = new FutureTask<>(action); main.post(task);
         try { return task.get(2, TimeUnit.SECONDS); }
         finally { task.cancel(false); main.removeCallbacks(task); }
     }
-    void newPairing() {
-        if (authority == null || stopped) return;
+    synchronized void newPairing() {
+        if (authority == null || server == null || stopped) return;
         // Called by the on-TV button: revoke the previous controller first.
         server.disconnectController(); InputBridge.disconnect();
         try { authority.newPairing(); error = null; }
         catch (Exception failure) { error = "storage_failed"; stopSelf(); }
     }
-    String pairingUri(String address) {
+    synchronized String pairingUri(String address) {
         try {
             String token = authority == null ? null : authority.bootstrap();
             if (token == null || identity == null || !identity.addresses.contains(address)) return null;
@@ -98,7 +159,9 @@ public final class ReceiverService extends Service {
         } catch (Exception ignored) { return null; }
     }
     @Override public void onDestroy() {
-        synchronized (this) { stopped = true; if (server != null) server.close(); }
+        synchronized (this) { stopped = true; closeRuntime(); }
+        main.removeCallbacks(refreshNetwork);
+        if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);
         setup.shutdownNow(); InputBridge.setInterruptionListener(null); InputBridge.disconnect();
         if (instance == this) instance = null;
         stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy();

@@ -15,7 +15,7 @@ struct RemoteView: View {
     init(model: ControllerModel) {
         self.model = model; self.unlock = model.unlock
         _tv = StateObject(wrappedValue: WebOSTVController(enabled: !model.demo))
-        _androidTV = StateObject(wrappedValue: AndroidTVController(enabled: !model.demo))
+        _androidTV = StateObject(wrappedValue: AndroidTVController(enabled: !model.demo, targetSelected: !model.desktopControlEnabled && UserDefaults.standard.string(forKey: "manualRemoteTarget") == "androidtv"))
         _androidSelected = State(initialValue: !model.demo && UserDefaults.standard.string(forKey: "manualRemoteTarget") == "androidtv")
 #if targetEnvironment(simulator)
         // Isolated layout fixtures never create a receiver connection.
@@ -112,6 +112,9 @@ struct RemoteView: View {
         presentation
         .onAppear {
             model.becameActive()
+            androidTV.setTargetSelected(androidTVSelected, reconnect: false)
+            if scenePhase == .active { androidTV.becameActive() }
+            else { androidTV.becameInactive() }
             if model.textDelivery == .uncertain { composerVisible = true }
             applyRemoteFocus()
 #if targetEnvironment(simulator)
@@ -121,7 +124,7 @@ struct RemoteView: View {
             }
 #endif
         }
-        .onDisappear { stopInteraction() }
+        .onDisappear { stopInteraction(); androidTV.becameInactive() }
         .onOpenURL { url in
             // QR scans, pasted links and system links share one routing and
             // naming flow. Parsing happens before selecting any target.
@@ -134,7 +137,7 @@ struct RemoteView: View {
             stopInteraction()
             composerVisible = false
             handledFocusRevision = nil
-            if enabled { tv.disconnect(); androidTV.disconnect() }
+            if enabled { tv.disconnect(); androidTV.setTargetSelected(false) }
         }
         .onChange(of: androidTV.phase) { _, phase in
             if androidTVSelected && phase != .ready { touchControl.cancel() }
@@ -186,12 +189,16 @@ struct RemoteView: View {
             if error != nil { interruptTouch(); showingSpeechError = true }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase == .background { stopInteraction(); tv.disconnect(); androidTV.disconnect() }
+            if phase == .background { stopInteraction(); tv.disconnect(); androidTV.becameInactive() }
             else if phase == .inactive {
                 interruptTouch()
                 keyboardFocused = false
                 if dictation.state != .requestingPermission { cancelSpeech() }
-            } else { resumeCurrentInput() }
+            } else {
+                androidTV.setTargetSelected(androidTVSelected, reconnect: false)
+                androidTV.becameActive()
+                resumeCurrentInput()
+            }
         }
     }
 
@@ -651,7 +658,7 @@ struct RemoteView: View {
     }
     private func selectTelevision() {
         stopInteraction()
-        androidTV.disconnect()
+        androidTV.setTargetSelected(false)
         androidSelected = false
         composerVisible = false
         model.setDesktopControlEnabled(false)
@@ -662,13 +669,14 @@ struct RemoteView: View {
         composerVisible = false
         tv.disconnect()
         androidTV.disconnect()
+        androidTV.setTargetSelected(true, reconnect: false)
         androidSelected = true
         model.setDesktopControlEnabled(false, televisionTarget: "androidtv")
     }
     private func selectComputer(reconnect: Bool = true) {
         stopInteraction()
         tv.disconnect()
-        androidTV.disconnect()
+        androidTV.setTargetSelected(false)
         androidSelected = false
         composerVisible = false
         handledFocusRevision = nil

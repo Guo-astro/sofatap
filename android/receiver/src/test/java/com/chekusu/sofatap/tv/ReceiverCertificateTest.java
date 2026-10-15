@@ -58,4 +58,39 @@ public class ReceiverCertificateTest {
             } catch (IllegalArgumentException expected) { }
         }
     }
+
+    @Test public void interfaceChurnAndOfflineRetainOnlyReachableCertifiedAddresses() throws Exception {
+        long now = System.currentTimeMillis();
+        java.util.List<String> certified = Arrays.asList("192.168.1.2", "10.0.0.2");
+        X509Certificate certificate = ReceiverCertificate.generate(certified, now).certificate();
+        assertEquals(Arrays.asList("10.0.0.2", "192.168.1.2"), ReceiverCertificate.reachableAddressesIfReusable(
+                certificate, certified, Arrays.asList("10.0.0.2", "192.168.1.2"), now));
+        assertEquals(Arrays.asList("10.0.0.2", "192.168.1.2"), ReceiverCertificate.reachableAddressesIfReusable(
+                certificate, certified, Arrays.asList("192.168.1.2", "10.8.0.2", "10.0.0.2"), now));
+        assertEquals(Collections.singletonList("192.168.1.2"), ReceiverCertificate.reachableAddressesIfReusable(
+                certificate, certified, Collections.singletonList("192.168.1.2"), now));
+        assertEquals(Collections.emptyList(), ReceiverCertificate.reachableAddressesIfReusable(
+                certificate, certified, Collections.emptyList(), now));
+        assertEquals(Arrays.asList("10.0.0.2", "192.168.1.2"), ReceiverCertificate.reachableAddressesIfReusable(
+                certificate, certified, certified, now));
+    }
+
+    @Test public void actualAddressReplacementRequiresNewIdentityEvenWithStableOtherAdapter() throws Exception {
+        long now = System.currentTimeMillis();
+        java.util.List<String> certified = Arrays.asList("192.168.1.2", "10.0.0.2");
+        X509Certificate certificate = ReceiverCertificate.generate(certified, now).certificate();
+        assertNull(ReceiverCertificate.reachableAddressesIfReusable(certificate, certified,
+                Arrays.asList("192.168.1.3", "10.0.0.2"), now));
+        assertNull(ReceiverCertificate.reachableAddressesIfReusable(certificate, certified,
+                Collections.singletonList("192.168.2.2"), now));
+    }
+
+    @Test public void expiryCannotBeHiddenByOfflineOrUnchangedNetwork() throws Exception {
+        long now = System.currentTimeMillis();
+        java.util.List<String> certified = Collections.singletonList("192.168.1.2");
+        X509Certificate certificate = ReceiverCertificate.generate(certified, now).certificate();
+        long expired = now + TimeUnit.DAYS.toMillis(91);
+        assertNull(ReceiverCertificate.reachableAddressesIfReusable(certificate, certified, certified, expired));
+        assertNull(ReceiverCertificate.reachableAddressesIfReusable(certificate, certified, Collections.emptyList(), expired));
+    }
 }

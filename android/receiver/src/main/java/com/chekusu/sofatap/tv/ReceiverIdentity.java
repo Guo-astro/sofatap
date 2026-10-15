@@ -22,11 +22,13 @@ final class ReceiverIdentity {
     private final SecretKey storageKey;
     final HeldCertificate certificate;
     private String pairedDigest;
-    final List<String> addresses;
+    private final List<String> certificateAddresses;
+    volatile List<String> addresses;
 
     ReceiverIdentity(Context context) throws Exception {
-        addresses = localAddresses();
-        if (addresses.isEmpty()) throw new IOException("no_private_network");
+        this(context, localAddresses(), System.currentTimeMillis());
+    }
+    ReceiverIdentity(Context context, List<String> currentAddresses, long now) throws Exception {
         file = new AtomicFile(new File(context.getNoBackupFilesDir(), "receiver-identity.enc"));
         KeyStore android = KeyStore.getInstance("AndroidKeyStore"); android.load(null);
         if (!android.containsAlias(KEY_ALIAS)) {
@@ -37,25 +39,42 @@ final class ReceiverIdentity {
         }
         storageKey = (SecretKey)android.getKey(KEY_ALIAS, null);
         HeldCertificate restored = null;
+        List<String> savedAddresses = null, reachable = null;
         if (file.getBaseFile().exists()) {
             // Storage/key corruption is visible; never silently replace an encrypted identity.
             JSONObject saved = new JSONObject(decrypt(file.readFully()));
             restored = HeldCertificate.decode(saved.getString("pem"));
-            String savedAddresses = saved.getString("addresses");
-            if (savedAddresses.equals(String.join(",", addresses)) &&
-                ReceiverCertificate.reusable(restored.certificate(), addresses, System.currentTimeMillis())) {
-                pairedDigest = saved.isNull("pairedDigest") ? null : saved.getString("pairedDigest");
-            } else restored = null; // Changed address/certificate requires visible new QR enrollment.
+            savedAddresses = Arrays.asList(saved.getString("addresses").split(",", -1));
+            if (!ReceiverCertificate.matchesAddresses(restored.certificate(), savedAddresses)) throw new IOException("invalid_identity");
+            if (!saved.has("pairedDigest")) throw new IOException("invalid_identity");
+            pairedDigest = saved.isNull("pairedDigest") ? null : saved.getString("pairedDigest");
+            if (pairedDigest != null && !pairedDigest.matches("[a-f0-9]{64}")) throw new IOException("invalid_identity");
+            reachable = ReceiverCertificate.reachableAddressesIfReusable(restored.certificate(), savedAddresses, currentAddresses, now);
+            if (reachable == null) { restored = null; pairedDigest = null; } // Changed address/certificate requires visible new QR enrollment.
         }
+        boolean created = restored == null;
         if (restored == null) {
-            restored = ReceiverCertificate.generate(addresses);
+            // Never overwrite a persisted identity while there is no reachable network.
+            if (currentAddresses.isEmpty()) throw new IOException("no_private_network");
+            savedAddresses = new ArrayList<>(new TreeSet<>(currentAddresses));
+            restored = ReceiverCertificate.generate(savedAddresses, now);
+            reachable = Collections.unmodifiableList(new ArrayList<>(savedAddresses));
         }
-        certificate = restored; saveDigest(pairedDigest);
+        certificate = restored;
+        certificateAddresses = Collections.unmodifiableList(new ArrayList<>(savedAddresses));
+        addresses = reachable;
+        if (created) saveDigest(pairedDigest);
+    }
+    synchronized boolean refreshAddresses(List<String> currentAddresses, long now) {
+        List<String> reachable = ReceiverCertificate.reachableAddressesIfReusable(certificate.certificate(), certificateAddresses, currentAddresses, now);
+        if (reachable == null) return false;
+        addresses = reachable;
+        return true;
     }
     synchronized String pairedDigest() { return pairedDigest; }
     synchronized void saveDigest(String digest) throws Exception {
         JSONObject value = new JSONObject().put("pem", certificate.certificatePem() + certificate.privateKeyPkcs8Pem())
-            .put("addresses", String.join(",", addresses)).put("pairedDigest", digest == null ? JSONObject.NULL : digest);
+            .put("addresses", String.join(",", certificateAddresses)).put("pairedDigest", digest == null ? JSONObject.NULL : digest);
         Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding"); cipher.init(Cipher.ENCRYPT_MODE, storageKey);
         byte[] body = cipher.doFinal(value.toString().getBytes(StandardCharsets.UTF_8)), iv = cipher.getIV();
         FileOutputStream output = file.startWrite();
@@ -92,6 +111,6 @@ final class ReceiverIdentity {
                 if (address instanceof Inet4Address && address.isSiteLocalAddress()) result.add(address.getHostAddress());
             }
         }
-        Collections.sort(result); return result;
+        return new ArrayList<>(new TreeSet<>(result));
     }
 }

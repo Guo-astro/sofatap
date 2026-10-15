@@ -1,8 +1,10 @@
 # Sofatap Android TV receiver
 
-This is the first Android/Google TV receiver feasibility build for **free manual control**. It uses a native TV pairing screen and the existing Sofatap iPhone touch surface. No model account or paid inference is involved.
+This is the Android/Google TV experimental receiver for **free manual control**. It uses a native TV pairing screen and the existing Sofatap iPhone touch surface. No model account or paid inference is involved.
 
 **No physical TV model or third-party TV app is qualified yet.** A successful build, network connection, or visible cursor does not establish that a television accepts clicks. This is not a Google Play release.
+
+The [0.1.1 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) (version code 2) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. See the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Both household Sony and Xiaomi TVs remain **not field-tested**.
 
 ## Build
 
@@ -28,10 +30,18 @@ ADB is only an optional development installation tool. It is not the control tra
 
 1. Open Sofatap from the television's app launcher. Connect the TV and iPhone to the same trusted home network.
 2. Using the physical TV remote, open Accessibility settings from Sofatap, read the explanation, and enable its service. Menu names and availability vary by manufacturer and firmware.
-3. Start the receiver. In a compatible iPhone development build, open pairing, choose **Connect Android TV (experimental)**, and scan the TV’s native pairing QR code.
+3. Start the receiver. On the iPhone, open **My Devices → Add Device → Scan QR Code**, then scan the TV’s native pairing QR code. Its device type and suggested name are recognized automatically.
 4. Try a known harmless control first. Pointer movement and successful activation are separate observations; verify the visible result of each click and scroll.
 
 The QR code expires after five minutes and carries private pairing credentials. Do not share or publish it. Pairing another iPhone replaces the previous pairing. The receiver uses a pinned TLS WebSocket on the local network; no browser or cloud relay is needed. Stop the receiver to end the network session, and disable Sofatap in Accessibility settings to remove its control access.
+
+## Reconnection
+
+After successful pairing, iPhone build 17 retries the selected Android TV while Sofatap is in the foreground, with delays of 1, 2, 4, 8, 16 and then 30 seconds. Restarting the receiver with the same valid address and identity does not require another scan. Adding or removing an unrelated network adapter, or briefly starting without a network, preserves a valid saved identity. QR codes only advertise currently reachable addresses covered by the certificate. A genuine address replacement or certificate expiry can require pairing again.
+
+Manual disconnect, removing the device, switching targets and backgrounding cancel pending retries. Returning to the app reconnects the selected saved TV unless it was explicitly disconnected. Certificate or authentication failures stop automatic attempts and require user action. QR bootstrap credentials are never retried; queued and unconfirmed gestures are discarded rather than replayed after recovery. This does not wake a sleeping TV or bypass its lock screen.
+
+The APK is development-signed. `adb install -r` preserves app data only when the installed package has a compatible signing certificate. Earlier CI-generated debug APKs can have a different certificate; do not uninstall or clear pairing data to hide a signature mismatch. Keep the installed build until an explicit migration is arranged.
 
 ## Current capabilities
 

@@ -87,6 +87,18 @@ public class PairingAuthorityTest {
         assertNull(authority.bootstrap()); assertFalse(authority.authorize(token).allowed());
     }
 
+    @Test public void retiringListenerDeniesStaleCallbacksWithoutRevokingSavedPairing() throws Exception {
+        Store store = new Store(); PairingAuthority authority = new PairingAuthority(null, () -> 1000, store);
+        String token = authority.authorize(authority.newPairing()).replacementToken();
+        String saved = store.digest; int writes = store.writes.size(); long generation = authority.generation();
+        authority.retire();
+        assertFalse(authority.authorize(token).allowed());
+        assertTrue(authority.generation() > generation);
+        assertEquals(saved, store.digest); assertEquals(writes, store.writes.size());
+        PairingAuthority restarted = new PairingAuthority(store.digest, () -> 1000, store);
+        assertTrue(restarted.authorize(token).allowed());
+    }
+
     @Test(timeout = 5000) public void concurrentBootstrapRequestsProduceExactlyOneGrant() throws Exception {
         Store store = new Store(); PairingAuthority authority = new PairingAuthority(null, () -> 1000, store);
         String bootstrap = authority.newPairing(); ExecutorService executor = Executors.newFixedThreadPool(8);

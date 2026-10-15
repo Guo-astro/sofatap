@@ -10,6 +10,8 @@ private struct InteropStats: Decodable {
     let snapshots: Int
     let disconnects: Int
     let connected: Bool
+    let serverRunning: Bool
+    let serverStarts: Int
 }
 private final class InteropMemoryStore: AndroidTVPairingStorage {
     var value: AndroidTVPairing?
@@ -23,7 +25,7 @@ private final class InteropMemoryStore: AndroidTVPairingStorage {
     var failures = 0
     var texts = 0
     init() {
-        socket.onFailure = { [weak self] in self?.failures += 1 }
+        socket.onFailure = { [weak self] _ in self?.failures += 1 }
         socket.onText = { [weak self] _ in self?.texts += 1 }
     }
 }
@@ -115,6 +117,36 @@ private final class InteropMemoryStore: AndroidTVPairingStorage {
         controller.key(.back)
         await wait("resumed native input") { stats(dir)?.actions.count == 6 || controller.phase == .failed }
         require(stats(dir)?.actions.last?.key == "back" && controller.canControl, "current controller remains usable")
+
+        let savedBeforeRestart = store.value
+        let selectedBeforeRestart = controller.selectedDeviceID
+        try Data().write(to: dir.appendingPathComponent("stop-after-action"))
+        try Data().write(to: dir.appendingPathComponent("hold-next-action"))
+        controller.click()
+        controller.move(dx: 111, dy: 222)
+        controller.key(.home)
+        await wait("receiver stops before ambiguous click acknowledgement") { stats(dir)?.serverRunning == false }
+        await wait("native controller observes real receiver shutdown") { controller.phase == .failed }
+        require(stats(dir)?.actions.count == 7 && stats(dir)?.actions.last?.type == "click",
+            "only the unacknowledged click reached the old receiver; queued motion and key did not")
+        // Input made while disconnected must not become a future action either.
+        controller.move(dx: -333, dy: -444); controller.scroll(dy: 81); controller.click()
+        require(store.value == savedBeforeRestart && store.writes == 1,
+            "shutdown preserves the selected saved credential without reenrollment")
+        try Data().write(to: dir.appendingPathComponent("restart-server"))
+        await wait("automatic recovery to restarted receiver") {
+            stats(dir)?.serverStarts == 2 && controller.canControl
+        }
+        await pause(200)
+        require(stats(dir)?.actions.count == 7 && store.value == savedBeforeRestart && store.writes == 1,
+            "real automatic reconnect uses the saved pin and token without replaying ambiguous or queued input")
+        require(controller.selectedDeviceID == selectedBeforeRestart && controller.savedDevices.count == 1,
+            "automatic recovery preserves the selected device and never creates a duplicate")
+        controller.key(.home)
+        await wait("fresh action after automatic recovery") { stats(dir)?.actions.count == 8 }
+        require(stats(dir)?.actions.last?.key == "home" && controller.canControl,
+            "fresh manual input works after receiver replacement")
+        print("PASS real receiver restart and automatic saved-credential recovery; no ambiguous, queued or offline input replay")
         controller.disconnect()
         await wait("all controllers closed") { stats(dir)?.connected == false }
         print("PASS persistent reconnect, consumed-QR rejection, single-controller admission and no replay")

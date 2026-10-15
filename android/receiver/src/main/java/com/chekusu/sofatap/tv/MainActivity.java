@@ -81,6 +81,8 @@ public final class MainActivity extends Activity {
     }
     private void refresh() {
         ReceiverService receiver = ReceiverService.instance;
+        ReceiverIdentity identity = receiver == null ? null : receiver.identity;
+        ReceiverServer server = receiver == null ? null : receiver.server;
         JSONObject probe = InputBridge.snapshot(this);
         boolean enabled = probe.optBoolean("inputAvailable");
         boolean needsPermission = "accessibility_required".equals(probe.optString("inputStatus"));
@@ -88,8 +90,9 @@ public final class MainActivity extends Activity {
         start.setText(receiver == null ? R.string.start : R.string.stop);
         pair.setEnabled(receiver != null && receiver.authority != null);
         pair.setAlpha(pair.isEnabled() ? 1f : 0.4f);
-        if (receiver != null && receiver.identity != null && !addresses.equals(receiver.identity.addresses)) {
-            addresses = new ArrayList<>(receiver.identity.addresses);
+        List<String> currentAddresses = identity == null ? Collections.emptyList() : identity.addresses;
+        if (!addresses.equals(currentAddresses)) {
+            addresses = new ArrayList<>(currentAddresses);
             ArrayAdapter<String> adapter = new ArrayAdapter<>(this, android.R.layout.simple_spinner_dropdown_item, addresses);
             network.setAdapter(adapter);
         }
@@ -97,13 +100,13 @@ public final class MainActivity extends Activity {
         String address = network.getSelectedItem() instanceof String ? (String)network.getSelectedItem() : addresses.isEmpty() ? "" : addresses.get(0);
         String uri = receiver == null ? null : receiver.pairingUri(address);
         if (!Objects.equals(uri, renderedURI)) { renderedURI = uri; renderQR(uri); }
-        boolean connected = receiver != null && receiver.server != null && receiver.server.connected();
+        boolean connected = server != null && server.connected();
         if (receiver == null) {
             status.setText(R.string.stopped); help.setText(R.string.start_help); qrCaption.setText(R.string.qr_waiting);
         } else if (receiver.error != null) {
             status.setText(R.string.cannot_start);
             help.setText("no_private_network".equals(receiver.error) ? R.string.connect_network : R.string.restart_help);
-        } else if (receiver.server == null) {
+        } else if (server == null) {
             status.setText(R.string.starting); help.setText(R.string.start_help);
         } else {
             status.setText(!enabled && !needsPermission ? R.string.input_paused : connected ? enabled ? R.string.connected : R.string.connected_permission : enabled ? R.string.ready : R.string.permission_needed);

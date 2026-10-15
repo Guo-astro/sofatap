@@ -322,3 +322,7 @@
 "草稿与电脑退格" = "Brouillons et retour arrière sur l’ordinateur";
 "先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Sélectionnez d’abord le champ de texte sur l’ordinateur. Le retour arrière est synchronisé en saisie directe ; le texte non envoyé du brouillon est d’abord effacé sur le téléphone. Après avoir vidé le brouillon local, la touche peut effacer du texte sur l’ordinateur. Le bouton sous l’éditeur agit sur l’ordinateur sans effacer le brouillon du téléphone.";
 "滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Glissez pour déplacer le pointeur ; touchez pour un clic gauche ; touchez deux fois la moitié gauche pour deux clics gauches, ou la droite pour deux clics droits ; maintenez 0,3 seconde pour faire glisser ; glissez avec deux doigts pour faire défiler.";
+
+/* Android TV connection recovery. */
+"电视连接中断，正在自动重连；未确认的操作不会重发。" = "La connexion au téléviseur a été interrompue. Reconnexion automatique en cours ; les actions non confirmées ne seront pas renvoyées.";
+"切回 App 会重新连接电视。" = "Revenez dans l’app pour reconnecter le téléviseur.";

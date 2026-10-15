@@ -24,6 +24,17 @@ final class AndroidTVController: ObservableObject {
         }
     }
     private let enabled: Bool
+    private var targetSelected: Bool
+    private var foreground = true
+    private var manuallyDisconnected = false
+    private var reconnectBlocked = false
+    private var savedSelectionAvailable = false
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectID: UUID?
+    private var reconnectAttempt = 0
+#if SOFATAP_ANDROID_TV_TESTING
+    var testScheduleReconnect: ((TimeInterval, @escaping () -> Void) -> Void)?
+#endif
     private let storage: AndroidTVPairingStorage
     private let makeSocket: @MainActor () -> AndroidTVSocket
     private var socket: AndroidTVSocket?
@@ -36,9 +47,10 @@ final class AndroidTVController: ObservableObject {
     private var queue: [Input] = []
     private var pending: (id: String, action: AndroidTVAction)?
 
-    init(enabled: Bool = true, storage: AndroidTVPairingStorage = AndroidTVKeychain(),
+    init(enabled: Bool = true, targetSelected: Bool = true, storage: AndroidTVPairingStorage = AndroidTVKeychain(),
          makeSocket: @escaping @MainActor () -> AndroidTVSocket = { AndroidTVNetworkSocket() }) {
-        self.enabled = enabled; self.storage = storage; self.makeSocket = makeSocket
+        self.enabled = enabled; self.targetSelected = targetSelected
+        self.storage = storage; self.makeSocket = makeSocket
         if enabled { refreshSavedDevices() }
     }
 
@@ -51,9 +63,13 @@ final class AndroidTVController: ObservableObject {
             let library = try storage.library()
             savedDevices = library.devices; selectedDeviceID = library.selectedID
             saved = library.selected?.credential
-            managementError = nil
+            managementError = nil; savedSelectionAvailable = true
             return true
-        } catch { managementError = error.localizedDescription; return false }
+        } catch {
+            managementError = error.localizedDescription; savedSelectionAvailable = false
+            cancelReconnect()
+            return false
+        }
     }
     func selectDevice(_ id: UUID) {
         guard enabled else { return }
@@ -79,24 +95,57 @@ final class AndroidTVController: ObservableObject {
     }
 
     func pair(_ raw: String) {
-        guard enabled else { return }
+        guard enabled, targetSelected, foreground else { return }
+        manuallyDisconnected = false; reconnectBlocked = false
         guard let pairing = try? AndroidTVPairing.parse(raw) else {
             fail(String(localized: "Android TV 配对二维码无效，请在电视上生成新的二维码。")); return
         }
         connect(pairing, bootstrap: true)
     }
+    /// An explicit device selection/reconnect can retry a previously rejected credential.
     func reconnect() {
-        guard enabled, let saved else { return }
+        guard enabled, targetSelected, foreground, refreshSavedDevices(), let saved else { return }
+        manuallyDisconnected = false; reconnectBlocked = false
+        cancelReconnect()
         connect(saved, bootstrap: false)
     }
-    private func connect(_ pairing: AndroidTVPairing, bootstrap: Bool) {
-        disconnect()
+    func setTargetSelected(_ selected: Bool, reconnect: Bool = true) {
+        guard selected != targetSelected else { return }
+        targetSelected = selected
+        closeConnection()
+        if selected {
+            manuallyDisconnected = false
+            if reconnect, refreshSavedDevices() { connectAutomatically() }
+        }
+    }
+    func becameActive() {
+        foreground = true
+        guard enabled, refreshSavedDevices() else { return }
+        if reconnectID == nil { connectAutomatically() }
+    }
+    func becameInactive() {
+        if bootstrap && phase == .connecting { reconnectBlocked = true }
+        foreground = false
+        closeConnection()
+        notice = String(localized: "切回 App 会重新连接电视。")
+    }
+    private var mayReconnectAutomatically: Bool {
+        enabled && targetSelected && foreground && !manuallyDisconnected && !reconnectBlocked &&
+            savedSelectionAvailable && saved != nil && selectedDeviceID != nil &&
+            savedDevices.first(where: { $0.id == selectedDeviceID })?.credential == saved
+    }
+    private func connectAutomatically() {
+        guard mayReconnectAutomatically, phase != .ready, phase != .connecting, let saved else { return }
+        connect(saved, bootstrap: false, preservingRetryAttempt: true)
+    }
+    private func connect(_ pairing: AndroidTVPairing, bootstrap: Bool, preservingRetryAttempt: Bool = false) {
+        closeConnection(preservingRetryAttempt: preservingRetryAttempt)
         self.pairing = pairing; self.bootstrap = bootstrap
         phase = .connecting
         notice = String(localized: "正在验证电视加密连接…")
         let current = epoch
         let socket = makeSocket(); self.socket = socket
-        socket.onFailure = { [weak self] in self?.failIfCurrent(current) }
+        socket.onFailure = { [weak self] failure in self?.failIfCurrent(current, failure: failure) }
         socket.onText = { [weak self] text in
             guard let self, self.epoch == current else { return }
             self.receive(text)
@@ -122,6 +171,8 @@ final class AndroidTVController: ObservableObject {
                 guard refreshSavedDevices(), saved?.deviceIdentity == self.pairing?.deviceIdentity else { throw DeviceLibraryError.unavailable }
                 deadline?.cancel(); deadline = nil
                 self.name = name; self.status = status; phase = .ready
+                bootstrap = false
+                cancelReconnect()
                 updateNotice()
                 startHeartbeat()
             case .ack(let id, let ok, let newStatus, _):
@@ -220,19 +271,62 @@ final class AndroidTVController: ObservableObject {
             self?.failIfCurrent(current)
         }
     }
-    private func failIfCurrent(_ current: UUID) {
+    private func failIfCurrent(_ current: UUID, failure: AndroidTVSocketFailure = .transient) {
         guard epoch == current else { return }
-        fail(String(localized: "电视连接中断，未确认的操作不会重发。请查看电视后手动重新连接。"))
+        // A QR credential is one-use. Even a lost bootstrap hello must require a new scan.
+        let retryable = failure == .transient && !bootstrap
+        closeConnection(preservingRetryAttempt: true)
+        phase = .failed
+        if retryable && mayReconnectAutomatically {
+            notice = String(localized: "电视连接中断，正在自动重连；未确认的操作不会重发。")
+            scheduleReconnect()
+        } else {
+            reconnectBlocked = true
+            notice = String(localized: "电视连接或配对未确认。请在电视上生成新二维码后重新连接。")
+        }
     }
-    private func fail(_ message: String) { disconnect(); phase = .failed; notice = message }
+    private func scheduleReconnect() {
+        guard mayReconnectAutomatically, let saved else { return }
+        let delays: [TimeInterval] = [1, 2, 4, 8, 16, 30]
+        let delay = delays[min(reconnectAttempt, delays.count - 1)]
+        reconnectAttempt = min(reconnectAttempt + 1, delays.count - 1)
+        let id = UUID(), current = epoch, selected = selectedDeviceID
+        reconnectID = id
+        let retry: () -> Void = { [weak self] in
+            guard let self, self.reconnectID == id, self.epoch == current,
+                  self.selectedDeviceID == selected, self.saved == saved,
+                  self.mayReconnectAutomatically else { return }
+            self.reconnectID = nil; self.reconnectTask = nil
+            self.connectAutomatically()
+        }
+#if SOFATAP_ANDROID_TV_TESTING
+        if let testScheduleReconnect { testScheduleReconnect(delay, retry); return }
+#endif
+        reconnectTask = Task {
+            do { try await Task.sleep(for: .seconds(delay)) } catch { return }
+            retry()
+        }
+    }
+    private func cancelReconnect(resetAttempt: Bool = true) {
+        reconnectID = nil; reconnectTask?.cancel(); reconnectTask = nil
+        if resetAttempt { reconnectAttempt = 0 }
+    }
+    private func fail(_ message: String) {
+        closeConnection(); reconnectBlocked = true; phase = .failed; notice = message
+    }
     func pauseInput() { paused = true; queue.removeAll() }
     func resumeInput() { paused = false }
     func disconnect() {
+        manuallyDisconnected = true
+        closeConnection()
+        notice = String(localized: "Android TV 已断开。请手动重新连接。")
+    }
+    private func closeConnection(preservingRetryAttempt: Bool = false) {
+        cancelReconnect(resetAttempt: !preservingRetryAttempt)
         epoch = UUID()
         deadline?.cancel(); deadline = nil; heartbeat?.cancel(); heartbeat = nil
         socket?.close(); socket = nil; pairing = nil; pending = nil; queue.removeAll()
-        status = nil; phase = .idle; paused = false
-        notice = String(localized: "Android TV 已断开。请手动重新连接。")
+        status = nil; phase = .idle
     }
     func forget() {
         guard enabled else { return }

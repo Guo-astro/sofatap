@@ -326,3 +326,7 @@
 "草稿与电脑退格" = "Drafts and Computer Backspace";
 "先选中电脑输入框。实时输入时退格会同步；草稿中的未发送文字先在手机上删除。清空本地草稿后，可用键盘退格删除电脑文字。框下的电脑退格按钮直接作用于电脑，不删除手机草稿。" = "Focus the computer’s text field first. Backspace syncs during live editing; unsent draft text is deleted on the phone first. After clearing the local draft, keyboard Backspace can delete computer text. The computer Backspace button below the editor acts on the computer without deleting the phone draft.";
 "滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动" = "Slide to move the pointer; tap for a left click; double-tap the left half for two left clicks, or the right half for two right clicks; hold for 0.3 seconds to drag; slide two fingers to scroll.";
+
+/* Android TV connection recovery. */
+"电视连接中断，正在自动重连；未确认的操作不会重发。" = "The TV connection was interrupted. Reconnecting automatically; unconfirmed actions will not be replayed.";
+"切回 App 会重新连接电视。" = "Return to the app to reconnect to the TV.";

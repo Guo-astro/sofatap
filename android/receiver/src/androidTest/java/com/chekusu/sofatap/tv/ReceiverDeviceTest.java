@@ -14,6 +14,8 @@ import org.junit.runner.RunWith;
 import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.*;
 
@@ -76,6 +78,94 @@ public final class ReceiverDeviceTest {
             assertFalse(raw.contains(marker)); assertFalse(raw.contains("PRIVATE KEY"));
             assertTrue(first.certificate.certificate().getExtendedKeyUsage().contains("1.3.6.1.5.5.7.3.1"));
         } finally { first.saveDigest(null); }
+    }
+    private Context isolatedIdentityContext() throws Exception {
+        File directory = Files.createTempDirectory(context.getCacheDir().toPath(), "identity-test-").toFile();
+        return new ContextWrapper(context) { @Override public File getNoBackupFilesDir() { return directory; } };
+    }
+    private void removeIdentityFixture(Context fixture) {
+        File[] files = fixture.getNoBackupFilesDir().listFiles();
+        if (files != null) for (File file : files) file.delete();
+        fixture.getNoBackupFilesDir().delete();
+    }
+    @Test public void encryptedIdentityPreservesPairingAcrossAdapterChurnOfflineAndRestoration() throws Exception {
+        Context fixture = isolatedIdentityContext(); long now = System.currentTimeMillis();
+        List<String> original = Arrays.asList("192.168.1.20", "10.0.0.20");
+        try {
+            ReceiverIdentity first = new ReceiverIdentity(fixture, original, now);
+            String marker = PairingAuthority.hash(PairingAuthority.randomToken()); first.saveDigest(marker);
+            File profile = new File(fixture.getNoBackupFilesDir(), "receiver-identity.enc");
+            byte[] encrypted = Files.readAllBytes(profile.toPath());
+            for (List<String> current : Arrays.asList(Arrays.asList("10.0.0.20", "192.168.1.20"),
+                    Arrays.asList("192.168.1.20", "10.0.0.20", "10.8.0.20"),
+                    Collections.singletonList("192.168.1.20"), Collections.<String>emptyList(), original)) {
+                ReceiverIdentity restored = new ReceiverIdentity(fixture, current, now);
+                assertEquals(first.fingerprint(), restored.fingerprint()); assertEquals(marker, restored.pairedDigest());
+                assertFalse(restored.addresses.contains("10.8.0.20"));
+                assertTrue(current.containsAll(restored.addresses));
+                assertArrayEquals("Restoration must not rewrite the encrypted pairing", encrypted, Files.readAllBytes(profile.toPath()));
+            }
+            ReceiverIdentity replaced = new ReceiverIdentity(fixture, Arrays.asList("192.168.1.21", "10.0.0.20"), now);
+            assertNotEquals(first.fingerprint(), replaced.fingerprint()); assertNull(replaced.pairedDigest());
+        } finally { removeIdentityFixture(fixture); }
+    }
+    @Test public void expiredIdentityWaitsOfflineThenRequiresNewEnrollment() throws Exception {
+        Context fixture = isolatedIdentityContext(); long now = System.currentTimeMillis();
+        List<String> addresses = Collections.singletonList("192.168.1.20");
+        try {
+            ReceiverIdentity expired = new ReceiverIdentity(fixture, addresses, now - TimeUnit.DAYS.toMillis(91));
+            expired.saveDigest(PairingAuthority.hash(PairingAuthority.randomToken()));
+            File profile = new File(fixture.getNoBackupFilesDir(), "receiver-identity.enc");
+            byte[] original = Files.readAllBytes(profile.toPath());
+            try { new ReceiverIdentity(fixture, Collections.emptyList(), now); fail("Expired offline identity was accepted"); }
+            catch (IOException expected) { assertEquals("no_private_network", expected.getMessage()); }
+            assertArrayEquals(original, Files.readAllBytes(profile.toPath()));
+            ReceiverIdentity fresh = new ReceiverIdentity(fixture, addresses, now);
+            assertNotEquals(expired.fingerprint(), fresh.fingerprint()); assertNull(fresh.pairedDigest());
+        } finally { removeIdentityFixture(fixture); }
+    }
+    @Test public void corruptedEncryptedIdentityIsNeverSilentlyReplacedEvenOffline() throws Exception {
+        Context fixture = isolatedIdentityContext(); long now = System.currentTimeMillis();
+        List<String> addresses = Collections.singletonList("192.168.1.20");
+        try {
+            new ReceiverIdentity(fixture, addresses, now);
+            File profile = new File(fixture.getNoBackupFilesDir(), "receiver-identity.enc");
+            byte[] corrupted = Files.readAllBytes(profile.toPath()); corrupted[corrupted.length - 1] ^= 1;
+            Files.write(profile.toPath(), corrupted);
+            for (List<String> current : Arrays.asList(addresses, Collections.<String>emptyList())) {
+                boolean rejected = false;
+                try { new ReceiverIdentity(fixture, current, now); } catch (Exception expected) { rejected = true; }
+                assertTrue("Corruption must remain visible", rejected);
+                assertArrayEquals(corrupted, Files.readAllBytes(profile.toPath()));
+            }
+        } finally { removeIdentityFixture(fixture); }
+    }
+    @Test public void startedServiceRecoversAfterOfflineWithoutReenrollmentAndExplicitStopStaysStopped() throws Exception {
+        MainActivity activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            main(() -> { context.startForegroundService(new Intent(context, ReceiverService.class)); return null; });
+            until(() -> ReceiverService.instance != null && ReceiverService.instance.server != null);
+            ReceiverService service = ReceiverService.instance;
+            List<String> addresses = new ArrayList<>(service.identity.addresses);
+            String fingerprint = service.identity.fingerprint();
+            String token = service.authority.authorize(service.authority.newPairing()).replacementToken();
+            String digest = PairingAuthority.hash(token);
+            byte[] encrypted = Files.readAllBytes(new File(context.getNoBackupFilesDir(), "receiver-identity.enc").toPath());
+            main(() -> { service.addressSource = Collections::emptyList; service.requestRefresh(); return null; });
+            until(() -> service.server == null && "no_private_network".equals(service.error));
+            assertEquals(fingerprint, service.identity.fingerprint()); assertEquals(digest, service.identity.pairedDigest());
+            assertTrue(service.identity.addresses.isEmpty());
+            main(() -> { service.addressSource = () -> addresses; service.requestRefresh(); return null; });
+            until(() -> service.server != null && service.error == null);
+            assertEquals(fingerprint, service.identity.fingerprint()); assertTrue(service.authority.authorize(token).allowed());
+            assertArrayEquals(encrypted, Files.readAllBytes(new File(context.getNoBackupFilesDir(), "receiver-identity.enc").toPath()));
+            main(() -> { context.stopService(new Intent(context, ReceiverService.class)); return null; });
+            until(() -> ReceiverService.instance == null);
+            main(() -> { service.requestRefresh(); return null; });
+            SystemClock.sleep(500);
+            assertNull(ReceiverService.instance); assertNull(service.server);
+            service.identity.saveDigest(null);
+        } finally { main(() -> { context.stopService(new Intent(context, ReceiverService.class)); activity.finish(); return null; }); }
     }
     @Test public void nativePairingProtectsOnlyVisibleCredentials() throws Exception {
         MainActivity activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));

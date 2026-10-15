@@ -21,6 +21,8 @@ import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Collection;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -69,7 +71,7 @@ public final class ReceiverCertificate {
     /** Old EKU-less identities are re-enrolled with a new QR; the client never weakens TLS policy. */
     static boolean reusable(X509Certificate certificate, List<String> addresses, long now) {
         try {
-            Set<String> expected = validateAddresses(addresses);
+            validateAddresses(addresses);
             certificate.checkValidity(new Date(now));
             if (certificate.getNotAfter().getTime() <= now + TimeUnit.DAYS.toMillis(1)) return false;
             if (certificate.getNotAfter().getTime() - certificate.getNotBefore().getTime() > LIFETIME + CLOCK_SKEW) return false;
@@ -82,17 +84,38 @@ public final class ReceiverCertificate {
             for (int i = 1; i < keyUsage.length; i++) if (keyUsage[i]) return false;
             Set<String> critical = certificate.getCriticalExtensionOIDs();
             if (critical == null || !critical.contains("2.5.29.19") || !critical.contains("2.5.29.15")) return false;
-            Collection<List<?>> sans = certificate.getSubjectAlternativeNames();
-            if (sans == null) return false;
-            Set<String> actual = new HashSet<>();
-            for (List<?> san : sans) {
-                if (san.size() != 2 || !Integer.valueOf(7).equals(san.get(0)) || !(san.get(1) instanceof String)) return false;
-                actual.add((String) san.get(1));
-            }
-            if (!actual.equals(expected)) return false;
+            if (!matchesAddresses(certificate, addresses)) return false;
             certificate.verify(certificate.getPublicKey());
             return true;
         } catch (Exception invalid) { return false; }
+    }
+
+    static boolean matchesAddresses(X509Certificate certificate, List<String> addresses) throws Exception {
+        Set<String> expected = validateAddresses(addresses);
+        Collection<List<?>> sans = certificate.getSubjectAlternativeNames();
+        if (sans == null) return false;
+        Set<String> actual = new HashSet<>();
+        for (List<?> san : sans) {
+            if (san.size() != 2 || !Integer.valueOf(7).equals(san.get(0)) || !(san.get(1) instanceof String)) return false;
+            actual.add((String) san.get(1));
+        }
+        return actual.equals(expected);
+    }
+
+    /** Null means a new identity is needed; an empty list means safely offline. */
+    static List<String> reachableAddressesIfReusable(X509Certificate certificate,
+            List<String> certifiedAddresses, List<String> currentAddresses, long now) {
+        Set<String> certified = validateAddresses(certifiedAddresses);
+        Set<String> current = currentAddresses.isEmpty() ? Collections.emptySet() : validateAddresses(currentAddresses);
+        if (!reusable(certificate, certifiedAddresses, now)) return null;
+        // Match desktop identity policy: adapter additions/removals preserve trust,
+        // while replacement of an address requires explicit enrollment in a new leaf.
+        boolean added = !certified.containsAll(current), removed = !current.containsAll(certified);
+        if (added && removed) return null;
+        List<String> reachable = new ArrayList<>();
+        for (String address : current) if (certified.contains(address)) reachable.add(address);
+        Collections.sort(reachable);
+        return Collections.unmodifiableList(reachable);
     }
 
     private static Set<String> validateAddresses(List<String> addresses) {

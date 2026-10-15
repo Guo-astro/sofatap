@@ -33,7 +33,7 @@ private final class TVLibraryStore: AndroidTVPairingStorage {
 
 @MainActor private final class TVRecordingSocket: AndroidTVSocket {
     var onText: ((String) -> Void)?
-    var onFailure: (() -> Void)?
+    var onFailure: ((AndroidTVSocketFailure) -> Void)?
     var opened: AndroidTVPairing?
     var frames: [[String: Any]] = []
     var closes = 0

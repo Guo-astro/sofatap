@@ -33,6 +33,10 @@ public final class PairingAuthority {
         pairedDigest = null; bootstrap = null; generation++;
         persistence.save(null);
     }
+    /** Retire an in-memory listener without revoking the saved controller. */
+    synchronized void retire() {
+        pairedDigest = null; bootstrap = null; generation++;
+    }
     public synchronized long generation() { return generation; }
     public synchronized String bootstrap() {
         return bootstrap != null && clock.getAsLong() < expiresAt ? bootstrap : null;

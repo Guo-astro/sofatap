@@ -14,7 +14,9 @@ import java.security.KeyStore;
 import java.security.MessageDigest;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
 
 /** Short-lived interop fixture. Counts actions only; never accesses desktop/device input. */
@@ -34,26 +36,46 @@ public final class AndroidTVInteropFixture {
         KeyManagerFactory manager = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         manager.init(keys, "test-only".toCharArray());
         SSLContext tls = SSLContext.getInstance("TLS"); tls.init(manager.getKeyManagers(), null, null);
-        PairingAuthority authority = new PairingAuthority(null, System::currentTimeMillis, digest -> {});
+        // Simulate durable storage across receiver object destruction without writing
+        // a credential or key outside this private, short-lived fixture process.
+        AtomicReference<String> pairedDigest = new AtomicReference<>();
+        PairingAuthority authority = new PairingAuthority(null, System::currentTimeMillis, pairedDigest::set);
         String bootstrap = authority.newPairing(); CountingInput input = new CountingInput(directory);
         ReceiverServer server = new ReceiverServer(tls, bind, 0, authority, input, "Sofatap test fixture");
+        final int port = server.port();
+        AtomicReference<ReceiverServer> activeServer = new AtomicReference<>(server);
         String pin = PairingAuthority.hex(MessageDigest.getInstance("SHA-256").digest(certificate.certificate().getEncoded()));
         String qr = "sofatap://tv?host=" + bind.getHostAddress() + "&port=" + server.port()
             + "&token=" + bootstrap + "&fingerprint=" + pin;
-        Runtime.getRuntime().addShutdownHook(new Thread(server::close, "Sofatap-fixture-cleanup"));
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            ReceiverServer active = activeServer.get(); if (active != null) active.close();
+        }, "Sofatap-fixture-cleanup"));
         server.start();
+        int serverStarts = 1;
         try {
-            write(directory.resolve("stats.json"), input.stats(authority, server));
+            write(directory.resolve("stats.json"), input.stats(authority, server, serverStarts));
             write(directory.resolve("fixture.json"), new JSONObject().put("qr", qr)
                 .put("host", bind.getHostAddress()).put("port", server.port()).put("pin", pin));
-            long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(60);
+            long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(90);
             while (!Files.exists(directory.resolve("stop")) && System.nanoTime() < until) {
-                write(directory.resolve("stats.json"), input.stats(authority, server));
+                // Close a real TLS connection after the fixture applied an action,
+                // but before ReceiverServer can acknowledge it. The phone must
+                // discard both that ambiguous action and its queued motion.
+                if (server != null && input.awaitingAck.get() && Files.deleteIfExists(directory.resolve("stop-after-action"))) {
+                    server.close(); server = null; activeServer.set(null);
+                }
+                if (server == null && Files.deleteIfExists(directory.resolve("restart-server"))) {
+                    authority = new PairingAuthority(pairedDigest.get(), System::currentTimeMillis, pairedDigest::set);
+                    server = new ReceiverServer(tls, bind, port, authority, input, "Sofatap test fixture");
+                    activeServer.set(server); server.start(); serverStarts++;
+                }
+                write(directory.resolve("stats.json"), input.stats(authority, server, serverStarts));
                 Thread.sleep(100);
             }
         } finally {
-            server.close();
-            write(directory.resolve("stats.json"), input.stats(authority, server));
+            if (server != null) server.close();
+            activeServer.set(null);
+            write(directory.resolve("stats.json"), input.stats(authority, null, serverStarts));
         }
     }
 
@@ -61,6 +83,7 @@ public final class AndroidTVInteropFixture {
         private final Path directory;
         private final List<JSONObject> actions = new ArrayList<>();
         private final AtomicInteger snapshots = new AtomicInteger(), disconnects = new AtomicInteger();
+        private final AtomicBoolean awaitingAck = new AtomicBoolean();
         CountingInput(Path directory) { this.directory = directory; }
         @Override public JSONObject snapshot() throws Exception {
             snapshots.incrementAndGet(); boolean ready = !Files.exists(directory.resolve("block-input"));
@@ -71,17 +94,30 @@ public final class AndroidTVInteropFixture {
             return new JSONObject().put("inputAvailable", ready)
                 .put("inputStatus", ready ? "ready" : "accessibility_required").put("capabilities", capabilities);
         }
-        @Override public synchronized JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+        @Override public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
             if (!current.getAsBoolean() || Files.exists(directory.resolve("block-input")))
                 return new JSONObject().put("ok", false).put("code", "accessibility_required");
             JSONObject entry = new JSONObject().put("type", action.type()).put("dx", action.dx()).put("dy", action.dy());
             if (action.key() != null) entry.put("key", action.key());
-            actions.add(entry); return new JSONObject().put("ok", true);
+            synchronized (actions) { actions.add(entry); }
+            if (Files.deleteIfExists(directory.resolve("hold-next-action"))) {
+                awaitingAck.set(true);
+                try {
+                    long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+                    while (current.getAsBoolean() && System.nanoTime() < until) Thread.sleep(10);
+                    throw new IllegalStateException("Fixture deliberately withheld action acknowledgement");
+                } finally { awaitingAck.set(false); }
+            }
+            return new JSONObject().put("ok", true);
         }
         @Override public void disconnected() { disconnects.incrementAndGet(); }
-        synchronized JSONObject stats(PairingAuthority authority, ReceiverServer server) throws Exception {
-            return new JSONObject().put("paired", authority.paired()).put("actions", new JSONArray(actions))
-                .put("snapshots", snapshots.get()).put("disconnects", disconnects.get()).put("connected", server.connected());
+        JSONObject stats(PairingAuthority authority, ReceiverServer server, int serverStarts) throws Exception {
+            JSONArray recorded;
+            synchronized (actions) { recorded = new JSONArray(actions); }
+            return new JSONObject().put("paired", authority.paired()).put("actions", recorded)
+                .put("snapshots", snapshots.get()).put("disconnects", disconnects.get())
+                .put("connected", server != null && server.connected())
+                .put("serverRunning", server != null).put("serverStarts", serverStarts);
         }
     }
 

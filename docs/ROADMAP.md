@@ -1,6 +1,6 @@
 # Sofatap roadmap
 
-Updated October 13, 2026. This is the product direction, with acceptance goals rather than promised release dates.
+Updated October 16, 2026. This is the product direction, with acceptance goals rather than promised release dates.
 
 **Feature delivery order:** free manual TV control → paid voice automation on Windows/macOS/Linux → paid voice automation on TVs. Existing desktop maintenance and release acceptance continue separately. Do not integrate the paid agent runtime ahead of the free TV milestone.
 
@@ -19,7 +19,7 @@ For every TV family, publish the tested model/OS/app matrix and distinguish thes
 | Focus navigation | Direction keys move focus and confirm/back activate navigation. Label this mode as navigation; it does not satisfy the mouse-control goal. |
 | Unsupported | Clearly report unavailable actions. A moving decoration on the phone is not evidence of a TV pointer. |
 
-Before calling a TV supported, verify discovery, explicit on-TV pairing, reconnection, disconnect, permissions and manual input on a physical TV. Document whether it needs a receiver installation. Pairing alone does not prove pointer control. The released app does not include direct-TV support. The development branch now contains a native Android/Google TV receiver prototype with QR pairing and conditional accessibility-node input ([build guide](../android/README.md), [verification](verification/android-tv-probe.md)), alongside the LG webOS pointer preview with manual IP pairing; see the [implementation plan](research/tv-implementation-plan.md) and [software verification](verification/webos-pointer-preview.md). Physical-TV qualification, discovery and TV text input remain open.
+Before calling a TV supported, verify discovery, explicit on-TV pairing, reconnection, disconnect, permissions and manual input on a physical TV. Document whether it needs a receiver installation. Pairing alone does not prove pointer control. The iPhone beta includes experimental direct-TV adapters. Android receiver 0.1.1 beta.1 and iPhone build 17 add automatic recovery for a selected saved TV, with native QR pairing and conditional accessibility-node input ([build guide](../android/README.md), [recovery verification](verification/android-tv-reconnect-2026-10-16.md)), alongside the LG webOS pointer preview with manual IP pairing; see the [implementation plan](research/tv-implementation-plan.md) and [software verification](verification/webos-pointer-preview.md). **The household Sony and Xiaomi TVs have not been field-tested.** Their model/firmware, normal installation/permissions, physical iPhone pairing, receiver restart/reconnect and actual click/scroll acceptance remain open in the [hardware checklist](ACCEPTANCE.md). Discovery and TV text input also remain open.
 
 ## Paid: speak a goal and complete multiple steps
 

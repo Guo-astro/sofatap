@@ -8,6 +8,13 @@ private final class MemoryStore: AndroidTVPairingStorage {
     var writes = 0
     var deletes = 0
     var refuseWrite = false
+    var refuseRead = false
+    func library() throws -> DeviceLibrary<AndroidTVPairing> {
+        if refuseRead { throw StorageFailure.failed }
+        var library = DeviceLibrary<AndroidTVPairing>()
+        if let value = read() { library.upsert(value) }
+        return library
+    }
     func read() -> AndroidTVPairing? { reads += 1; return value }
     func write(_ pairing: AndroidTVPairing) throws {
         if refuseWrite { throw StorageFailure.failed }
@@ -17,7 +24,7 @@ private final class MemoryStore: AndroidTVPairingStorage {
 }
 @MainActor private final class Socket: AndroidTVSocket {
     var onText: ((String) -> Void)?
-    var onFailure: (() -> Void)?
+    var onFailure: ((AndroidTVSocketFailure) -> Void)?
     var pairing: AndroidTVPairing?
     var sent: [[String: Any]] = []
     var closed = 0
@@ -40,9 +47,14 @@ private final class MemoryStore: AndroidTVPairingStorage {
 @MainActor private final class Rig {
     let store = MemoryStore()
     var sockets: [Socket] = []
-    lazy var controller = AndroidTVController(storage: store, makeSocket: { [unowned self] in
-        let socket = Socket(); sockets.append(socket); return socket
-    })
+    var scheduled: [(delay: TimeInterval, retry: () -> Void)] = []
+    lazy var controller: AndroidTVController = {
+        let controller = AndroidTVController(storage: store, makeSocket: { [unowned self] in
+            let socket = Socket(); sockets.append(socket); return socket
+        })
+        controller.testScheduleReconnect = { [unowned self] delay, retry in scheduled.append((delay, retry)) }
+        return controller
+    }()
     func pair() -> Socket { controller.pair(Self.link); return sockets.last! }
     func ready() -> Socket { let socket = pair(); socket.reply(Self.hello()); return socket }
     nonisolated static let token = String(repeating: "a", count: 43)
@@ -126,7 +138,7 @@ private final class MemoryStore: AndroidTVPairingStorage {
             check("manual resume uses returned credential", resumed.pairing?.token == Rig.replacement)
             resumed.reply(Rig.hello(token: nil))
             check("resume accepts no replacement", rig.controller.canControl && rig.store.writes == 1)
-            socket.onFailure?(); socket.reply(Rig.hello())
+            socket.onFailure?(.transient); socket.reply(Rig.hello())
             check("old callbacks isolated", rig.controller.canControl && rig.store.writes == 1)
             check("no replay after reconnect", resumed.sent.isEmpty)
             rig.controller.forget()
@@ -162,7 +174,7 @@ private final class MemoryStore: AndroidTVPairingStorage {
         }
         do {
             let rig = Rig(), socket = rig.ready()
-            rig.controller.click(); rig.controller.click(); socket.onFailure?()
+            rig.controller.click(); rig.controller.click(); socket.onFailure?(.transient)
             check("disconnect clears queued actions", rig.controller.phase == .failed && socket.sent.count == 1)
             rig.controller.reconnect(); let resumed = rig.sockets.last!; resumed.reply(Rig.hello(token: nil))
             check("uncertain clicks never retried", resumed.sent.isEmpty)
@@ -194,9 +206,151 @@ private final class MemoryStore: AndroidTVPairingStorage {
             heartbeat.controller.disconnect()
         }
         do {
+            let rig = Rig(), first = rig.ready()
+            rig.controller.click(); rig.controller.click()
+            first.onFailure?(.transient)
+            check("lost connection schedules first retry after one second", rig.scheduled.map(\.delay) == [1] && rig.controller.phase == .failed)
+            let delays: [TimeInterval] = [1, 2, 4, 8, 16, 30, 30, 30]
+            for index in delays.indices {
+                check("automatic retry has bounded exponential backoff", rig.scheduled[index].delay == delays[index])
+                rig.scheduled[index].retry()
+                let socket = rig.sockets.last!
+                check("retry authenticates only with persisted credential", socket.pairing?.token == Rig.replacement && socket.pairing?.fingerprint == Rig.pin)
+                check("retry starts with no pending or queued input", socket.sent.isEmpty)
+                if index + 1 < delays.count { socket.onFailure?(.transient) }
+            }
+            let recovered = rig.sockets.last!
+            recovered.reply(Rig.hello(token: nil))
+            check("recovery preserves one saved device and credential", rig.controller.canControl && rig.controller.savedDevices.count == 1 && rig.store.writes == 1)
+            first.onFailure?(.permanent); first.completions.first?(false)
+            check("old callbacks cannot terminate recovered transport", rig.controller.canControl)
+            recovered.onFailure?(.transient)
+            check("successful authenticated hello resets retry delay", rig.scheduled.last?.delay == 1)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.onFailure?(.transient)
+            let stale = rig.scheduled[0].retry
+            rig.controller.disconnect(); stale(); rig.controller.becameActive()
+            check("manual disconnect cancels pending and foreground retries", rig.sockets.count == 1 && rig.controller.phase == .idle)
+            rig.controller.reconnect()
+            check("explicit reconnect resumes manually paused target", rig.sockets.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.onFailure?(.transient)
+            let stale = rig.scheduled[0].retry
+            rig.controller.becameInactive(); stale(); rig.controller.reconnect()
+            check("background cancels timers and rejects explicit connection attempts", rig.sockets.count == 1 && rig.controller.phase == .idle)
+            rig.controller.becameActive()
+            let resumed = rig.sockets.last!
+            resumed.reply(Rig.hello(token: nil))
+            check("returning foreground resumes saved target without a scan", rig.sockets.count == 2 && rig.controller.canControl && resumed.sent.isEmpty)
+            rig.controller.pauseInput(); resumed.onFailure?(.transient)
+            rig.scheduled.last!.retry(); rig.sockets.last!.reply(Rig.hello(token: nil))
+            check("reconnect while a sheet is open cannot unpause input", !rig.controller.canControl)
+            rig.controller.resumeInput()
+            check("dismissed sheet can resume authenticated current target", rig.controller.canControl)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.onFailure?(.transient)
+            let stale = rig.scheduled[0].retry
+            rig.controller.setTargetSelected(false); stale(); rig.controller.becameActive(); rig.controller.reconnect()
+            check("computer or webOS selection disables Android retry", rig.sockets.count == 1)
+            rig.controller.becameInactive(); rig.controller.setTargetSelected(true)
+            check("changing selected adapter does not invent foreground activation", rig.sockets.count == 1)
+            rig.controller.becameActive()
+            check("active selected adapter can reconnect only its saved TV", rig.sockets.count == 2 && rig.sockets.last?.pairing?.token == Rig.replacement)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig()
+            rig.store.value = pairing.replacingToken(Rig.replacement)
+            rig.controller.becameActive()
+            check("app relaunch restores selected saved TV without scanning", rig.sockets.count == 1 && rig.sockets[0].pairing?.token == Rig.replacement)
+            rig.controller.becameActive()
+            check("repeated active notification cannot duplicate connection", rig.sockets.count == 1)
+            rig.sockets[0].onFailure?(.permanent)
+            rig.controller.becameInactive(); rig.controller.becameActive()
+            check("authentication or TLS rejection stops all automatic attempts", rig.scheduled.isEmpty && rig.sockets.count == 1)
+            rig.controller.reconnect()
+            check("user can explicitly retry after permanent rejection", rig.sockets.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig()
+            rig.store.value = pairing.replacingToken(Rig.replacement)
+            let bootstrap = rig.pair()
+            bootstrap.onFailure?(.transient)
+            rig.controller.becameActive()
+            check("uncertain QR bootstrap never retries QR or falls back to old saved TV", rig.scheduled.isEmpty && rig.sockets.count == 1)
+        }
+        do {
+            let rig = Rig()
+            rig.store.value = pairing.replacingToken(Rig.replacement)
+            _ = rig.pair()
+            rig.controller.becameInactive(); rig.controller.becameActive()
+            check("backgrounding an unfinished scan cannot reconnect a previous TV", rig.sockets.count == 1 && rig.scheduled.isEmpty)
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.reply(["type": "hello", "version": 100])
+            rig.controller.becameActive()
+            check("malformed response cannot trigger automatic reconnect loop", rig.scheduled.isEmpty && rig.sockets.count == 1 && rig.controller.phase == .failed)
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.onFailure?(.transient)
+            let stale = rig.scheduled[0].retry
+            rig.controller.removeDevice(rig.controller.selectedDeviceID!)
+            stale(); rig.controller.becameActive()
+            check("forgetting current TV cancels reconnection and retains no selected fallback", rig.sockets.count == 1 && rig.controller.saved == nil)
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            socket.onFailure?(.transient)
+            let stale = rig.scheduled[0].retry
+            rig.store.refuseRead = true
+            rig.controller.becameActive(); stale()
+            check("unreadable saved selection prevents cached credential retry", rig.sockets.count == 1)
+            rig.store.refuseRead = false
+            rig.controller.becameActive()
+            check("restored secure storage can reconnect on next foreground activation", rig.sockets.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
+            func classify(_ error: Error = URLError(.networkConnectionLost), diagnostic: String? = nil,
+                          status: Int? = nil, close: URLSessionWebSocketTask.CloseCode = .invalid,
+                          received: Bool = false) -> AndroidTVSocketFailure {
+                AndroidTVNetworkSocket.classify(error, diagnostic: diagnostic, status: status, closeCode: close, receivedText: received)
+            }
+            for code: URLError.Code in [.timedOut, .cannotConnectToHost, .networkConnectionLost, .notConnectedToInternet] {
+                check("network interruption is retryable", classify(URLError(code)) == .transient)
+            }
+            for status in [408, 409, 429, 500, 503] {
+                check("temporary receiver unavailability is retryable", classify(status: status) == .transient)
+            }
+            for status in [301, 302, 400, 401, 403, 404] {
+                check("redirect or credential rejection is permanent", classify(status: status) == .permanent)
+            }
+            for code: URLError.Code in [.serverCertificateUntrusted, .secureConnectionFailed, .userAuthenticationRequired] {
+                check("TLS and authentication errors are permanent", classify(URLError(code)) == .permanent)
+            }
+            check("pin rejection dominates even apparently temporary status", classify(diagnostic: "TLS_PIN", status: 503) == .permanent)
+            for close: URLSessionWebSocketTask.CloseCode in [.protocolError, .policyViolation, .messageTooBig, .unsupportedData] {
+                check("protocol close is permanent even after hello", classify(close: close, received: true) == .permanent)
+            }
+            check("clean receiver shutdown is retryable after hello", classify(URLError(.cancelled), close: .goingAway, received: true) == .transient)
+            check("unexpected errors fail closed", classify(NSError(domain: "unexpected", code: 1)) == .permanent)
+        }
+        do {
             let store = MemoryStore(); var created = 0
             let demo = AndroidTVController(enabled: false, storage: store, makeSocket: { created += 1; return Socket() })
-            demo.pair(Rig.link); demo.reconnect(); demo.forget(); demo.click()
+            demo.pair(Rig.link); demo.reconnect(); demo.forget(); demo.click(); demo.becameActive()
             check("demo has no Keychain or network", created == 0 && store.reads == 0 && store.writes == 0 && store.deletes == 0)
         }
         print("\(count) Android TV iOS protocol/lifecycle checks passed; no device, Keychain or desktop input.")
