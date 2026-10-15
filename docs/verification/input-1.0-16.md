@@ -2,6 +2,8 @@
 
 Checked on 2026-10-14. This is a development build installed on the dedicated physical iPhone 16 Pro Max (iOS 18.6.2). It has **not** been uploaded to TestFlight. Build 15 retains its previous gestures.
 
+A later release containing these changes and the receiver-restart fix was published to TestFlight on October 16. Its separate [distribution record](testflight-1.0-16.md) confirms approval and installation; it does not expand the input-test scope below.
+
 ## Changes
 
 - The desktop touch surface has invisible physical left/right halves. A single tap anywhere sends one left click after the existing 280 ms double-tap decision. Two taps in the left half send two left clicks; two in the right half send two right clicks, without a preceding left click. No divider or instructional text was added to the touch surface. The illustrated guide explains the halves in all 12 languages.
