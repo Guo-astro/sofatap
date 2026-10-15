@@ -1,4 +1,33 @@
 import Foundation
+import Darwin
+
+@MainActor private final class ReconnectFixture {
+    var library: DeviceLibrary<Pairing>
+    var failRead = false
+    var reads = 0
+    var connections: [Pairing] = []
+    var scheduled: [(delay: TimeInterval, fire: () -> Void)] = []
+    var frames: [String] = []
+    let recordingWire: Bool
+    init(_ library: DeviceLibrary<Pairing>, recordingWire: Bool = false) {
+        self.library = library; self.recordingWire = recordingWire
+    }
+    lazy var model = ControllerModel(testPairingLibrary: library, testPairingWrite: { [unowned self] pairing in
+        library.upsert(pairing); return library
+    }, testPairingConnect: { [unowned self] in connections.append($0) }, testPairingRead: { [unowned self] in
+        reads += 1
+        if failRead { throw DeviceLibraryError.unavailable }
+        return library
+    }, testScheduleReconnect: { [unowned self] delay, fire in
+        scheduled.append((delay, fire))
+    }, testInputSend: recordingWire ? nil : { [unowned self] type, _, reply in
+        frames.append(type)
+        reply(["uncertain": true])
+    }, testWireSend: { [unowned self] text in
+        let frame = try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any]
+        frames.append(frame["type"] as! String)
+    })
+}
 
 @main
 struct PairingAttemptTests {
@@ -93,6 +122,120 @@ struct PairingAttemptTests {
         model.acceptPairing(desktopFlow.computerRetryLink!)
         check("a fresh explicit candidate can reconnect after cancellation", model.pairing == old && connections == [old, new, new, old])
         model.disconnectDevice()
+
+        var selectedLibrary = DeviceLibrary<Pairing>()
+        selectedLibrary.upsert(old); selectedLibrary.upsert(new)
+        let cold = ReconnectFixture(selectedLibrary)
+        cold.model.becameActive(); cold.model.becameActive()
+        check("cold launch restores and connects only the persisted selection once", cold.reads == 1 && cold.connections == [new] && cold.model.selectedDeviceID == selectedLibrary.selectedID)
+        cold.model.testConnectionEstablished()
+        check("recording hello establishes the recovered connection", cold.model.connected && cold.model.inputAvailable)
+        cold.model.becameInactive(); cold.model.becameActive()
+        check("returning to foreground reuses saved credentials without pairing again", cold.connections == [new, new] && cold.library.devices.count == 2)
+
+        let locked = ReconnectFixture(selectedLibrary); locked.failRead = true
+        locked.model.becameActive()
+        check("unreadable Keychain exposes an error and never connects a cached or fallback device", locked.model.pairing == nil && locked.model.pairingError != nil && locked.connections.isEmpty)
+        locked.failRead = false
+        locked.model.becameActive()
+        check("unlock then foreground restores the selected pairing and clears the storage error", locked.model.pairing == new && locked.model.pairingError == nil && locked.connections == [new])
+        var noSelectionLibrary = selectedLibrary; noSelectionLibrary.selectedID = nil
+        let unselected = ReconnectFixture(noSelectionLibrary); unselected.model.becameActive()
+        check("restoring saved devices without a selection never silently chooses a target", unselected.connections.isEmpty && unselected.model.savedDevices.count == 2)
+
+        let retries = ReconnectFixture(selectedLibrary); retries.model.becameActive()
+        for expectedDelay: TimeInterval in [1, 2, 4, 8, 16, 30, 30] {
+            retries.model.testTransportFailure()
+            check("transient failures use capped exponential reconnect delay \(expectedDelay)", retries.scheduled.last?.delay == expectedDelay && !retries.model.connecting)
+            let attempts = retries.connections.count
+            retries.model.becameActive()
+            check("duplicate foreground notifications cannot bypass pending backoff", retries.connections.count == attempts)
+            retries.scheduled.last!.fire()
+            check("scheduled retry restores only the same selected endpoint", retries.connections.count == attempts + 1 && retries.connections.last == new)
+        }
+        retries.model.testConnectionEstablished(); retries.model.testTransportFailure()
+        check("successful authentication resets subsequent reconnect backoff", retries.scheduled.last?.delay == 1)
+        retries.scheduled.last!.fire()
+        let oldGeneration = retries.model.testConnectionGeneration
+        retries.model.testTransportFailure()
+        let obsoleteRetry = retries.scheduled.last!.fire
+        retries.model.acceptPairing(pcA)
+        let attemptsAfterSwitch = retries.connections.count
+        obsoleteRetry(); retries.model.testTransportFailure(generation: oldGeneration)
+        check("canceled timer and old transport failure cannot reconnect or disconnect the new target", retries.connections.count == attemptsAfterSwitch && retries.model.pairing == old && retries.model.connecting)
+
+        let canceled = ReconnectFixture(selectedLibrary); canceled.model.becameActive(); canceled.model.testTransportFailure()
+        let canceledRetry = canceled.scheduled.last!.fire
+        canceled.model.disconnectDevice(); canceledRetry(); canceled.model.becameInactive(); canceled.model.becameActive()
+        check("explicit disconnect or canceled pairing stays disconnected across timers and foreground", canceled.connections.count == 1 && !canceled.model.connecting)
+        canceled.model.connect(); canceled.model.testTransportFailure()
+        let backgroundRetry = canceled.scheduled.last!.fire
+        canceled.model.becameInactive(); backgroundRetry()
+        check("background cancels retries without opening transport", canceled.connections.count == 2 && !canceled.model.connecting)
+        canceled.model.becameActive(); canceled.model.testTransportFailure()
+        let desktopRetry = canceled.scheduled.last!.fire
+        canceled.model.setDesktopControlEnabled(false); desktopRetry(); canceled.model.becameActive()
+        check("selecting TV prevents stale desktop retries and foreground fallback", canceled.connections.count == 3 && !canceled.model.connecting)
+
+        let rejected = ReconnectFixture(selectedLibrary); rejected.model.becameActive()
+        rejected.model.testTransportFailure(retryable: false)
+        rejected.model.becameInactive(); rejected.model.becameActive()
+        check("authentication or protocol rejection cannot cause a reconnect loop even across foreground", rejected.scheduled.isEmpty && rejected.connections.count == 1)
+        rejected.model.acceptPairing(pcB)
+        check("explicitly repairing a rejected pairing allows a fresh attempt", rejected.connections == [new, new])
+        check("connection refused is recoverable", ControllerModel.testMayRetry(.cannotConnectToHost))
+        check("network disconnect is recoverable", ControllerModel.testMayRetry(.networkConnectionLost))
+        check("TLS pin failure is never retried", !ControllerModel.testMayRetry(.cancelled, diagnostic: "TLS_PIN"))
+        check("certificate validation failure is never retried", !ControllerModel.testMayRetry(.serverCertificateUntrusted))
+        check("HTTP unauthorized cannot loop", !ControllerModel.testMayRetry(.badServerResponse, status: 401))
+        check("HTTP forbidden cannot loop", !ControllerModel.testMayRetry(.badServerResponse, status: 403))
+        check("old phone socket occupying the receiver slot is retried", ControllerModel.testMayRetry(.badServerResponse, status: 409))
+        check("receiver temporarily unavailable can recover", ControllerModel.testMayRetry(.badServerResponse, status: 503))
+        check("authenticated receiver shutdown can reconnect", ControllerModel.testMayRetry(.unknown, closeCode: .goingAway, authenticated: true))
+        check("authenticated normal closure can reconnect", ControllerModel.testMayRetry(.unknown, closeCode: .normalClosure, authenticated: true))
+        check("unidentified clean closure cannot establish retry trust", !ControllerModel.testMayRetry(.unknown, closeCode: .normalClosure))
+        check("clean closure never overrides TLS rejection", !ControllerModel.testMayRetry(.unknown, diagnostic: "TLS_PIN", closeCode: .goingAway, authenticated: true))
+        check("clean closure never overrides a URLSession certificate error", !ControllerModel.testMayRetry(.serverCertificateUntrusted, closeCode: .normalClosure, authenticated: true))
+        check("clean closure never overrides forbidden response", !ControllerModel.testMayRetry(.unknown, status: 403, closeCode: .goingAway, authenticated: true))
+        check("abrupt receiver restart with socket reset can reconnect", ControllerModel.testMayRetryPOSIX(ECONNRESET))
+        check("closed receiver socket can reconnect", ControllerModel.testMayRetryPOSIX(ENOTCONN))
+        check("unrecognized permission error is not a network retry", !ControllerModel.testMayRetryPOSIX(EACCES))
+
+        let inputs = ReconnectFixture(selectedLibrary); inputs.model.becameActive(); inputs.model.testConnectionEstablished()
+        inputs.model.draft = "Only send this once"
+        inputs.model.sendText()
+        check("fixture records one uncertain text delivery", inputs.frames == ["text"] && inputs.model.textDelivery == .uncertain)
+        inputs.model.move(dx: 12, dy: 8); inputs.model.scroll(dy: 3)
+        inputs.model.testTransportFailure(); inputs.scheduled.last!.fire(); inputs.model.testConnectionEstablished()
+        inputs.model.testFlushMovement(); inputs.model.sendText()
+        check("reconnect never replays queued gestures or unconfirmed text", inputs.frames == ["text"] && inputs.model.textDelivery == .uncertain && inputs.model.draft == "Only send this once")
+
+        let textTimeout = ReconnectFixture(selectedLibrary, recordingWire: true)
+        textTimeout.model.becameActive(); textTimeout.model.testConnectionEstablished()
+        textTimeout.model.draft = "Unconfirmed pending text"; textTimeout.model.sendText()
+        let expiredText = textTimeout.model.testCommandTimeout("text")
+        check("wire fixture exercises the real pending command path", textTimeout.frames == ["text"] && textTimeout.model.textDelivery == .sending)
+        expiredText()
+        check("actual command timeout completes text as uncertain and schedules recovery", textTimeout.model.textDelivery == .uncertain && !textTimeout.model.connected && textTimeout.scheduled.count == 1)
+        textTimeout.scheduled.last!.fire(); textTimeout.model.testConnectionEstablished(); expiredText(); textTimeout.model.sendText()
+        check("expired command callback cannot affect reconnected transport or replay text", textTimeout.model.connected && textTimeout.frames == ["text"] && textTimeout.model.textDelivery == .uncertain)
+
+        let dragTimeout = ReconnectFixture(selectedLibrary, recordingWire: true)
+        dragTimeout.model.becameActive(); dragTimeout.model.testConnectionEstablished(); dragTimeout.model.setDragging(true)
+        dragTimeout.model.testCommandTimeout("button")()
+        check("drag-down timeout cannot cancel the reconnect through its safety completion", !dragTimeout.model.dragging && !dragTimeout.model.connected && dragTimeout.scheduled.count == 1)
+        dragTimeout.scheduled.last!.fire(); dragTimeout.model.testConnectionEstablished()
+        check("drag timeout recovery never replays the held button", dragTimeout.model.canControl && dragTimeout.frames == ["button"])
+        dragTimeout.model.setDragging(true); dragTimeout.model.testAcknowledgeCommand("button")
+        dragTimeout.model.move(dx: 3, dy: 2); dragTimeout.model.testFlushMovement(); dragTimeout.model.setDragging(false)
+        dragTimeout.model.testCommandTimeout("move")()
+        check("final drag-move timeout clears release state and still schedules reconnect", !dragTimeout.model.dragging && !dragTimeout.model.canControl && dragTimeout.scheduled.count == 2)
+        dragTimeout.scheduled.last!.fire(); dragTimeout.model.testConnectionEstablished()
+        dragTimeout.model.setDragging(true); dragTimeout.model.testAcknowledgeCommand("button"); dragTimeout.model.setDragging(false)
+        dragTimeout.model.testCommandTimeout("button")()
+        check("drag-release button timeout cannot suppress reconnection", !dragTimeout.model.connected && dragTimeout.scheduled.count == 3)
+        dragTimeout.scheduled.last!.fire(); dragTimeout.model.testConnectionEstablished()
+        check("recovery clears final drag-release gate", dragTimeout.model.canControl && !dragTimeout.model.dragging)
         print("Pairing attempt tests: \(passed) passed")
     }
 }

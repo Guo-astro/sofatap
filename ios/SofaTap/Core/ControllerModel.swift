@@ -3,6 +3,7 @@ import SwiftUI
 import CoreMotion
 import UIKit
 import CryptoKit
+import Darwin
 
 enum TextDelivery: Equatable {
     case ready, sending, sent, rejected(String), uncertain
@@ -69,6 +70,11 @@ final class ControllerModel: ObservableObject {
     private var generation = UUID()
     private var foreground = true
     private var manualConnectionPaused = false
+    private var pairingRestorationPending = false
+    private var automaticReconnectBlocked = false
+    private var reconnectTask: Task<Void, Never>?
+    private var reconnectID: UUID?
+    private var reconnectAttempt = 0
     private var keepAliveTask: Task<Void, Never>?
     private var helloTimeout: Task<Void, Never>?
     private var motionTimer: Timer?
@@ -95,13 +101,52 @@ final class ControllerModel: ObservableObject {
     private var testSend: ((String, [String: Any], @escaping (Bool) -> Void) -> Void)?
     private var testPairingWrite: ((Pairing) throws -> DeviceLibrary<Pairing>)?
     private var testPairingConnect: ((Pairing) -> Void)?
+    private var testPairingRead: (() throws -> DeviceLibrary<Pairing>)?
+    private var testScheduleReconnect: ((TimeInterval, @escaping () -> Void) -> Void)?
+    private var testWireSend: ((String) -> Void)?
     init(testPairingLibrary: DeviceLibrary<Pairing>,
          testPairingWrite: @escaping (Pairing) throws -> DeviceLibrary<Pairing>,
-         testPairingConnect: @escaping (Pairing) -> Void) {
+         testPairingConnect: @escaping (Pairing) -> Void,
+         testPairingRead: (() throws -> DeviceLibrary<Pairing>)? = nil,
+         testScheduleReconnect: ((TimeInterval, @escaping () -> Void) -> Void)? = nil,
+         testInputSend: ((String, [String: Any], @escaping ([String: Any]) -> Void) -> Void)? = nil,
+         testWireSend: ((String) -> Void)? = nil) {
         demo = false; draftDefaults = nil; draft = ""
         pairing = testPairingLibrary.selected?.credential
         savedDevices = testPairingLibrary.devices; selectedDeviceID = testPairingLibrary.selectedID
         self.testPairingWrite = testPairingWrite; self.testPairingConnect = testPairingConnect
+        self.testPairingRead = testPairingRead; self.testScheduleReconnect = testScheduleReconnect
+        self.testLiveSend = testInputSend
+        self.testWireSend = testWireSend
+        if testPairingRead != nil {
+            pairing = nil; savedDevices = []; selectedDeviceID = nil
+            pairingRestorationPending = true
+            restoreSavedSelection()
+        }
+    }
+    var testConnectionGeneration: UUID { generation }
+    func testTransportFailure(retryable: Bool = true, generation: UUID? = nil) {
+        transportFailed(message: "test transport failure", retryable: retryable, generation: generation ?? self.generation)
+    }
+    func testConnectionEstablished() {
+        _ = handle(["type": "hello", "version": 1, "name": "Test PC", "platform": "windows",
+                    "inputAvailable": true, "inputStatus": "ready"])
+    }
+    static func testMayRetry(_ error: URLError.Code, diagnostic: String? = nil, status: Int? = nil,
+                             closeCode: URLSessionWebSocketTask.CloseCode = .invalid, authenticated: Bool = false) -> Bool {
+        mayRetryTransport(URLError(error), diagnostic: diagnostic, status: status, closeCode: closeCode, authenticated: authenticated)
+    }
+    static func testMayRetryPOSIX(_ code: Int32) -> Bool {
+        mayRetryTransport(NSError(domain: NSPOSIXErrorDomain, code: Int(code)), diagnostic: nil, status: nil)
+    }
+    func testCommandTimeout(_ type: String) -> () -> Void {
+        guard let id = pending.first(where: { $0.value.type == type })?.key else { preconditionFailure("No pending command") }
+        let currentGeneration = generation
+        return { [weak self] in self?.commandTimedOut(id: id, generation: currentGeneration) }
+    }
+    func testAcknowledgeCommand(_ type: String) {
+        guard let id = pending.first(where: { $0.value.type == type })?.key else { preconditionFailure("No pending command") }
+        _ = handle(["type": "ack", "id": id, "ok": true])
     }
     init(testSend: @escaping (String, [String: Any], @escaping (Bool) -> Void) -> Void) {
         demo = false
@@ -137,9 +182,8 @@ final class ControllerModel: ObservableObject {
     init(demo: Bool = ProcessInfo.processInfo.arguments.contains("--demo")) {
         self.demo = demo
         self.desktopControlEnabled = demo || !["webos", "androidtv"].contains(UserDefaults.standard.string(forKey: "manualRemoteTarget") ?? "computer")
-        self.pairing = demo ? nil : PairingStore.read()
+        self.pairing = nil
         self.draft = demo ? String(localized: "你好，帮我播放今晚想看的电影。") : UserDefaults.standard.string(forKey: "localTextDraft") ?? ""
-        unlock.setPairing(self.pairing)
         if demo {
             notice = String(localized: "界面演示：按钮只展示反馈，没有连接或操作电脑。")
 #if targetEnvironment(simulator)
@@ -157,7 +201,11 @@ final class ControllerModel: ObservableObject {
             }
 #endif
         }
-        else { refreshSavedDevices(); restoreDeliveryReceipt() }
+        else {
+            pairingRestorationPending = true
+            restoreSavedSelection()
+            restoreDeliveryReceipt()
+        }
     }
 
     var currentDisplayName: String {
@@ -175,6 +223,36 @@ final class ControllerModel: ObservableObject {
         } catch { pairingError = error.localizedDescription }
     }
 
+    private func updateReceiverMetadata(_ id: UUID, name: String, platform: String) {
+#if SOFATAP_CONTROLLER_TESTING
+        if testPairingWrite != nil { return }
+#endif
+        try? PairingStore.metadata(id, name: name, platform: platform)
+        refreshSavedDevices()
+    }
+
+    /// Read the selected credential and library atomically. A temporarily locked
+    /// Keychain must not turn an existing pairing into a permanently empty one.
+    private func restoreSavedSelection() {
+        guard pairingRestorationPending else { return }
+        do {
+            let library: DeviceLibrary<Pairing>
+#if SOFATAP_CONTROLLER_TESTING
+            if let testPairingRead { library = try testPairingRead() }
+            else { library = try PairingStore.library() }
+#else
+            library = try PairingStore.library()
+#endif
+            pairing = library.selected?.credential
+            savedDevices = library.devices
+            selectedDeviceID = library.selectedID
+            computerName = library.selected?.reportedName ?? pairing?.deviceAddress ?? computerName
+            updateUnlockPairing(pairing)
+            pairingRestorationPending = false
+            pairingError = nil
+        } catch { pairingError = error.localizedDescription }
+    }
+
     func selectDevice(_ id: UUID) {
         guard !demo, let device = savedDevices.first(where: { $0.id == id }) else { return }
         do {
@@ -184,6 +262,7 @@ final class ControllerModel: ObservableObject {
             else { disconnect() }
             try PairingStore.select(id)
             pairing = device.credential
+            pairingRestorationPending = false
             selectedDeviceID = id
             computerName = device.reportedName ?? device.credential.deviceAddress
             unlock.setPairing(pairing)
@@ -208,6 +287,7 @@ final class ControllerModel: ObservableObject {
             if selectedDeviceID == id {
                 prepareForDeviceSwitch()
                 pairing = nil
+                pairingRestorationPending = false
                 unlock.setPairing(nil)
             }
             unlock.forget(device.credential)
@@ -344,6 +424,7 @@ final class ControllerModel: ObservableObject {
             manualConnectionPaused = false
             rememberManualTarget()
             pairing = newPairing
+            pairingRestorationPending = false
             refreshSavedDevices()
             computerName = savedDevices.first { $0.id == selectedDeviceID }?.reportedName ?? newPairing.deviceAddress
             updateUnlockPairing(newPairing)
@@ -370,7 +451,7 @@ final class ControllerModel: ObservableObject {
 #endif
         unlock.forget(pairing)
     }
-    private func updateUnlockPairing(_ pairing: Pairing) {
+    private func updateUnlockPairing(_ pairing: Pairing?) {
 #if SOFATAP_CONTROLLER_TESTING
         if testPairingWrite != nil { return }
 #endif
@@ -384,7 +465,8 @@ final class ControllerModel: ObservableObject {
     func becameActive() {
         unlock.becameActive()
         foreground = true
-        if !demo, !manualConnectionPaused, pairing != nil, !connected, !connecting { connect() }
+        if !demo { restoreSavedSelection() }
+        if reconnectID == nil { connectAutomatically() }
     }
 
     func setDesktopControlEnabled(_ enabled: Bool, televisionTarget: String = "webos", reconnect: Bool = true) {
@@ -424,9 +506,27 @@ final class ControllerModel: ObservableObject {
     }
 
     func connect() {
+        manualConnectionPaused = false
+        automaticReconnectBlocked = false
+        cancelReconnect()
+        startConnection()
+    }
+
+    private var mayReconnectAutomatically: Bool {
+        desktopControlEnabled && !demo && foreground && !manualConnectionPaused &&
+            !automaticReconnectBlocked && !pairingRestorationPending &&
+            pairing != nil && selectedDeviceID != nil &&
+            savedDevices.first(where: { $0.id == selectedDeviceID })?.credential == pairing
+    }
+
+    private func connectAutomatically() {
+        guard mayReconnectAutomatically else { return }
+        startConnection()
+    }
+
+    private func startConnection() {
         guard desktopControlEnabled, !demo, foreground, !connecting, !connected,
               let pairing, let endpoint = pairing.endpoint else { return }
-        manualConnectionPaused = false
         generation = UUID()
         let currentGeneration = generation
         connecting = true
@@ -456,11 +556,83 @@ final class ControllerModel: ObservableObject {
         helloTimeout = Task { [weak self] in
             try? await Task.sleep(for: .seconds(10))
             guard !Task.isCancelled, let self, self.generation == currentGeneration, !self.connected else { return }
-            self.disconnect(message: String(localized: "连接超时。请检查电脑接收器、家庭网络与本地网络权限。"))
+            let retryable = Self.mayRetryTransport(URLError(.timedOut), diagnostic: self.sessionDelegate?.rejectionReason,
+                                                  status: (task.response as? HTTPURLResponse)?.statusCode)
+            self.transportFailed(message: String(localized: "连接超时。请检查电脑接收器、家庭网络与本地网络权限。"),
+                                 retryable: retryable, generation: currentGeneration)
         }
     }
 
-    func disconnect(message: String = String(localized: "已断开连接。")) {
+    private func cancelReconnect(resetAttempt: Bool = true) {
+        reconnectID = nil
+        reconnectTask?.cancel()
+        reconnectTask = nil
+        if resetAttempt { reconnectAttempt = 0 }
+    }
+
+    private func scheduleReconnect() {
+        guard mayReconnectAutomatically, !connected, !connecting, let pairing else { return }
+        let delays: [TimeInterval] = [1, 2, 4, 8, 16, 30]
+        let delay = delays[min(reconnectAttempt, delays.count - 1)]
+        reconnectAttempt = min(reconnectAttempt + 1, delays.count - 1)
+        let id = UUID(), currentGeneration = generation, deviceID = selectedDeviceID
+        reconnectID = id
+        let retry: () -> Void = { [weak self] in
+            guard let self, self.reconnectID == id, self.generation == currentGeneration,
+                  self.selectedDeviceID == deviceID, self.pairing == pairing,
+                  self.mayReconnectAutomatically else { return }
+            self.reconnectID = nil
+            self.reconnectTask = nil
+            self.connectAutomatically()
+        }
+#if SOFATAP_CONTROLLER_TESTING
+        if let testScheduleReconnect { testScheduleReconnect(delay, retry); return }
+#endif
+        reconnectTask = Task {
+            do { try await Task.sleep(for: .seconds(delay)) }
+            catch { return }
+            retry()
+        }
+    }
+
+    private func transportFailed(message: String, retryable: Bool, generation failedGeneration: UUID) {
+        guard generation == failedGeneration else { return }
+        // Disconnect invalidates every pending input; reconnect restores only the
+        // authenticated transport, never an unacknowledged gesture or text frame.
+        disconnect(message: message, preservingRetryAttempt: true)
+        if retryable { scheduleReconnect() }
+        else { automaticReconnectBlocked = true }
+    }
+
+    private static func mayRetryTransport(_ error: Error, diagnostic: String?, status: Int?,
+                                         closeCode: URLSessionWebSocketTask.CloseCode = .invalid,
+                                         authenticated: Bool = false) -> Bool {
+        guard diagnostic == nil else { return false }
+        if let status, status >= 400 {
+            // A killed phone process can leave its old connection occupying the
+            // single-controller slot briefly, until the receiver's idle timeout.
+            return status == 408 || status == 409 || status == 429 || (500...599).contains(status)
+        }
+        let failure = error as NSError
+        let terminalURLCodes: [URLError.Code] = [.secureConnectionFailed, .serverCertificateHasBadDate,
+            .serverCertificateUntrusted, .serverCertificateHasUnknownRoot, .serverCertificateNotYetValid,
+            .clientCertificateRejected, .clientCertificateRequired, .userAuthenticationRequired,
+            .userCancelledAuthentication, .appTransportSecurityRequiresSecureConnection]
+        if failure.domain == NSURLErrorDomain && terminalURLCodes.contains(URLError.Code(rawValue: failure.code)) { return false }
+        if authenticated && (closeCode == .normalClosure || closeCode == .goingAway) { return true }
+        if failure.domain == NSURLErrorDomain {
+            return [URLError.Code.timedOut, .cannotFindHost, .cannotConnectToHost, .dnsLookupFailed,
+                    .networkConnectionLost, .notConnectedToInternet, .resourceUnavailable].contains(URLError.Code(rawValue: failure.code))
+        }
+        if failure.domain == NSPOSIXErrorDomain {
+            return [ECONNRESET, ECONNREFUSED, ENOTCONN, ETIMEDOUT, ENETDOWN, ENETUNREACH,
+                    EHOSTDOWN, EHOSTUNREACH, EPIPE].contains(Int32(failure.code))
+        }
+        return false
+    }
+
+    func disconnect(message: String = String(localized: "已断开连接。"), preservingRetryAttempt: Bool = false) {
+        cancelReconnect(resetAttempt: !preservingRetryAttempt)
         invalidateLiveText(pause: liveTextSession != nil || liveTextStatus == .starting)
         stopAirMouse()
         motionTimer?.invalidate()
@@ -505,14 +677,18 @@ final class ControllerModel: ObservableObject {
             Task { @MainActor in
                 guard let self, self.generation == currentGeneration else { return }
                 switch result {
-                case .failure:
+                case .failure(let error):
                     let diagnostic = self.sessionDelegate?.rejectionReason
                     let failureMessage = diagnostic.map { reason in
                         reason == "TLS_VERIFY_-67901"
                         ? String(localized: "电脑证书有效期超出 iOS 限制（\(reason)）。请更新电脑接收器并重新配对。")
                         : String(localized: "电脑证书校验失败（\(reason)）。请检查电脑接收器的证书并重新配对。")
                     }
-                    self.disconnect(message: failureMessage ?? String(localized: "连接中断。请检查接收器；未确认的文字不会自动重发。"))
+                    let retryable = Self.mayRetryTransport(error, diagnostic: diagnostic,
+                                                          status: (task.response as? HTTPURLResponse)?.statusCode,
+                                                          closeCode: task.closeCode, authenticated: self.connected)
+                    self.transportFailed(message: failureMessage ?? String(localized: "连接中断。请检查接收器；未确认的文字不会自动重发。"),
+                                         retryable: retryable, generation: currentGeneration)
                 case .success(let message):
                     let data: Data?
                     switch message {
@@ -523,7 +699,8 @@ final class ControllerModel: ObservableObject {
                     guard let data, data.count <= 65_536,
                           let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                           self.handle(object) else {
-                        self.disconnect(message: String(localized: "接收器协议不匹配，请更新手机和电脑两端。"))
+                        self.transportFailed(message: String(localized: "接收器协议不匹配，请更新手机和电脑两端。"),
+                                             retryable: false, generation: currentGeneration)
                         return
                     }
                     self.receiveNext(task, generation: currentGeneration)
@@ -543,12 +720,13 @@ final class ControllerModel: ObservableObject {
             helloTimeout = nil
             connecting = false
             connected = true
+            cancelReconnect()
+            automaticReconnectBlocked = false
             receiverState = state
             inputAvailable = state.inputAvailable
             computerName = name
             if let selectedDeviceID {
-                try? PairingStore.metadata(selectedDeviceID, name: name, platform: state.platform.rawValue)
-                refreshSavedDevices()
+                updateReceiverMetadata(selectedDeviceID, name: name, platform: state.platform.rawValue)
             }
             // The retired account-password capability is deliberately ignored.
             // Windows Hello PIN support requires a separate verified protocol.
@@ -592,6 +770,9 @@ final class ControllerModel: ObservableObject {
     }
 
     private func startTimers() {
+#if SOFATAP_CONTROLLER_TESTING
+        if testPairingConnect != nil { return }
+#endif
         let currentGeneration = generation
         let timer = Timer(timeInterval: 1.0 / 45.0, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.flushMovement() }
@@ -606,7 +787,10 @@ final class ControllerModel: ObservableObject {
                 guard !Task.isCancelled, let self, self.generation == currentGeneration, self.foreground else { return }
                 guard !self.pending.values.contains(where: { $0.type == "ping" }) else { continue }
                 self.send("ping", fields: [:], timeout: 8) { result in
-                    if case .uncertain = result { self.disconnect(message: String(localized: "电脑没有响应，已停止控制。")) }
+                    if case .uncertain = result {
+                        self.transportFailed(message: String(localized: "电脑没有响应，已停止控制。"),
+                                             retryable: true, generation: currentGeneration)
+                    }
                 }
             }
         }
@@ -629,7 +813,12 @@ final class ControllerModel: ObservableObject {
             return
         }
 #endif
-        guard connected, let socket else { completion?(.rejected(String(localized: "尚未连接"))); return }
+#if SOFATAP_CONTROLLER_TESTING
+        let recordingWire = testWireSend
+#else
+        let recordingWire: ((String) -> Void)? = nil
+#endif
+        guard connected, socket != nil || recordingWire != nil else { completion?(.rejected(String(localized: "尚未连接"))); return }
         guard pending.count < 32 else { completion?(.rejected(String(localized: "操作过快，请稍后"))); return }
         let id = UUID().uuidString
         var frame = fields
@@ -642,19 +831,33 @@ final class ControllerModel: ObservableObject {
         let currentGeneration = generation
         let timer = Task { [weak self] in
             try? await Task.sleep(for: .seconds(timeout))
-            guard !Task.isCancelled, let self, self.generation == currentGeneration,
-                  let item = self.pending.removeValue(forKey: id) else { return }
-            item.completion?(.uncertain)
-            self.disconnect(message: String(localized: "电脑响应超时，已停止控制。文字可能已输入，请查看电脑屏幕。"))
+            guard !Task.isCancelled else { return }
+            self?.commandTimedOut(id: id, generation: currentGeneration)
         }
         pending[id] = Pending(type: type, timer: timer, completion: completion)
+        if let recordingWire { recordingWire(text); return }
+        guard let socket else { return }
         socket.send(.string(text)) { [weak self] error in
-            guard error != nil else { return }
+            guard let error else { return }
             Task { @MainActor in
                 guard let self, self.generation == currentGeneration else { return }
-                self.disconnect(message: String(localized: "发送时连接中断。未确认的文字不会自动重发。"))
+                let retryable = Self.mayRetryTransport(error, diagnostic: self.sessionDelegate?.rejectionReason,
+                                                      status: (socket.response as? HTTPURLResponse)?.statusCode,
+                                                      closeCode: socket.closeCode, authenticated: self.connected)
+                self.transportFailed(message: String(localized: "发送时连接中断。未确认的文字不会自动重发。"),
+                                     retryable: retryable, generation: currentGeneration)
             }
         }
+    }
+
+    private func commandTimedOut(id: String, generation currentGeneration: UUID) {
+        guard generation == currentGeneration, pending[id] != nil else { return }
+        // Keep the timed-out item in pending. Disconnect first invalidates the
+        // generation and removes all pending items, then completes each once as
+        // uncertain. A drag completion cannot recursively disconnect and cancel
+        // the reconnect, and a text completion still receives its uncertainty.
+        transportFailed(message: String(localized: "电脑响应超时，已停止控制。文字可能已输入，请查看电脑屏幕。"),
+                        retryable: true, generation: currentGeneration)
     }
 
     func move(dx: Double, dy: Double) {
@@ -1018,7 +1221,7 @@ final class ControllerModel: ObservableObject {
 
     private func feedback() {
 #if SOFATAP_CONTROLLER_TESTING
-        if testSend != nil || testLiveSend != nil { return }
+        if testSend != nil || testLiveSend != nil || testPairingConnect != nil { return }
 #endif
         UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }

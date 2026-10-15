@@ -262,6 +262,64 @@ async def exercise(state, control_port, send_native, states):
             raise AssertionError("quit must disconnect the controller")
         except ConnectionClosed:
             check("native window quit promptly disconnects active controller", True)
+    # Keep the original trusted leaf and credential only in memory. A restarted
+    # receiver must accept them without reading another QR or trusting a new pin.
+    return fields, trusted
+
+
+def check_saved_pairing_after_restart(dotnet, assembly, profile, control_port, saved_fields, trusted, log):
+    for restart in range(2):
+        process = subprocess.Popen([dotnet, str(assembly), "--native-ui", "--dry-run", "--data-dir", str(profile),
+                                    "--control-port", str(control_port)], stdin=subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=log, text=True)
+        states = queue.Queue()
+        def pump(output=process.stdout):
+            for line in output:
+                try: states.put(json.loads(line))
+                except json.JSONDecodeError: states.put({"type": "invalid_stdout"})
+        reader = threading.Thread(target=pump, daemon=True)
+        reader.start()
+        try:
+            state = states.get(timeout=10)
+            check(f"restart {restart + 1} starts an input-disabled receiver", state.get("dryRun") is True)
+            current = [urllib.parse.parse_qs(urllib.parse.urlsplit(item["uri"]).query)
+                       for item in state.get("pairings", [])]
+            check(f"restart {restart + 1} preserves the saved pairing identity and credential",
+                  any(item["token"] == saved_fields["token"] and item["fingerprint"] == saved_fields["fingerprint"]
+                      for item in current))
+
+            async def reconnect():
+                host = saved_fields["host"][0]
+                headers = {"Authorization": "Bearer " + saved_fields["token"][0]}
+                async with websockets.connect(f"wss://{host}:{control_port}/control", ssl=trusted,
+                                              additional_headers=headers, proxy=None) as ws:
+                    leaf = ws.transport.get_extra_info("ssl_object").getpeercert(binary_form=True)
+                    check(f"restart {restart + 1} accepts the original TLS pin",
+                          hashlib.sha256(leaf).hexdigest() == saved_fields["fingerprint"][0])
+                    hello = json.loads(await asyncio.wait_for(ws.recv(), timeout=3))
+                    check(f"restart {restart + 1} authenticates without rescanning",
+                          hello.get("type") == "hello" and hello.get("inputAvailable") is False)
+                    ping_id = str(uuid.uuid4())
+                    await ws.send(json.dumps({"id": ping_id, "type": "ping"}))
+                    ack = json.loads(await asyncio.wait_for(ws.recv(), timeout=3))
+                    check(f"restart {restart + 1} is usable without replaying input",
+                          ack.get("id") == ping_id and ack.get("ok") is True)
+            asyncio.run(reconnect())
+            if restart == 0:
+                # The next launch must also survive an abrupt process exit.
+                process.kill()
+                process.wait(timeout=5)
+            else:
+                process.stdin.write(json.dumps({"type": "quit"}) + "\n")
+                process.stdin.flush()
+                check("reopened receiver quits normally", process.wait(timeout=5) == 0)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait(timeout=5)
+            process.stdin.close()
+            reader.join(timeout=2)
+            process.stdout.close()
 
 
 def main():
@@ -285,7 +343,7 @@ def main():
                 process.stdin.flush()
             try:
                 state = states.get(timeout=10)
-                asyncio.run(exercise(state, control_port, send_native, states))
+                saved_fields, trusted = asyncio.run(exercise(state, control_port, send_native, states))
                 check("native quit actually stops receiver", process.wait(timeout=5) == 0)
             finally:
                 process.stdin.close()
@@ -294,6 +352,8 @@ def main():
                     process.kill(); process.wait()
                 reader.join(timeout=2)
                 process.stdout.close()
+            check_saved_pairing_after_restart(dotnet, assembly, Path(temporary) / "profile",
+                                             control_port, saved_fields, trusted, log)
         check("host logs contain no pairing URL", "sofatap://pair?" not in log_path.read_text())
         # Lost UI means lost control. Inherited pipe EOF must stop the backend without a quit frame.
         with subprocess.Popen([dotnet, str(assembly), "--native-ui", "--dry-run", "--data-dir", str(Path(temporary) / "eof-profile"),

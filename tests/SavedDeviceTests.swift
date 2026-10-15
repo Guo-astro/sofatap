@@ -90,6 +90,16 @@ private final class TVLibraryStore: AndroidTVPairingStorage {
         let refreshedLibrary = try store.read()
         check("token and address refresh preserve stable device and alias", refreshedLibrary.devices.count == 2 && refreshedLibrary.selectedID == idA && refreshedLibrary.selected?.displayName == "Living room")
         check("refresh updates only the intended credential", refreshedLibrary.selected?.credential == refreshed && refreshedLibrary.devices.last?.credential == b)
+        // A fresh store instance models reopening the app. Scanning the same
+        // receiver again must not add a row or discard the user's nickname.
+        let reopenedStore = KeychainDeviceLibrary<Pairing>(service: "fixture", legacyAccount: "legacy", storage: storage)
+        let reopened = try reopenedStore.read()
+        check("cold reopen restores the exact selected receiver", reopened.selectedID == idA && reopened.selected?.credential == refreshed)
+        try reopenedStore.mutate { $0.upsert(refreshed) }
+        try reopenedStore.mutate { $0.upsert(refreshed) }
+        let rescanned = try reopenedStore.read()
+        check("repeated pairing after reopen retains one row per receiver", rescanned.devices.count == 2 && rescanned.devices.filter { $0.id == idA }.count == 1)
+        check("repeated pairing after reopen preserves nickname and other device", rescanned.selected?.displayName == "Living room" && rescanned.devices.last?.credential == b)
         try store.mutate { $0.remove(idB) }
         let removedInactive = try store.read()
         check("inactive removal leaves selection untouched", removedInactive.selectedID == idA && removedInactive.devices.count == 1)

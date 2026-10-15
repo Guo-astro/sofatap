@@ -30,7 +30,9 @@ public sealed class Credentials : IDisposable
     { Token = token; Certificate = certificate; _lock = fileLock; }
     public static string DefaultDirectory => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SofaTap");
 
-    public static Credentials LoadOrCreate(string directory)
+    public static Credentials LoadOrCreate(string directory) => LoadOrCreate(directory, NetworkAddresses.LocalIPv4());
+
+    internal static Credentials LoadOrCreate(string directory, IReadOnlyCollection<string> localAddresses)
     {
         Directory.CreateDirectory(directory);
         if (!OperatingSystem.IsWindows()) File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
@@ -54,18 +56,30 @@ public sealed class Credentials : IDisposable
                     throw new InvalidDataException("Invalid pairing profile. Use a new data directory to pair again.");
                 loaded = LoadCertificate(secret);
                 var certificateIPs = loaded.Extensions.OfType<X509SubjectAlternativeNameExtension>()
-                    .SelectMany(extension => extension.EnumerateIPAddresses()).Select(address => address.ToString()).ToHashSet();
+                    .SelectMany(extension => extension.EnumerateIPAddresses())
+                    .Where(address => address.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(address))
+                    .Select(address => address.ToString()).ToHashSet(StringComparer.Ordinal);
+                var currentIPs = localAddresses.ToHashSet(StringComparer.Ordinal);
+                // Pure additions (for example a VPN adapter), pure removals and
+                // offline restarts retain the paired TLS leaf and bearer token.
+                // A replacement address still needs a new certificate even when
+                // another address, such as a stable VPN endpoint, remains present.
+                // NativeState advertises only addresses covered by this certificate.
+                var hasNewAddress = currentIPs.Any(address => !certificateIPs.Contains(address));
+                var networkChanged = hasNewAddress && (certificateIPs.Count == 0
+                    || certificateIPs.Any(address => !currentIPs.Contains(address)));
                 if (!loaded.HasPrivateKey || loaded.NotAfter.ToUniversalTime() < DateTime.UtcNow.AddDays(30)
                     || loaded.NotAfter.ToUniversalTime() - loaded.NotBefore.ToUniversalTime() > TimeSpan.FromDays(366)
-                    || NetworkAddresses.LocalIPv4().Any(address => !certificateIPs.Contains(address)))
+                    || networkChanged)
                 {
                     loaded.Dispose(); loaded = null;
-                    // Certificate identity and bearer token rotate together after network drift.
-                    secret = CreateSecret(); SaveSecret(path, secret);
+                    // An address replacement still needs a new SAN-bound
+                    // certificate and explicit pairing; never relax TLS validation.
+                    secret = CreateSecret(localAddresses); SaveSecret(path, secret);
                     Console.Error.WriteLine("Local network identity changed or certificate renewed. Scan the pairing QR again on the iPhone.");
                 }
             }
-            else { secret = CreateSecret(); SaveSecret(path, secret); }
+            else { secret = CreateSecret(localAddresses); SaveSecret(path, secret); }
             loaded ??= LoadCertificate(secret);
             return new(secret.Token, loaded, fileLock);
         }
@@ -76,7 +90,7 @@ public sealed class Credentials : IDisposable
         // user's store and let certificate disposal remove it (no PersistKeySet).
         OperatingSystem.IsWindows() ? X509KeyStorageFlags.UserKeySet :
         (OperatingSystem.IsMacOS() ? X509KeyStorageFlags.DefaultKeySet : X509KeyStorageFlags.EphemeralKeySet) | X509KeyStorageFlags.Exportable);
-    private static Secret CreateSecret()
+    private static Secret CreateSecret(IEnumerable<string> localAddresses)
     {
         using var rsa = RSA.Create(3072);
         var request = new CertificateRequest("CN=Sofatap Local Receiver", rsa, HashAlgorithmName.SHA256, RSASignaturePadding.Pkcs1);
@@ -84,7 +98,7 @@ public sealed class Credentials : IDisposable
         request.CertificateExtensions.Add(new X509KeyUsageExtension(X509KeyUsageFlags.DigitalSignature | X509KeyUsageFlags.KeyEncipherment, true));
         request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.1") }, true));
         var sans = new SubjectAlternativeNameBuilder(); sans.AddDnsName("localhost"); sans.AddIpAddress(IPAddress.Loopback); sans.AddIpAddress(IPAddress.IPv6Loopback);
-        foreach (var address in NetworkAddresses.LocalIPv4()) sans.AddIpAddress(IPAddress.Parse(address));
+        foreach (var address in localAddresses) sans.AddIpAddress(IPAddress.Parse(address));
         request.CertificateExtensions.Add(sans.Build());
         var notBefore = DateTimeOffset.UtcNow.AddMinutes(-5);
         using var certificate = request.CreateSelfSigned(notBefore, notBefore.AddDays(365));
