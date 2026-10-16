@@ -13,12 +13,14 @@ internal sealed class WindowsStartupStore : IStartupStore
 
     internal WindowsStartupStore() : this(
         Environment.ProcessPath ?? throw new IOException("Executable path is unavailable."),
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup), "SofaTap.lnk"),
-        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "SofaTap", "desktop-startup.json")) { }
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Startup, Environment.SpecialFolderOption.DoNotVerify), "SofaTap.lnk"),
+        Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolderOption.DoNotVerify), "SofaTap", "desktop-startup.json")) { }
 
     // Explicit paths are used by isolated tests; never point them at user Startup.
     internal WindowsStartupStore(string executable, string shortcut, string preference)
     {
+        if (!Path.IsPathFullyQualified(executable) || !Path.IsPathFullyQualified(shortcut) || !Path.IsPathFullyQualified(preference))
+            throw new IOException("Windows startup paths are unavailable.");
         _executable = executable;
         _shortcut = shortcut;
         _preference = preference;

@@ -7,7 +7,7 @@ internal sealed class PairingWindow : Form
     private readonly BackendProcess _backend = new();
     private readonly System.Windows.Forms.Timer _copyFeedback = new() { Interval = 2000 };
     private readonly ReceiverLaunchOptions _options;
-    private readonly StartupRegistration? _startup;
+    private StartupRegistration? _startup;
     private readonly NotifyIcon? _tray;
     private readonly ToolTip _startupHint = new();
     private readonly ContextMenuStrip? _trayMenu;
@@ -117,7 +117,6 @@ internal sealed class PairingWindow : Form
         {
             if (options.ManagesStartup)
             {
-                _startup = new StartupRegistration(new WindowsStartupStore());
                 _trayMenu = new ContextMenuStrip();
                 _trayMenu.Items.Add("打开 Sofatap", null, (_, _) => ShowReceiver());
                 _trayMenu.Items.Add("退出", null, (_, _) => QuitReceiver());
@@ -440,8 +439,12 @@ internal sealed class PairingWindow : Form
 
     private void InitializeStartup()
     {
-        if (_startup is null) return;
-        try { SetStartupCheck(_startup.Initialize()); }
+        if (!_options.ManagesStartup || _preview) return;
+        try
+        {
+            _startup ??= new StartupRegistration(new WindowsStartupStore());
+            SetStartupCheck(_startup.Initialize());
+        }
         catch (Exception error) when (StartupError(error)) { ShowStartupFailure(); }
     }
 
@@ -458,8 +461,12 @@ internal sealed class PairingWindow : Form
 
     private void ChangeStartup()
     {
-        if (_updatingStartup || _startup is null) return;
-        try { SetStartupCheck(_startup.SetEnabled(_startAtLogin.Checked)); }
+        if (_updatingStartup || !_options.ManagesStartup || _preview) return;
+        try
+        {
+            _startup ??= new StartupRegistration(new WindowsStartupStore());
+            SetStartupCheck(_startup.SetEnabled(_startAtLogin.Checked));
+        }
         catch (Exception error) when (StartupError(error))
         {
             SetStartupCheck(!_startAtLogin.Checked);
