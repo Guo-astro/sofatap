@@ -10,7 +10,7 @@ import java.util.concurrent.*;
 import java.util.function.BooleanSupplier;
 import java.util.List;
 
-/** Started from native UI only. No boot receiver, wake lock or background auto-start. */
+/** User-visible foreground listener, with opt-out boot startup and no wake lock. */
 public final class ReceiverService extends Service {
     static volatile ReceiverService instance;
     private final Handler main = new Handler(Looper.getMainLooper());
@@ -26,6 +26,8 @@ public final class ReceiverService extends Service {
     volatile AddressSource addressSource = ReceiverIdentity::localAddresses;
     private ConnectivityManager connectivity;
     private ConnectivityManager.NetworkCallback networkCallback;
+    private boolean networkRegistered;
+    private boolean foregroundFailed;
     private final Runnable refreshNetwork = this::requestRefresh;
 
     @Override public void onCreate() {
@@ -39,7 +41,13 @@ public final class ReceiverService extends Service {
         Notification note = new Notification.Builder(this, "receiver").setSmallIcon(R.drawable.notification_icon)
             .setContentTitle("Sofatap").setContentText(getString(R.string.notification_active)).setContentIntent(pending)
             .setOngoing(true).addAction(new Notification.Action.Builder(null, getString(R.string.stop), stopPending).build()).build();
-        startForeground(41, note);
+        try { startForeground(41, note); }
+        catch (IllegalStateException | SecurityException denied) {
+            foregroundFailed = true;
+            new ReceiverStartup(this).setBlocked(true);
+            stopSelf();
+            return;
+        }
         InputBridge.setInterruptionListener(() -> { ReceiverServer active = server; if (active != null) active.disconnectController(); });
         connectivity = getSystemService(ConnectivityManager.class);
         networkCallback = new ConnectivityManager.NetworkCallback() {
@@ -54,18 +62,26 @@ public final class ReceiverService extends Service {
             .removeCapability(NetworkCapabilities.NET_CAPABILITY_TRUSTED)
             .removeCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN).build();
         connectivity.registerNetworkCallback(networks, networkCallback, main);
+        networkRegistered = true;
     }
     @Override public int onStartCommand(Intent intent, int flags, int startId) {
-        if (intent != null && "stop".equals(intent.getAction())) { stopSelf(); return START_NOT_STICKY; }
+        ReceiverStartup settings = new ReceiverStartup(this);
+        if (foregroundFailed) { stopSelf(); return START_NOT_STICKY; }
+        if (intent != null && "stop".equals(intent.getAction())) {
+            settings.setRunRequested(false); stopSelf(); return START_NOT_STICKY;
+        }
+        if (intent == null && !settings.runRequested()) { stopSelf(); return START_NOT_STICKY; }
+        settings.setRunRequested(true); settings.setBlocked(false);
         requestRefresh();
-        return START_NOT_STICKY;
+        // OS process reclamation may restore the requested listener, but explicit Stop removes it.
+        return START_STICKY;
     }
     private void scheduleRefresh() {
         if (stopped) return;
         main.removeCallbacks(refreshNetwork);
         main.postDelayed(refreshNetwork, 400);
     }
-    /** Main-thread entry point; network callbacks run only while the user-started service exists. */
+    /** Main-thread entry point; network callbacks run only while the requested service exists. */
     void requestRefresh() {
         if (stopped) return;
         if (starting) { refreshPending = true; return; }
@@ -149,7 +165,7 @@ public final class ReceiverService extends Service {
         // Called by the on-TV button: revoke the previous controller first.
         server.disconnectController(); InputBridge.disconnect();
         try { authority.newPairing(); error = null; }
-        catch (Exception failure) { error = "storage_failed"; stopSelf(); }
+        catch (Exception failure) { error = "storage_failed"; ReceiverStartup.stop(this); }
     }
     synchronized String pairingUri(String address) {
         try {
@@ -161,7 +177,7 @@ public final class ReceiverService extends Service {
     @Override public void onDestroy() {
         synchronized (this) { stopped = true; closeRuntime(); }
         main.removeCallbacks(refreshNetwork);
-        if (connectivity != null && networkCallback != null) connectivity.unregisterNetworkCallback(networkCallback);
+        if (connectivity != null && networkRegistered) connectivity.unregisterNetworkCallback(networkCallback);
         setup.shutdownNow(); InputBridge.setInterruptionListener(null); InputBridge.disconnect();
         if (instance == this) instance = null;
         stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy();

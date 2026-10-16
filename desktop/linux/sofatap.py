@@ -267,7 +267,7 @@ class Backend:
             stream.close()
 
 
-def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
+def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, startup_error=None):
     """Build the real native UI with an injectable owned backend for isolated previews."""
     from gi.repository import Pango
     provider = Gtk.CssProvider()
@@ -413,6 +413,22 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
             footer = text("iPhone 与电脑连接同一网络\n配对码和链接包含控制凭据，请勿分享", "muted")
             footer.set_justify(Gtk.Justification.CENTER)
             layout.pack_start(footer, False, False, 0)
+            self.autostart = autostart
+            startup_message = startup_error
+            self.startup_toggle = Gtk.CheckButton(label="登录后自动启动")
+            self.startup_toggle.set_halign(Gtk.Align.CENTER)
+            self.startup_toggle.set_sensitive(autostart is not None)
+            try:
+                self.startup_toggle.set_active(autostart.enabled() if autostart is not None else False)
+            except OSError:
+                startup_message = "无法读取启动设置"
+            self.startup_toggle.set_tooltip_text("默认开启；关闭窗口会最小化，选择退出才停止接收")
+            self.startup_toggle.connect("toggled", self.change_autostart)
+            layout.pack_start(self.startup_toggle, False, False, 0)
+            self.startup_detail = text(startup_message or "", "muted")
+            self.startup_detail.set_no_show_all(True)
+            layout.pack_start(self.startup_detail, False, False, 0)
+            self.startup_detail.set_visible(bool(startup_message))
             buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
             buttons.set_halign(Gtk.Align.CENTER)
             self.refresh = styled(Gtk.Button(label="刷新"), "quiet")
@@ -428,7 +444,7 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
             buttons.pack_start(self.refresh, False, False, 0)
             buttons.pack_start(self.quit_button, False, False, 0)
             layout.pack_start(buttons, False, False, 0)
-            self.connect("delete-event", self.close_receiver)
+            self.connect("delete-event", self.close_window)
             self.backend = backend_factory(
                 lambda state: GLib.idle_add(self.apply_state, state),
                 lambda: GLib.idle_add(self.show_failure))
@@ -438,6 +454,31 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory):
                 self.backend.start()
             except OSError:
                 self.show_failure()
+
+        def change_autostart(self, toggle):
+            if self.autostart is None:
+                return
+            try:
+                self.autostart.set_enabled(toggle.get_active())
+                self.startup_detail.set_visible(False)
+            except (OSError, ValueError):
+                toggle.handler_block_by_func(self.change_autostart)
+                try:
+                    toggle.set_active(self.autostart.enabled())
+                except OSError:
+                    toggle.set_active(False)
+                finally:
+                    toggle.handler_unblock_by_func(self.change_autostart)
+                self.startup_detail.set_text("无法保存启动设置，请检查此账户的文件权限")
+                self.startup_detail.show()
+
+        def close_window(self, *_):
+            if self.autostart is None or self.failed:
+                return self.close_receiver()
+            # Remain discoverable in the desktop task switcher; no tray extension
+            # is required on GNOME. Explicit Quit still closes the owned backend.
+            self.iconify()
+            return True
 
         def apply_state(self, state):
             if self.stopping or self.failed:
@@ -641,6 +682,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--backend", required=True, type=Path, help="self-contained Sofatap receiver executable")
     parser.add_argument("--dry-run", action="store_true", help="preview pairing without sending mouse or keyboard events")
+    parser.add_argument("--startup", action="store_true", help="start minimized after desktop login")
     args = parser.parse_args(argv)
     if sys.platform != "linux":
         parser.error("the Linux receiver requires Linux; protocol checks can run on other systems")
@@ -658,12 +700,47 @@ def main(argv=None):
         print("Sofatap requires a logged-in graphical Linux desktop.", file=sys.stderr)
         return 2
 
-    window = create_window(Gtk, Gdk, GdkPixbuf, GLib,
-        lambda on_state, on_failure: Backend(executable, on_state, on_failure, dry_run=args.dry_run))
+    from autostart import Autostart
+    from receiver_instance import ReceiverInstance
+    instance = None
+    startup = None
+    startup_error = None
+    if not args.dry_run:
+        try:
+            instance = ReceiverInstance()
+            if not instance.acquire(startup=args.startup):
+                return 0
+        except OSError:
+            print("Sofatap could not safely open its private receiver session.", file=sys.stderr)
+            return 2
+        startup = Autostart([sys.executable, "-E", "-s", "-B", str(Path(__file__).resolve()),
+                             "--backend", str(executable), "--startup"])
+        try:
+            startup.initialize()
+        except (OSError, ValueError):
+            startup_error = "无法设置登录后自动启动，可稍后重试"
+    window = None
     try:
+        window = create_window(Gtk, Gdk, GdkPixbuf, GLib,
+            lambda on_state, on_failure: Backend(executable, on_state, on_failure, dry_run=args.dry_run),
+            autostart=startup, startup_error=startup_error)
+        if args.startup:
+            window.iconify()
+        if instance is not None:
+            def check_activation():
+                if window.stopping:
+                    return False
+                if instance.show_requested():
+                    window.deiconify()
+                    window.present()
+                return True
+            GLib.timeout_add(100, check_activation)
         Gtk.main()
     finally:
-        window.backend.stop()
+        if window is not None:
+            window.backend.stop()
+        if instance is not None:
+            instance.close()
     return 0
 
 

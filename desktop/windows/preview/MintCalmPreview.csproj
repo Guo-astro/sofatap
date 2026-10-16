@@ -12,8 +12,10 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="../Assets/SofaTap.ico" LogicalName="Sofatap.AppIcon" />
+    <Compile Include="../WindowsStartupStore.cs" Link="WindowsStartupStore.cs" />
     <Compile Include="../PairingWindow.cs" Link="PairingWindow.cs" />
     <Compile Include="../MintCalmControls.cs" Link="MintCalmControls.cs" />
+    <Compile Include="../StartupRegistration.cs" Link="StartupRegistration.cs" />
     <Compile Include="../NativeProtocol.cs" Link="NativeProtocol.cs" />
     <Compile Include="../BackendProcess.cs" Link="BackendProcess.cs" />
     <PackageReference Include="QRCoder" Version="1.7.0" />

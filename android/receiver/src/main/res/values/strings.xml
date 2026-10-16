@@ -4,6 +4,9 @@
     <string name="notification_active">Ready for your paired iPhone</string>
     <string name="start">Start receiver</string>
     <string name="stop">Stop receiver</string>
+    <string name="auto_start">Start with TV</string>
+    <string name="auto_start_help">Keep Sofatap ready in the background after restarting the TV. Stop receiver pauses it until you start it or restart the TV.</string>
+    <string name="auto_start_blocked">The TV blocked background startup. Choose Start receiver, and check the TV’s app startup settings if this happens again.</string>
     <string name="stopped">Ready when you are</string>
     <string name="start_help">Connect your iPhone and TV to the same home network, then start the receiver.</string>
     <string name="starting">Preparing a secure connection…</string>

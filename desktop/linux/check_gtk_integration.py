@@ -51,6 +51,7 @@ def child_check(backend, dry_run, profile, port):
     gi.require_version("Gtk", "3.0")
     from gi.repository import GLib, Gtk
     frontend = backend.parent / "linux" / "sofatap.py"
+    sys.path.insert(0, str(frontend.parent))
     spec = importlib.util.spec_from_file_location("sofatap_packaged_frontend", frontend)
     if spec is None or spec.loader is None:
         raise RuntimeError("Packaged frontend could not be loaded")
@@ -72,10 +73,11 @@ def child_check(backend, dry_run, profile, port):
     tracked = set()
     started = time.monotonic()
     closing_at = None
+    minimized_at = None
     original_main = Gtk.main
 
     def poll():
-        nonlocal closing_at
+        nonlocal closing_at, minimized_at
         windows = [window for window in Gtk.Window.list_toplevels() if window.get_title() == "Sofatap"]
         window = next((window for window in windows if hasattr(window, "backend")), None)
         if window is None:
@@ -94,6 +96,19 @@ def child_check(backend, dry_run, profile, port):
                 Gtk.main_quit()
                 return False
             return True
+        if minimized_at is not None:
+            if time.monotonic() - minimized_at < .3:
+                return True
+            if window.stopping or process is None or process.poll() is not None or not port_open(port):
+                errors.append("Closing the normal window stopped its receiver")
+            if window.autostart is None or not window.startup_toggle.get_active():
+                errors.append("Normal launch did not enable per-user login startup")
+            window.startup_toggle.set_active(False)
+            if window.autostart.enabled():
+                errors.append("Native startup switch failed to persist opt-out")
+            closing_at = time.monotonic()
+            window.quit_button.emit("clicked")
+            return True
         expected = "演练模式" if dry_run else "桌面已就绪"
         status = window.status.get_text()
         if expected in status and window.image.get_pixbuf() is not None:
@@ -106,11 +121,12 @@ def child_check(backend, dry_run, profile, port):
                 errors.append("Receiver control listener was not active")
             if not dry_run and (process is None or not children(process.pid)):
                 errors.append("Real X11 mode did not start its owned input worker")
-            closing_at = time.monotonic()
             if dry_run:
+                closing_at = time.monotonic()
                 window.quit_button.emit("clicked")
             else:
-                window.close()  # Exercise the native window-manager close path too.
+                minimized_at = time.monotonic()
+                window.close()  # Closing keeps receiving; explicit Quit stops it.
         elif window.failed or time.monotonic() - started > 15:
             errors.append("Native QR and expected desktop status did not become available")
             closing_at = time.monotonic()
@@ -217,6 +233,9 @@ def main():
             for mode in ("dry-run", "x11"):
                 profile = root / mode
                 profile.mkdir(mode=0o700)
+                runtime = profile / "run"
+                runtime.mkdir(mode=0o700)
+                environment.update(XDG_CONFIG_HOME=str(profile / "config"), XDG_RUNTIME_DIR=str(runtime))
                 with socket.socket() as reservation:
                     reservation.bind(("127.0.0.1", 0))
                     port = reservation.getsockname()[1]

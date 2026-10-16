@@ -30,10 +30,18 @@ ADB is only an optional development installation tool. It is not the control tra
 
 1. Open Sofatap from the television's app launcher. Connect the TV and iPhone to the same trusted home network.
 2. Using the physical TV remote, open Accessibility settings from Sofatap, read the explanation, and enable its service. Menu names and availability vary by manufacturer and firmware.
-3. Start the receiver. On the iPhone, open **My Devices → Add Device → Scan QR Code**, then scan the TV’s native pairing QR code. Its device type and suggested name are recognized automatically.
+3. The receiver starts automatically on first launch. On the iPhone, open **My Devices → Add Device → Scan QR Code**, then scan the TV’s native pairing QR code. Its device type and suggested name are recognized automatically.
 4. Try a known harmless control first. Pointer movement and successful activation are separate observations; verify the visible result of each click and scroll.
 
 The QR code expires after five minutes and carries private pairing credentials. Do not share or publish it. Pairing another iPhone replaces the previous pairing. The receiver uses a pinned TLS WebSocket on the local network; no browser or cloud relay is needed. Stop the receiver to end the network session, and disable Sofatap in Accessibility settings to remove its control access.
+
+## Start with TV
+
+The native **Start with TV** switch is on by default after opening this version once. It starts the foreground receiver after the TV boots without opening the pairing screen or interrupting the current app. You can switch it off at any time; that choice survives app launches and updates. Turning it off does not end the current connection. **Stop receiver** ends the current run; when startup remains enabled, the next TV reboot starts it again. An app update only restores a receiver that was running, so it does not undo Stop.
+
+The listener can recover after Android reclaims its process, and it waits for Wi-Fi or Ethernet to return. Neither this setting nor Android's service recovery can bypass Force stop, manufacturer background restrictions, a powered-off TV, or accessibility permission. After Force stop, open Sofatap again. Boot startup is after the Android user is available; it does not run against locked encrypted storage. Sony and Xiaomi startup/standby behavior still requires physical-TV testing.
+
+This uses Android's [boot/package-update foreground-service exemptions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start) with the [connected-device service type](https://developer.android.com/develop/background-work/services/fgs/service-types#connected-device). It requests no alarm, wake lock, or battery-policy bypass.
 
 ## Reconnection
 

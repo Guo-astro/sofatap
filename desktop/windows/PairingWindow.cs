@@ -6,7 +6,20 @@ internal sealed class PairingWindow : Form
 {
     private readonly BackendProcess _backend = new();
     private readonly System.Windows.Forms.Timer _copyFeedback = new() { Interval = 2000 };
-    private readonly string[] _arguments;
+    private readonly ReceiverLaunchOptions _options;
+    private readonly StartupRegistration? _startup;
+    private readonly NotifyIcon? _tray;
+    private readonly ToolTip _startupHint = new();
+    private readonly ContextMenuStrip? _trayMenu;
+    private bool _updatingStartup;
+    private bool _quitRequested;
+    private readonly CheckBox _startAtLogin = new()
+    {
+        Text = "登录后启动", AutoSize = false, TabIndex = 4,
+        ForeColor = MintCalm.Muted, BackColor = Color.Transparent,
+        AccessibleName = "登录后启动 Sofatap",
+        AccessibleDescription = "首次打开默认启用。Windows 启动应用设置仍可禁止自启。"
+    };
     private readonly bool _preview;
     private readonly Panel _scroll = new() { Dock = DockStyle.Fill, AutoScroll = true, BackColor = MintCalm.Canvas };
     private readonly Panel _content = new() { Dock = DockStyle.Top, BackColor = MintCalm.Canvas };
@@ -52,15 +65,15 @@ internal sealed class PairingWindow : Form
         return (Icon)icon.Clone();
     }
 
-    internal PairingWindow(string[] arguments) : this(arguments, preview: false) { }
+    internal PairingWindow(ReceiverLaunchOptions options) : this(options, preview: false) { }
 
     // Offline rendering only: this constructor never attaches the backend-start event.
-    internal PairingWindow(ReceiverState fixture) : this([], preview: true) { ApplyState(fixture); }
-    internal static PairingWindow CreatePendingPreview() => new([], preview: true);
+    internal PairingWindow(ReceiverState fixture) : this(new(false, false), preview: true) { ApplyState(fixture); }
+    internal static PairingWindow CreatePendingPreview() => new(new(false, false), preview: true);
 
-    private PairingWindow(string[] arguments, bool preview)
+    private PairingWindow(ReceiverLaunchOptions options, bool preview)
     {
-        _arguments = arguments;
+        _options = options;
         _preview = preview;
         SuspendLayout();
         // These are design dimensions at 96 DPI. WinForms scales the form once;
@@ -86,7 +99,7 @@ internal sealed class PairingWindow : Form
         _status.Font = new Font(Font.FontFamily, 9.5f);
         _networkHint.Font = _privacyHint.Font = new Font(Font.FontFamily, 9.5f);
         _card.Controls.AddRange([_qr, _machine, _addresses, _copy]);
-        _column.Controls.AddRange([_status, _headline, _helper, _card, _networkHint, _privacyHint, _refresh, _quit]);
+        _column.Controls.AddRange([_status, _headline, _helper, _card, _networkHint, _privacyHint, _refresh, _quit, _startAtLogin]);
         _content.Controls.Add(_column);
         _scroll.Controls.Add(_content);
         Controls.Add(_scroll);
@@ -95,12 +108,26 @@ internal sealed class PairingWindow : Form
         _addresses.SelectedIndexChanged += (_, _) => { if (!_updating) RenderQr(); };
         _copy.Click += (_, _) => CopyPairingLink();
         _refresh.Click += async (_, _) => await RefreshAsync();
-        _quit.Click += (_, _) => Close();
+        _quit.Click += (_, _) => QuitReceiver();
+        _startAtLogin.Checked = preview; // Synthetic first-launch appearance; no startup store is touched.
+        _startAtLogin.Enabled = !preview && options.ManagesStartup;
+        _startupHint.SetToolTip(_startAtLogin, "配置当前用户的登录启动项。Windows 设置 → 应用 → 启动仍可禁止 Sofatap 自启。");
+        _startAtLogin.CheckedChanged += (_, _) => ChangeStartup();
         if (!preview)
         {
+            if (options.ManagesStartup)
+            {
+                _startup = new StartupRegistration(new WindowsStartupStore());
+                _trayMenu = new ContextMenuStrip();
+                _trayMenu.Items.Add("打开 Sofatap", null, (_, _) => ShowReceiver());
+                _trayMenu.Items.Add("退出", null, (_, _) => QuitReceiver());
+                _tray = new NotifyIcon { Icon = _brandIcon, Text = "Sofatap · 双击打开", ContextMenuStrip = _trayMenu, Visible = true };
+                _tray.DoubleClick += (_, _) => ShowReceiver();
+            }
+            if (options.Startup) { WindowState = FormWindowState.Minimized; ShowInTaskbar = false; }
             _backend.StateReceived += state => OnUi(() => ApplyState(state));
             _backend.Failed += () => OnUi(ShowBackendFailure);
-            Shown += (_, _) => StartBackend();
+            Shown += (_, _) => { InitializeStartup(); StartBackend(); if (options.Startup) Hide(); };
         }
         FormClosing += ClosingAsync;
         _layoutReady = true;
@@ -184,7 +211,9 @@ internal sealed class PairingWindow : Form
             var buttonWidth = Math.Min(S(100), (width - buttonGap) / 2);
             _refresh.SetBounds((width - buttonWidth * 2 - buttonGap) / 2, y, buttonWidth, S(36));
             _quit.SetBounds(_refresh.Right + buttonGap, y, buttonWidth, S(36));
-            y += S(36) + S(24);
+            y += S(36) + S(12);
+            _startAtLogin.SetBounds(Math.Max(0, (width - S(160)) / 2), y, Math.Min(width, S(160)), S(30));
+            y += S(30) + S(24);
             // A top-docked scroll child follows the viewport width. Keeping the
             // centered column inside it prevents WinForms from using an old
             // child X offset as horizontal overflow during a resize.
@@ -242,7 +271,7 @@ internal sealed class PairingWindow : Form
     }
 
     protected override void OnDpiChanged(DpiChangedEventArgs e) { base.OnDpiChanged(e); LayoutContents(); }
-    protected override bool ShowWithoutActivation => _preview || base.ShowWithoutActivation;
+    protected override bool ShowWithoutActivation => _preview || _options.Startup || base.ShowWithoutActivation;
 
     [DllImport("dwmapi.dll")]
     private static extern int DwmSetWindowAttribute(IntPtr window, int attribute, ref int value, int size);
@@ -253,7 +282,7 @@ internal sealed class PairingWindow : Form
         {
             var executable = Path.Combine(AppContext.BaseDirectory, "SofaTapHost.exe");
             if (!File.Exists(executable)) throw new FileNotFoundException();
-            _backend.Start(executable, _arguments);
+            _backend.Start(executable, _options.BackendArguments);
         }
         catch (Exception error) when (error is IOException or InvalidOperationException or System.ComponentModel.Win32Exception)
         { ShowBackendFailure(); }
@@ -373,6 +402,18 @@ internal sealed class PairingWindow : Form
     private async void ClosingAsync(object? sender, FormClosingEventArgs args)
     {
         if (_preview || _allowClose) return;
+        if (!_quitRequested && _tray is not null && args.CloseReason == CloseReason.UserClosing)
+        {
+            args.Cancel = true;
+            Hide();
+            return;
+        }
+        // Logoff/shutdown must not be cancelled for asynchronous UI teardown.
+        if (args.CloseReason is CloseReason.WindowsShutDown or CloseReason.TaskManagerClosing)
+        {
+            _allowClose = true;
+            return;
+        }
         args.Cancel = true;
         if (_stopping) return;
         _stopping = true;
@@ -396,6 +437,63 @@ internal sealed class PairingWindow : Form
         _allowClose = true;
         Close();
     }
+
+    private void InitializeStartup()
+    {
+        if (_startup is null) return;
+        try { SetStartupCheck(_startup.Initialize()); }
+        catch (Exception error) when (StartupError(error)) { ShowStartupFailure(); }
+    }
+
+    private static bool StartupError(Exception error) => error is IOException or UnauthorizedAccessException
+        or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException or COMException
+        or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException;
+
+    private void SetStartupCheck(bool enabled)
+    {
+        _updatingStartup = true;
+        _startAtLogin.Checked = enabled;
+        _updatingStartup = false;
+    }
+
+    private void ChangeStartup()
+    {
+        if (_updatingStartup || _startup is null) return;
+        try { SetStartupCheck(_startup.SetEnabled(_startAtLogin.Checked)); }
+        catch (Exception error) when (StartupError(error))
+        {
+            SetStartupCheck(!_startAtLogin.Checked);
+            ShowStartupFailure();
+        }
+    }
+
+    private void ShowStartupFailure()
+    {
+        _startAtLogin.AccessibleDescription = "无法更新自动启动，请检查当前用户的启动文件夹权限。";
+        if (Visible && !_options.Startup)
+            MessageBox.Show(this, "无法更新自动启动。请检查启动文件夹权限，或在 Windows 设置 → 应用 → 启动中查看 Sofatap。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+
+    internal void RequestShow() => OnUi(ShowReceiver);
+
+    private void ShowReceiver()
+    {
+        if (_stopping) return;
+        // Reopening after an HDMI/display change brings an off-screen window
+        // into a current work area without changing any display configuration.
+        if (!Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(Bounds)))
+        {
+            var area = Screen.PrimaryScreen!.WorkingArea;
+            FitWindowToWorkArea(area.Size);
+            Location = new Point(area.Left + (area.Width - Width) / 2, area.Top + (area.Height - Height) / 2);
+        }
+        ShowInTaskbar = true;
+        WindowState = FormWindowState.Normal;
+        Show();
+        Activate();
+    }
+
+    private void QuitReceiver() { _quitRequested = true; Close(); }
 
     internal void ShowPreviewFailure()
     {
@@ -428,7 +526,7 @@ internal sealed class PairingWindow : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _copyFeedback.Dispose(); _backend.Dispose(); _brandIcon.Dispose(); }
+        if (disposing) { _tray?.Dispose(); _trayMenu?.Dispose(); _startupHint.Dispose(); _copyFeedback.Dispose(); _backend.Dispose(); _brandIcon.Dispose(); }
         base.Dispose(disposing);
     }
 }

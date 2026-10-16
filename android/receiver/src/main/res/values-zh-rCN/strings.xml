@@ -4,6 +4,9 @@
     <string name="notification_active">等待已配对的 iPhone 连接</string>
     <string name="start">启动接收器</string>
     <string name="stop">停止接收器</string>
+    <string name="auto_start">随电视开机启动</string>
+    <string name="auto_start_help">电视重新启动后，Sofatap 会在后台等待连接。停止接收器后，需手动启动或重新启动电视才会恢复。</string>
+    <string name="auto_start_blocked">电视限制了后台启动。请选择“启动接收器”；如果再次出现，请检查电视的应用自启动设置。</string>
     <string name="stopped">随时开始</string>
     <string name="start_help">将 iPhone 和电视连接到同一个家庭网络，然后启动接收器。</string>
     <string name="starting">正在准备安全连接…</string>

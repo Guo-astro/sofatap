@@ -58,6 +58,10 @@ jobs:
         run: |
           swiftc desktop/macos/ReceiverLaunchOptions.swift desktop/macos/tests/ReceiverLaunchOptionsTests.swift -o "$RUNNER_TEMP/sofatap-launch-tests"
           "$RUNNER_TEMP/sofatap-launch-tests"
+      - name: Mac login startup policy without changing login items
+        run: |
+          swiftc -parse-as-library -swift-version 5 desktop/macos/ReceiverLoginItem.swift desktop/macos/tests/ReceiverLoginItemTests.swift -o "$RUNNER_TEMP/sofatap-login-tests"
+          "$RUNNER_TEMP/sofatap-login-tests"
       - name: Native pairing parser checks
         shell: bash
         run: |
@@ -218,6 +222,7 @@ jobs:
       - name: Linux worker and native window checks without input
         run: |
           /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_protocol.py
+          /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_autostart.py
           /usr/bin/python3 -B desktop/linux/check_input.py
           /usr/bin/python3 -B desktop/linux/check_wayland_input.py
           /usr/bin/python3 -B tests/text_focus_linux.py

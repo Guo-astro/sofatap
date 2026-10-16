@@ -23,6 +23,8 @@ public final class MainActivity extends Activity {
     private ImageView qr;
     private TextView qrCaption, status, help, capabilities;
     private Button start, pair, permission;
+    private Switch autoStart;
+    private ReceiverStartup startup;
     private Spinner network;
     private String renderedURI;
     private List<String> addresses = new ArrayList<>();
@@ -31,6 +33,7 @@ public final class MainActivity extends Activity {
 
     @Override public void onCreate(Bundle state) {
         super.onCreate(state);
+        startup = new ReceiverStartup(this); startup.initializeFromVisibleLaunch();
         getWindow().setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE);
         // QR bearer credentials must not leak through screenshots/cast previews.
         LinearLayout root = new LinearLayout(this); root.setOrientation(LinearLayout.HORIZONTAL);
@@ -61,11 +64,11 @@ public final class MainActivity extends Activity {
         });
         permission.setId(R.id.accessibility_setup); padded(right, permission, 18);
         start = button(R.string.start, () -> {
-            if (ReceiverService.instance != null) { stopService(new Intent(this, ReceiverService.class)); }
+            if (ReceiverService.instance != null) { ReceiverStartup.stop(this); }
             else {
                 if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
                     requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 7);
-                startForegroundService(new Intent(this, ReceiverService.class));
+                ReceiverStartup.start(this);
             }
             refresh();
         }); padded(right, start, 6);
@@ -76,8 +79,19 @@ public final class MainActivity extends Activity {
                 }).create();
             dialog.show(); dialog.getButton(AlertDialog.BUTTON_POSITIVE).setId(R.id.pairing_approve);
         }); pair.setId(R.id.pairing_approve); padded(right, pair, 6);
+        autoStart = new Switch(this); autoStart.setId(R.id.auto_start);
+        autoStart.setText(R.string.auto_start); autoStart.setTextSize(16); autoStart.setTextColor(INK);
+        autoStart.setPadding(dp(12), dp(12), dp(12), dp(12)); autoStart.setChecked(startup.enabled());
+        autoStart.setOnCheckedChangeListener((button, checked) -> {
+            startup.setEnabled(checked);
+            if (checked && ReceiverService.instance == null) ReceiverStartup.start(this);
+            refresh();
+        }); padded(right, autoStart, 12);
+        TextView startupHelp = text(14, Color.rgb(164, 189, 180)); startupHelp.setText(R.string.auto_start_help);
+        padded(right, startupHelp, 2);
         capabilities = text(14, Color.rgb(164, 189, 180)); padded(right, capabilities, 16);
         setContentView(root); renderQR(null); start.requestFocus();
+        if (startup.runRequested() && ReceiverService.instance == null) ReceiverStartup.start(this);
     }
     private void refresh() {
         ReceiverService receiver = ReceiverService.instance;
@@ -102,7 +116,8 @@ public final class MainActivity extends Activity {
         if (!Objects.equals(uri, renderedURI)) { renderedURI = uri; renderQR(uri); }
         boolean connected = server != null && server.connected();
         if (receiver == null) {
-            status.setText(R.string.stopped); help.setText(R.string.start_help); qrCaption.setText(R.string.qr_waiting);
+            status.setText(startup.blocked() ? R.string.cannot_start : R.string.stopped);
+            help.setText(startup.blocked() ? R.string.auto_start_blocked : R.string.start_help); qrCaption.setText(R.string.qr_waiting);
         } else if (receiver.error != null) {
             status.setText(R.string.cannot_start);
             help.setText("no_private_network".equals(receiver.error) ? R.string.connect_network : R.string.restart_help);
