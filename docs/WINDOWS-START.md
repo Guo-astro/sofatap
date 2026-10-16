@@ -1,8 +1,8 @@
 # Sofatap Windows 接收端
 
-本说明对应 **0.7.1 beta.1 Windows x64 接收器**。下载 [SofaTap-Windows-x64.zip](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Windows-x64.zip) 和 [SHA256 校验文件](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Windows-x64.zip.sha256)；校验值对应 ZIP，而非解压后单个 EXE。发布与实测范围见[版本验收记录](verification/receiver-0.7.1.md)。
+本说明对应 **0.7.3 beta.1 Windows x64 接收器**。下载 [SofaTap-Windows-x64.zip](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Windows-x64.zip) 和 [SHA256 校验文件](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Windows-x64.zip.sha256)；校验值对应 ZIP，而非解压后单个 EXE。本版自启行为及测试范围见[版本验证记录](verification/receiver-autostart-2026-10-16.md)。
 
-**请先将 iPhone 更新至 1.0（15）或更新版本。** 新二维码包含电脑类型和名称，早期手机版无法读取；暂时无法更新手机时，请保留 [0.7.0 beta.1 接收器](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。Build 15 也兼容旧二维码；手机分发状态见 [TestFlight 记录](verification/testflight-1.0-15.md)。
+**请先将 iPhone 更新至 1.0（15）或更新版本。** 新二维码包含电脑类型和名称，早期手机版无法读取；暂时无法更新手机时，请保留 [0.7.0 beta.1 接收器](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。Build 15 也兼容旧二维码；当前公开和内部 TestFlight 均为 1.0（18），见 [TestFlight 记录](verification/testflight-1.0-18.md)。
 
 当前接收器已包含实时编辑：支持的原生 Edit/RichEdit 字段会把全文及选区导入手机，自动同步打字、删除和听写修正。不支持的字段（包括许多浏览器和自绘控件）仍需检查草稿后发送。焦点检测与实时编辑的支持范围不同，自动弹出键盘不代表该字段可以实时编辑，详见[数据处理与限制](TEXT-FOCUS.md)。
 
@@ -41,13 +41,13 @@ Windows 的“设置 → 应用 → 启动”或任务管理器仍可禁止 Sofa
 
 安装包保留 `Enable-Autostart.ps1` 和 `Disable-Autostart.ps1`，二者与原生开关使用相同快捷方式和偏好。若系统禁止运行脚本，直接使用原生开关，无需修改执行策略。
 
-切换显示屏本身不会退出接收器。接收器运行时，即使配对窗口隐藏，手机仍可重连；显式退出、注销或关机会结束当前接收进程。重新打开窗口时会把已不在任何显示屏工作区域内的窗口移回可见位置，不改变显示器布局。真正的 HDMI 切换和重启登录验收仍需在实际 Windows 设备上进行。
+接收器不会因显示屏切换而主动退出。接收器运行时，即使配对窗口隐藏，手机仍可重连；显式退出、注销或关机会结束当前接收进程。重新打开窗口时会把已不在任何显示屏工作区域内的窗口移回可见位置，不改变显示器布局。真正的 HDMI 切换和重启登录验收仍需在实际 Windows 设备上进行。
 
 实现依据：[Microsoft 的 Windows 启动应用说明](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows)。
 
 ## 当前限制
 
-- 0.7.1 已验证 Windows 安装包摘要、版本及现有配对配置保留；本轮 Windows 真机扫码、识别和重命名仍待验收。[0.7.0 输入记录](verification/realtime-input-0.7.0.md)仅验证了指定 RichEdit 测试窗口的实时编辑，不代表所有 Windows 软件都支持。
+- 历史 [0.7.1 验收](verification/receiver-0.7.1.md)验证了 Windows 安装包摘要、版本及现有配对配置保留；本版登录自启、真实 HDMI 切换及手机联合验收仍待实际设备测试。[0.7.0 输入记录](verification/realtime-input-0.7.0.md)仅验证了指定 RichEdit 测试窗口的实时编辑，不代表所有 Windows 软件都支持。
 - 需要 Windows 登录后的交互桌面；系统权限确认窗口、锁屏/登录界面、部分游戏及阻止模拟输入的程序不保证可用。
 - 手机显示“已发送”表示 Windows 接受了输入事件，不代表某个软件已经保存、搜索或提交文字。
 - 传输超时可能表示结果未知。请先查看电脑中的文字，再决定是否重新发送，避免重复输入。
