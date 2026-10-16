@@ -1,6 +1,6 @@
 # Custom gestures — Build 18 verification
 
-Date: 2026-10-16. Release candidate: iPhone 1.0 (18). Published iPhone build 17 does not include these settings. Physical-device results below are separate from TestFlight processing and distribution.
+Date: 2026-10-16. iPhone 1.0 (18) includes these settings and is available in public TestFlight. Physical-device results below are separate from [TestFlight processing and distribution](testflight-1.0-18.md).
 
 ## Implemented scope
 

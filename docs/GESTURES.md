@@ -1,6 +1,6 @@
 # Gesture settings
 
-This feature is in development source and is not included in published iPhone build 17. It changes the iPhone's local gesture mapping; existing receiver protocols and pairing credentials are unchanged.
+Available in public TestFlight iPhone 1.0 (18); see the [distribution record](verification/testflight-1.0-18.md). It changes the iPhone's local gesture mapping; existing receiver protocols and pairing credentials are unchanged.
 
 Open the gear in the touchpad header. Choose a preset, then change individual gestures. Preferences are saved locally on the iPhone, separately for computers and televisions. A preset replaces that device category's mapping, timing and scroll direction; replacing a custom configuration asks for confirmation. Restore defaults remains available even when every gesture is disabled.
 
@@ -31,4 +31,4 @@ The guide displays the current assignments. The practice sheet uses the producti
 
 Run `bash ios/scripts/test-custom-gestures.sh` for configuration, persistence, capability and gesture conflict tests. The existing `TouchGestureTests.swift` checks continue to run against the default preset. UIKit editor, live text and drag-release recording-transport tests cover integration without desktop input.
 
-These checks and simulator layout captures do not replace real iPhone gesture timing, receiver input or household TV acceptance. Physical receiver tests must follow the Yomado isolation rules in `AGENTS.md`; the Sony and Xiaomi TV hardware acceptance remains tracked separately.
+Seven physical settings and local-practice cases have passing results on a dedicated iPhone and an iPad in iPhone compatibility mode; see the [device results and limits](verification/custom-gestures-2026-10-16.md). These checks do not replace exact physical gesture timing, receiver input or household TV acceptance. Physical receiver tests must follow the Yomado isolation rules in `AGENTS.md`; the Sony and Xiaomi TV hardware acceptance remains tracked separately.

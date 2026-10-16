@@ -29,7 +29,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。见[语言覆盖](docs/APP-LANGUAGES.md)与[验证记录](docs/verification/device-library-2026-10-14.md)。
 
-**当前公开测试版：**iPhone **1.0 (17)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.7.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1)。**电视自动重连需要手机构建 17 和电视接收器 0.1.1 beta.1 配合。**参见[构建 17 分发记录](docs/verification/testflight-1.0-17.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。家里的索尼、小米电视仍未现场测试。正式 App Store 构建 15 的提交是独立流程。
+**当前公开测试版：**iPhone **1.0 (18)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.7.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1)。**电视自动重连需要手机构建 17 和电视接收器 0.1.1 beta.1 配合。**参见[构建 18 分发记录](docs/verification/testflight-1.0-18.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。家里的索尼、小米电视仍未现场测试。正式 App Store 构建 15 的提交是独立流程。
 
 **重连更新：**iPhone **1.0 (16)** 与接收器 **0.7.2 beta.1** 修复电脑接收器重启后的连接恢复。手机 App 在前台时，会重试当前已保存的电脑，无需重新扫码；接收器新增无关网卡时会保留原有配对。待确认的文字和鼠标操作不会自动重放。证书更换仍需重新配对，已有的重复设备不会自动合并。参见[自动重连回归检查](docs/verification/reconnect-2026-10-15.md)；真实 iPhone 到 Windows 的关闭／重开验收仍待完成。
 
@@ -55,15 +55,15 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 构建 16 中，草稿模式的键盘退格先删除手机上未发送的文字；清空本地草稿后，键盘退格可删除电脑当前输入框中的文字。独立的“电脑退格”图标作用于电脑当前输入位置，不删除手机草稿。实时编辑继续正常同步删除。这些更新已通过[真 iPhone 到记录型接收器的检查](docs/verification/input-1.0-16.md)，不代表 Windows 应用端验收；旧构建 15 保持原有行为。
 
-## 自定义手势（开发中）
+## 自定义手势（构建 18）
 
-当前开发源码在触控区新增齿轮入口。可以选择 Sofatap、触控板习惯或长按快捷操作预设，再为单击、左右区双击、双指/三指轻点、长按与滑动分别指定动作。电脑与电视的偏好在 iPhone 上独立保存；可以调整判定时间和滚动方向、恢复预设，或在离线练习区试用。电视可选动作受接收端能力限制。详情和验证范围见[手势设置说明](docs/GESTURES.md)。此功能尚不包含在已发布的构建 17 中。
+构建 18 在触控区新增齿轮入口。可以选择 Sofatap、触控板习惯或长按快捷操作预设，再为单击、左右区双击、双指/三指轻点、长按与滑动分别指定动作。电脑与电视的偏好在 iPhone 上独立保存；可以调整判定时间和滚动方向、恢复预设，或在离线练习区试用。电视可选动作受接收端能力限制。详情和验证范围见[手势设置说明](docs/GESTURES.md)。此功能已通过公开 TestFlight 1.0 (18) 提供。已在专用 iPhone 和 iPad 上通过设置与本地练习测试；接收端实际效果仍需单独验收。
 
 ## 平台进度
 
 | 平台 | 当前状态 |
 | --- | --- |
-| iPhone | iOS 17+。1.0 (17) 支持 12 种界面语言，可通过[公开 TestFlight](https://testflight.apple.com/join/e6MuKx9S)安装。已确认通过 TestFlight 将构建 16 安装到专用测试 iPhone；最终构建的 Windows 重启恢复与输入验收仍待完成。此前扫码和输入检查仍按实际测试版本记录在 [0.7.1 验证记录](docs/verification/receiver-0.7.1.md)与[构建 16 开发测试记录](docs/verification/input-1.0-16.md)中。 |
+| iPhone | iOS 17+。1.0 (18) 支持 12 种界面语言，可通过[公开 TestFlight](https://testflight.apple.com/join/e6MuKx9S)安装。已确认通过 TestFlight 将构建 16 安装到专用测试 iPhone；最终构建的 Windows 重启恢复与输入验收仍待完成。此前扫码和输入检查仍按实际测试版本记录在 [0.7.1 验证记录](docs/verification/receiver-0.7.1.md)与[构建 16 开发测试记录](docs/verification/input-1.0-16.md)中。 |
 | Windows | 接收器 0.7.2 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目与本次重启恢复实测仍待完成。Windows 程序尚无 Authenticode 签名。 |
 | Mac | macOS 15+。0.7.2 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
 | Linux | 0.7.2 beta.1 的 x64、ARM64 GTK3 包已发布。此前 0.7.1 ARM64 接收器曾在隔离 Xvfb 中运行，真 iPhone 对该版本通过了限定的相机配对、Linux 识别、命名及重命名持久化检查。此前 X11 输入检查是独立结果；真实 Wayland 合成器及实体 Linux 桌面输入仍待验收，见 [0.7.1 设备测试记录](docs/verification/receiver-0.7.1.md)。 |
@@ -86,7 +86,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 ### 安装 iPhone App 并配对
 
-1. [加入 TestFlight 公测](https://testflight.apple.com/join/e6MuKx9S)，安装 **iPhone 1.0 (16)** 和**接收器 0.7.2 beta.1**，获取重连修复。接收器二维码最低要求 iPhone 构建 15。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
+1. [加入 TestFlight 公测](https://testflight.apple.com/join/e6MuKx9S)，安装 **iPhone 1.0 (18)** 和**接收器 0.7.2 beta.1**，获取重连修复。接收器二维码最低要求 iPhone 构建 15。自行构建时，在 Xcode 中打开 `ios/SofaTap.xcodeproj`，选择自己的开发团队和已连接的 iPhone 后运行；这条安装路径需要有效开发签名、设备配对和开发者模式。见 [iOS 构建说明](ios/README.md)。
 2. 将 iPhone 与电脑接入可互通的家庭网络。访客 Wi-Fi 的设备隔离可能阻止连接。
 3. 点击左上角设备选择入口，在**添加设备**下选择**扫描二维码**。电脑与 Android/Google TV 共用扫码页，认证成功后进入命名步骤。扫描接收端原生窗口里的二维码，或粘贴完整配对链接。
 4. 在电脑上选中输入框，再打开手机键盘或麦克风。受支持的字段自动同步打字、删除和识别文字；其他字段显示**发送**按钮，供检查草稿后发送。焦点冲突或断线导致实时输入暂停时，先检查电脑，再明确重新打开编辑器；不确定的编辑不会自动重放。
