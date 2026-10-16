@@ -55,6 +55,10 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 ビルド 16 では、下書きモードのキーボードの削除キーは未送信の文字を iPhone 上で削除します。ローカルの下書きを消去した後は、パソコンの選択中の入力欄を編集できます。独立した「パソコンの Backspace」アイコンは、iPhone の下書きを消さずにパソコンの現在の入力位置で削除します。リアルタイム編集では従来どおり削除を同期します。[実機 iPhone と記録専用受信アプリの検証](docs/verification/input-1.0-16.md)は完了しましたが、Windows アプリでの動作確認とは別です。従来のビルド 15 の動作は変わりません。
 
+## ジェスチャーのカスタマイズ（開発中）
+
+現在の開発ソースでは、タッチ領域の歯車から Sofatap、トラックパッド操作、長押しショートカットのプリセットを選び、タップ、左右のダブルタップ、2本指・3本指タップ、長押し、スライドに操作を割り当てられます。パソコン用とテレビ用の設定は iPhone 内に別々に保存されます。判定時間やスクロール方向の調整、プリセットへの復元、オフラインの練習も可能です。テレビの操作候補は受信アプリの対応機能に制限されます。[設定と検証範囲](docs/GESTURES.md)を参照してください。この機能は公開済みのビルド17には含まれません。
+
 ## プラットフォーム別の状況
 
 | プラットフォーム | 現在の状況 |
@@ -141,7 +145,7 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
-swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+swiftc ios/SofaTap/Core/GestureConfiguration.swift ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
 /tmp/sofatap-gesture-tests
 python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device

@@ -25,6 +25,7 @@ xcrun --sdk macosx swiftc -parse-as-library -swift-version 5 \
     "$REPO_ROOT/ios/SofaTap/Views/NativeControls.swift" \
     "$REPO_ROOT/ios/SofaTap/Views/TouchParticleRenderer.swift" \
     "$REPO_ROOT/ios/SofaTap/Core/TouchGestureState.swift" \
+    "$REPO_ROOT/ios/SofaTap/Core/GestureConfiguration.swift" \
     "$REPO_ROOT/tests/PairingAttemptTests.swift" \
     -o "$PAIRING_STAGE/pairing-attempt-tests"
 "$PAIRING_STAGE/pairing-attempt-tests"

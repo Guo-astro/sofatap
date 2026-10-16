@@ -55,6 +55,10 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 构建 16 中，草稿模式的键盘退格先删除手机上未发送的文字；清空本地草稿后，键盘退格可删除电脑当前输入框中的文字。独立的“电脑退格”图标作用于电脑当前输入位置，不删除手机草稿。实时编辑继续正常同步删除。这些更新已通过[真 iPhone 到记录型接收器的检查](docs/verification/input-1.0-16.md)，不代表 Windows 应用端验收；旧构建 15 保持原有行为。
 
+## 自定义手势（开发中）
+
+当前开发源码在触控区新增齿轮入口。可以选择 Sofatap、触控板习惯或长按快捷操作预设，再为单击、左右区双击、双指/三指轻点、长按与滑动分别指定动作。电脑与电视的偏好在 iPhone 上独立保存；可以调整判定时间和滚动方向、恢复预设，或在离线练习区试用。电视可选动作受接收端能力限制。详情和验证范围见[手势设置说明](docs/GESTURES.md)。此功能尚不包含在已发布的构建 17 中。
+
 ## 平台进度
 
 | 平台 | 当前状态 |
@@ -141,7 +145,7 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
-swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+swiftc ios/SofaTap/Core/GestureConfiguration.swift ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
 /tmp/sofatap-gesture-tests
 python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device

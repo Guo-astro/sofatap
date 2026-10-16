@@ -220,11 +220,13 @@ struct TouchSurface: UIViewRepresentable {
     let enabled: Bool
     var control: Control? = nil
     var profile: TouchGestureState.Profile = .desktop
+    var configuration: GestureConfiguration? = nil
     let onMove: (Double, Double) -> Void
     let onLeftTap: () -> Void
     let onRightTap: () -> Void
     let onDraggingChanged: (Bool) -> Void
     let onScroll: (Double) -> Void
+    var onShortcut: (GestureAction) -> Void = { _ in }
 
     /// Overlay controls cancel the underlying pad synchronously before opening
     /// another UI. This also cancels deferred taps and releases an active drag.
@@ -249,6 +251,7 @@ struct TouchSurface: UIViewRepresentable {
         private var parent: TouchSurface?
         private var state = TouchGestureState()
         private var contacts: [ObjectIdentifier: CGPoint] = [:]
+        private var contactOrigins: [ObjectIdentifier: CGPoint] = [:]
         private var deadlineTimer: Timer?
         private var active = true
         private lazy var effects = TouchParticleRenderer(in: layer)
@@ -264,12 +267,16 @@ struct TouchSurface: UIViewRepresentable {
         deinit { deadlineTimer?.invalidate(); NotificationCenter.default.removeObserver(self) }
 
         func configure(_ parent: TouchSurface) {
-            if state.profile != parent.profile {
+            let configuration = (parent.configuration ?? GestureConfiguration(target: parent.profile == .desktop ? .computer : .television))
+                .sanitized(for: parent.profile == .desktop ? .computer : .television)
+            if state.profile != parent.profile || state.configuration != configuration {
                 deadlineTimer?.invalidate()
                 deadlineTimer = nil
                 contacts.removeAll()
+                contactOrigins.removeAll()
                 // Keep the previous callbacks installed until its button is released.
-                dispatch(state.changeProfile(to: parent.profile))
+                dispatch(state.cancel())
+                state = TouchGestureState(profile: parent.profile, configuration: configuration)
                 effects.clear()
             }
             if !parent.enabled && self.parent?.enabled == true {
@@ -282,9 +289,7 @@ struct TouchSurface: UIViewRepresentable {
             self.parent = parent
             parent.control?.view = self
             accessibilityLabel = parent.profile == .desktop ? String(localized: "电脑触控板") : String(localized: "电视触控板")
-            accessibilityHint = parent.profile == .desktop
-                ? String(localized: "滑动移动光标；轻点左键；左半区连续轻点两下双击左键；右半区连续轻点两下双击右键；按住零点三秒拖动；双指滑动滚动")
-                : String(localized: "滑动移动电视光标；轻点确认；双指滑动滚动")
+            accessibilityHint = String(localized: "在手势设置中查看和修改操作。")
             accessibilityCustomActions = [
                 UIAccessibilityCustomAction(name: parent.profile == .desktop ? String(localized: "左键单击") : String(localized: "确认"), target: self, selector: #selector(accessibleLeftClick))
             ]
@@ -335,12 +340,17 @@ struct TouchSurface: UIViewRepresentable {
             deadlineTimer?.invalidate()
             deadlineTimer = nil
             contacts.removeAll()
+            contactOrigins.removeAll()
             dispatch(state.cancel())
             effects.clear()
         }
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { return }
-            for touch in touches { contacts[ObjectIdentifier(touch)] = touch.location(in: self) }
+            for touch in touches {
+                let id = ObjectIdentifier(touch), point = touch.location(in: self)
+                contacts[id] = point
+                contactOrigins[id] = point
+            }
             effectPoint = CGPoint(x: centroid.x, y: centroid.y)
             dispatch(state.begin(at: centroid, count: contacts.count, time: event?.timestamp ?? now, region: touchRegion))
             effects.beginContact(at: effectPoint)
@@ -350,7 +360,11 @@ struct TouchSurface: UIViewRepresentable {
             guard parent?.enabled == true, active else { cancelInput(); return }
             guard touches.contains(where: { contacts[ObjectIdentifier($0)] != nil }) else { return }
             for touch in touches where contacts[ObjectIdentifier(touch)] != nil {
-                contacts[ObjectIdentifier(touch)] = touch.location(in: self)
+                let id = ObjectIdentifier(touch), point = touch.location(in: self)
+                if let origin = contactOrigins[id], hypot(point.x - origin.x, point.y - origin.y) > TouchGestureState.stationaryMovementTolerance {
+                    state.invalidateStationaryGestures()
+                }
+                contacts[id] = point
             }
             if !contacts.isEmpty {
                 effectPoint = CGPoint(x: centroid.x, y: centroid.y)
@@ -365,7 +379,11 @@ struct TouchSurface: UIViewRepresentable {
             // Its later UIKit end event must not end a new finger's gesture.
             guard touches.contains(where: { contacts[ObjectIdentifier($0)] != nil }) else { return }
             for touch in touches where contacts[ObjectIdentifier(touch)] != nil {
-                contacts[ObjectIdentifier(touch)] = touch.location(in: self)
+                let id = ObjectIdentifier(touch), point = touch.location(in: self)
+                if let origin = contactOrigins[id], hypot(point.x - origin.x, point.y - origin.y) > TouchGestureState.stationaryMovementTolerance {
+                    state.invalidateStationaryGestures()
+                }
+                contacts[id] = point
             }
             let finalPoint = centroid
             let finalRegion = touchRegion
@@ -374,8 +392,13 @@ struct TouchSurface: UIViewRepresentable {
                 lastLiftPoint = effectPoint
                 effects.updateContact(at: effectPoint)
             }
-            for touch in touches { contacts.removeValue(forKey: ObjectIdentifier(touch)) }
-            dispatch(state.end(at: finalPoint, remainingCount: contacts.count, time: event?.timestamp ?? now, region: finalRegion))
+            for touch in touches {
+                let id = ObjectIdentifier(touch)
+                contacts.removeValue(forKey: id)
+                contactOrigins.removeValue(forKey: id)
+            }
+            dispatch(state.end(at: finalPoint, remainingCount: contacts.count, time: event?.timestamp ?? now, region: finalRegion,
+                               remainingPoint: contacts.isEmpty ? nil : centroid))
             effects.endContact()
             scheduleDeadline()
         }
@@ -424,6 +447,9 @@ struct TouchSurface: UIViewRepresentable {
                 case .scroll(let dy):
                     parent.onScroll(dy)
                     effects.moveTrail(to: effectPoint, scrolling: true)
+                case .shortcut(let action):
+                    parent.onShortcut(action)
+                    effects.click(at: effectPoint, double: false)
                 }
             }
         }

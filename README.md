@@ -55,6 +55,10 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 In build 16, keyboard Backspace edits an unsent fallback draft locally. After clearing the local draft, keyboard Backspace can delete text at the computer’s focused input position. The separate computer Backspace icon acts on that position without deleting the phone draft. Live editing continues to synchronize deletions normally. These changes passed [physical iPhone-to-recording-receiver checks](docs/verification/input-1.0-16.md), which do not establish Windows application acceptance; earlier build 15 retains its earlier behavior.
 
+## Custom gestures (development)
+
+The current development source adds a gear button on the touchpad. Choose Sofatap, Trackpad habits or Press for shortcuts, then assign actions to taps, left/right double-taps, two/three-finger taps, holds and slides. Computer and TV preferences are saved separately on the iPhone. Adjust timing and scroll direction, restore a preset, or try gestures in the offline practice pad. TV choices are limited to the receiver’s capabilities. See [gesture settings](docs/GESTURES.md) for details and validation limits. This feature is not part of the already published build 17.
+
 ## Platform status
 
 | Platform | Current status |
@@ -141,7 +145,7 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
-swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+swiftc ios/SofaTap/Core/GestureConfiguration.swift ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
 /tmp/sofatap-gesture-tests
 python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device
