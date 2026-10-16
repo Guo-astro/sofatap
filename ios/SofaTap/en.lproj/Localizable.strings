@@ -400,7 +400,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS uses the TV’s pointer interface. Click acts at the pointer position; Confirm acts on the highlighted item. Results depend on the TV and app.";
 "接收器当前可用操作" = "Controls reported by the receiver";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "TV control does not yet support right-click, mouse double-click, dragging, keyboard or voice input.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Assign Confirm, Back and Home in Gesture Settings. Back and Home also have buttons at the bottom of the touch area.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Assign Confirm, Back and Home in Gesture Settings. Back and Home also have dedicated buttons.";
 "等待设备报告" = "Waiting for device details";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "The right edge always scrolls. Gestures use your current mappings above. The target content must support scrolling.";
 "点击光标下的可访问控件" = "Click an accessible control under the cursor";
@@ -411,3 +411,48 @@
 "当前没有可确认的高亮项，请先用电视方向键选择。" = "No highlighted item can be confirmed. Select one with the TV’s direction buttons first.";
 "此位置无法点击。请移动到可点击控件，或使用确认高亮项。" = "This position cannot be clicked. Move to a clickable control, or use Confirm for the highlighted item.";
 "此区域无法滚动。请把光标移到可滚动区域。" = "This area cannot scroll. Move the cursor to a scrollable area.";
+
+/* Native TV navigation, pairing, and optional keyboard input. */
+"上次操作可能已执行。请检查电视，删除草稿中已经输入的内容，再继续发送。不会自动重发。" = "The last action may already have run. Check the TV, remove any text already entered from the draft, then continue sending. Nothing is resent automatically.";
+"上次输入结果未确认，请先检查电视。" = "The last input was not confirmed. Check the TV first.";
+"光标模式" = "Pointer Mode";
+"切换电视遥控与光标模式" = "Switch between TV remote and pointer modes";
+"在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Swipe left or right across the small area in the bottom-right corner to find the mode button and switch to the pointer. Gesture settings affect pointer mode only; your computer settings stay unchanged.";
+"向上" = "Up";
+"向下" = "Down";
+"向右" = "Right";
+"向左" = "Left";
+"在电视上显示配对码" = "Show Pairing Code on TV";
+"在电视设置中启用并选择 Sofatap 输入法，再选中电视上的输入框。手机键盘或本机听写生成草稿，发送后插入电视当前光标位置；不会替换整个输入框。" = "Enable and select the Sofatap keyboard in TV settings, then select a text field on the TV. The phone keyboard or on-device dictation creates a draft. Sending inserts it at the TV’s caret; it does not replace the whole field.";
+"安全输入框不接受手机输入。" = "Protected fields do not accept input from the phone.";
+"已查看电视" = "I’ve Checked the TV";
+"当前接收器暂不支持电视文字输入。" = "This receiver does not yet support TV text input.";
+"执行电视输入框操作" = "Perform TV Field Action";
+"方向键与确认" = "Direction Buttons and Select";
+"检查电视后继续" = "Check the TV Before Continuing";
+"正在发送…" = "Sending…";
+"此接收器暂不提供系统遥控，请更新接收器或使用光标模式。" = "This receiver does not yet provide system remote control. Update the receiver or use pointer mode.";
+"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。" = "Direction hints appear when your finger touches the touch surface. Swipe left, right, up, or down to move the TV highlight, and tap to select. The hints disappear when you lift your finger. Back and Home appear in the bottom-right corner by default. Swipe left or right across this small area to find other controls. This mode does not move a mouse pointer.";
+"电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。" = "TV right-click, mouse double-click and drag are not supported yet. Text input requires the Sofatap keyboard.";
+"电视输入框已变化，请重新选中输入框后发送。" = "The TV field changed. Select the field again before sending.";
+"电视退格" = "TV Backspace";
+"电视配对码" = "TV Pairing Code";
+"电视键盘与语音输入" = "TV Keyboard and Dictation";
+"确认配对" = "Confirm Pairing";
+"草稿清空只作用于手机。电视退格直接删除电视光标前的文字；发送完成后，回车按钮执行搜索或当前输入框操作。安全输入框及未提供标准输入接口的页面不支持。" = "Clearing the draft affects only the phone. TV Backspace deletes text before the TV’s caret. After sending, the Return button runs Search or the field’s current action. Protected fields and pages without a standard text-input interface are unsupported.";
+"要发送到电视的文字草稿" = "Text draft to send to the TV";
+"请先在电视上选中输入框。" = "Select a text field on the TV first.";
+"请先连接电视系统遥控服务。" = "Connect to the TV’s system remote service first.";
+"请在电视的键盘设置中启用并选择 Sofatap 输入法。" = "Enable and select the Sofatap keyboard in the TV’s keyboard settings.";
+"轻震动表示手机已接收操作；电视是否执行请以画面为准。操作被拒绝时会显示提示并给出不同反馈。" = "A light vibration means the phone received your action. Check the TV screen to see whether it ran. Rejected actions show a message and give different feedback.";
+"输入或听写，发送到电视当前输入框" = "Type or dictate, then send to the current TV field";
+"输入电视画面上显示的 6 位配对码。" = "Enter the 6-character pairing code shown on the TV.";
+"连接后，方向键和确认键会像电视遥控器一样工作。光标模式仍可单独使用。" = "Once connected, the direction and Select buttons work like a TV remote. Pointer mode remains available separately.";
+"连接电视遥控" = "Connect TV Remote";
+"配对码未被接受，请核对电视上显示的代码。" = "The pairing code was not accepted. Check the code shown on the TV.";
+"首次使用系统遥控时，按提示输入电视上显示的配对码。" = "The first time you use system remote control, enter the pairing code shown on the TV when prompted.";
+
+/* Paged TV quick controls. */
+"电视快捷操作" = "TV quick controls";
+"左右滑动切换操作" = "Swipe left or right to change controls";
+"操作页 %1$d，共 %2$d 页" = "Controls page %1$d of %2$d";

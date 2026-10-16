@@ -102,6 +102,177 @@ private final class MemoryStore: AndroidTVPairingStorage {
         rejected("nonfinite movement disallowed") { _ = try AndroidTVProtocol.encode(.move(dx: .nan, dy: 1), id: UUID().uuidString) }
         rejected("unbounded movement disallowed") { _ = try AndroidTVProtocol.encode(.scroll(dx: 0, dy: 501), id: UUID().uuidString) }
         check("click carries no raw button", try AndroidTVProtocol.encode(.click, id: UUID().uuidString).contains("click"))
+        let editorID = UUID()
+        func extendedStatus(navigation: String = "ready", text: String = "ready", editor: UUID? = editorID, accessible: Bool = false) -> [String: Any] {
+            var status = Rig.status(accessible)
+            var controls: [String: Any] = ["version": 1, "navigationStatus": navigation, "textStatus": text]
+            if text == "ready", let editor { controls["editorEpoch"] = editor.uuidString }
+            status["tvControls"] = controls
+            return status
+        }
+        func extendedReady(_ rig: Rig, _ status: [String: Any]) -> Socket {
+            let socket = rig.pair()
+            var hello = Rig.hello()
+            for (key, value) in status { hello[key] = value }
+            socket.reply(hello)
+            return socket
+        }
+        do {
+            let status = extendedStatus()
+            var hello = Rig.hello(); status.forEach { hello[$0.key] = $0.value }
+            guard case .hello(_, let parsed, _) = try AndroidTVProtocol.parse(encoded(hello)) else { preconditionFailure() }
+            check("native TV extension keeps legacy text false and reads separate editor epoch", parsed.tvControls?.editorEpoch == editorID && !parsed.available)
+            for changes: [String: Any] in [["version": true], ["version": 2], ["navigationStatus": "invented"], ["textStatus": "invented"], ["editorEpoch": "bad"], ["textStatus": "sensitive"], ["extra": true]] {
+                var bad = hello, controls = bad["tvControls"] as! [String: Any]
+                changes.forEach { controls[$0.key] = $0.value }; bad["tvControls"] = controls
+                rejected("malformed TV controls fail closed") { _ = try AndroidTVProtocol.parse(encoded(bad)) }
+            }
+            var missing = hello, controls = missing["tvControls"] as! [String: Any]
+            controls.removeValue(forKey: "editorEpoch"); missing["tvControls"] = controls
+            rejected("ready text requires an epoch") { _ = try AndroidTVProtocol.parse(encoded(missing)) }
+            rejected("pairing code cannot contain other characters") { _ = try AndroidTVProtocol.encode(.remotePairCode("12345!"), id: UUID().uuidString) }
+            rejected("text is byte bounded, not character bounded") { _ = try AndroidTVProtocol.encode(.textCommit(editorEpoch: editorID, text: String(repeating: "猫", count: 1366)), id: UUID().uuidString) }
+            rejected("text NUL is refused") { _ = try AndroidTVProtocol.encode(.textCommit(editorEpoch: editorID, text: "a\0b"), id: UUID().uuidString) }
+            check("multilingual insertion is encoded without shell or key emulation", try AndroidTVProtocol.encode(.textCommit(editorEpoch: editorID, text: "你好 こんにちは 👩🏽‍💻"), id: UUID().uuidString).contains("text_commit"))
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            check("native navigation and text do not depend on accessibility", rig.controller.canNavigate && rig.controller.canInputText && rig.controller.canControl)
+            check("direction accepted", rig.controller.remoteKey(.down))
+            check("native key is never a legacy node click", socket.sent[0]["type"] as? String == "remote_key" && socket.sent[0]["key"] as? String == "down")
+            check("press feedback is immediate before ACK", rig.controller.acceptedInputFeedback == 1)
+            socket.ack(0, ok: false, extra: state.merging(["error": "remote_unavailable"], uniquingKeysWith: { _, new in new }))
+            check("rejected discrete action has separate feedback", rig.controller.rejectedInputFeedback == 1 && rig.controller.inputFeedback != nil)
+            rig.controller.textDraft.text = "第一段"
+            check("first text sends", rig.controller.sendTextDraft())
+            rig.controller.textDraft.text += "追加内容"
+            socket.ack(1, extra: state)
+            check("ACK removes only sent prefix and keeps appended dictation", rig.controller.textDraft.text == "追加内容" && rig.controller.canSendText)
+            _ = rig.controller.sendTextDraft()
+            check("second text is only unsent append", socket.sent[2]["text"] as? String == "追加内容")
+            socket.ack(2, extra: state)
+            check("acknowledged insertions are not retained for automatic resend", rig.controller.textDraft.text.isEmpty && !rig.controller.canSendText)
+            check("backspace supported after draft is empty", rig.controller.textBackspace())
+            socket.ack(3, extra: state)
+            check("editor action has epoch", rig.controller.performTextAction() && socket.sent[4]["editorEpoch"] as? String == editorID.uuidString)
+            socket.ack(4, extra: state)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            rig.controller.textDraft.text = "potentially sent"
+            _ = rig.controller.sendTextDraft()
+            socket.onFailure?(.transient)
+            check("lost text ACK is uncertain and retains local text", rig.controller.textDraft.delivery == .uncertain && rig.controller.textDraft.text == "potentially sent")
+            rig.scheduled.last!.retry()
+            let resumed = rig.sockets.last!
+            var hello = Rig.hello(token: nil); state.forEach { hello[$0.key] = $0.value }; resumed.reply(hello)
+            check("reconnect never repeats uncertain insertion", resumed.sent.isEmpty && !rig.controller.canSendText)
+            rig.controller.textDraft.resolve()
+            check("only explicit local acknowledgement permits another send", rig.controller.canSendText)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            _ = rig.controller.remoteKey(.right)
+            rig.controller.textDraft.text = "unsent target-bound text"
+            _ = rig.controller.sendTextDraft()
+            socket.ack(0, extra: extendedStatus(editor: UUID()))
+            check("a queued insertion cannot cross editor epochs", socket.sent.count == 1 && !rig.controller.textCommandPending && rig.controller.textDraft.text == "unsent target-bound text")
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(navigation: "pairing_required", text: "ime_required"), socket = extendedReady(rig, state)
+            rig.controller.pauseInput()
+            check("pairing is explicit and remains available while input is paused for its sheet", rig.controller.startRemotePairing())
+            check("pairing cannot start twice concurrently", !rig.controller.startRemotePairing())
+            socket.ack(0, extra: extendedStatus(navigation: "pairing", text: "ime_required"))
+            check("valid code accepted while sheet pauses gestures", rig.controller.submitRemotePairingCode("Ab12cD"))
+            check("code sent in canonical hexadecimal form", socket.sent[1]["code"] as? String == "AB12CD")
+            socket.ack(1, extra: extendedStatus(navigation: "ready", text: "ime_required"))
+            rig.controller.resumeInput()
+            check("paired remote works without enabling text or accessibility", rig.controller.canNavigate && !rig.controller.canInputText)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            check("legacy receiver cannot receive extended commands", !rig.controller.remoteKey(.confirm) && !rig.controller.startRemotePairing())
+            rig.controller.textDraft.text = "local only"
+            check("legacy receiver cannot receive draft", !rig.controller.sendTextDraft() && socket.sent.isEmpty)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            _ = rig.controller.remoteKey(.down)
+            rig.controller.textDraft.text = "never sent"
+            _ = rig.controller.sendTextDraft()
+            _ = rig.controller.remoteKey(.back)
+            socket.ack(0, extra: state)
+            check("Back discards only queued text before leaving a page", socket.sent.count == 2 && socket.sent[1]["key"] as? String == "back" && rig.controller.textDraft.text == "never sent" && rig.controller.textDraft.delivery != .uncertain)
+            socket.ack(1, extra: state)
+            _ = rig.controller.textBackspace()
+            socket.onFailure?(.transient)
+            check("unacknowledged backspace is uncertain too", rig.controller.textDraft.delivery == .uncertain)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            rig.controller.textDraft.text = "awaiting ack"
+            _ = rig.controller.sendTextDraft()
+            socket.ack(0)
+            check("extended text ACK must include fresh control status", rig.controller.phase == .failed && rig.controller.textDraft.delivery == .uncertain)
+            rig.controller.disconnect()
+        }
+        for textStatus in ["ime_required", "no_editor", "sensitive"] {
+            let rig = Rig(), socket = extendedReady(rig, extendedStatus(text: textStatus))
+            rig.controller.textDraft.text = "not an editor"
+            check("text never sends while IME absent, no field or sensitive", !rig.controller.sendTextDraft() && !rig.controller.textBackspace() && !rig.controller.performTextAction() && socket.sent.isEmpty)
+            rig.controller.disconnect()
+        }
+        do {
+            var draft = AndroidTVTextDraft(); draft.text = "old"
+            _ = draft.begin(); draft.text = "edited before ACK"; draft.accepted()
+            check("editing submitted prefix cannot guess duplicate-free resend", draft.delivery == .uncertain && draft.text == "edited before ACK")
+            draft.clear(); draft.text = "new"; _ = draft.begin(); draft.interrupted(wasSent: false)
+            check("cancelled unsent queue remains safely editable", draft.delivery == .ready && draft.text == "new")
+            var gesture = AndroidTVNavigationGesture()
+            check("small movement does not navigate", gesture.move(x: 8, y: 3, time: 1) == nil)
+            check("horizontal swipe emits remote right", gesture.move(x: 29, y: 3, time: 1.01) == .right)
+            check("fast motion is rate limited", gesture.move(x: 70, y: 3, time: 1.03) == nil)
+            check("later movement emits one step without replaying backlog", gesture.move(x: 130, y: 3, time: 1.14) == .right)
+            gesture.reset()
+            check("reset prevents prior movement leaking to next gesture", gesture.move(x: 0, y: -29, time: 2) == .up)
+            check("invalid movement emits no key", gesture.move(x: .nan, y: 50, time: 3) == nil)
+            var contact = AndroidTVNavigationContact()
+            contact.begin(x: 200, y: 300, time: 1)
+            check("finger contact uses local start position", contact.move(x: 230, y: 300, time: 1.04) == .right)
+            check("a navigation swipe cannot end as OK", contact.end(x: 230, y: 300, time: 1.1) == nil)
+            contact.begin(x: 200, y: 300, time: 2)
+            check("a short single contact confirms", contact.end(x: 202, y: 302, time: 2.1) == .confirm)
+            check("release never confirms twice", contact.end(x: 202, y: 302, time: 2.2) == nil)
+            contact.begin(x: 200, y: 300, time: 3)
+            check("small swipe without a direction does not misfire OK", contact.end(x: 220, y: 300, time: 3.1) == nil)
+            contact.begin(x: 200, y: 300, time: 4)
+            check("stationary long hold does not confirm", contact.end(x: 200, y: 300, time: 5) == nil)
+            contact.begin(x: 200, y: 300, time: 6); contact.cancel()
+            check("cancelled or multi-touch contact cannot send delayed direction", contact.move(x: 260, y: 300, time: 6.1) == nil)
+            check("cancelled or multi-touch contact cannot send OK on release", contact.end(x: 200, y: 300, time: 6.2) == nil)
+            contact.begin(x: 200, y: 300, time: 7)
+            check("upward finger swipe maps to remote up", contact.move(x: 200, y: 270, time: 7.1) == .up)
+            _ = contact.end(x: 200, y: 270, time: 7.2)
+            contact.begin(x: 200, y: 300, time: 8)
+            check("invalid final contact is never a confirmation", contact.end(x: .nan, y: 300, time: 8.1) == nil)
+            contact.begin(x: 200, y: 300, time: 9)
+            check("fast swipe without intermediate samples still navigates once", contact.end(x: 160, y: 300, time: 9.1) == .left)
+            contact.begin(x: 200, y: 300, time: 10)
+            // An auxiliary button cancels contact synchronously before issuing
+            // Back/Home, even when its touch belongs to a different native view.
+            contact.cancel()
+            check("cross-view Back/Home cancels a resting finger before its release", contact.end(x: 200, y: 300, time: 10.15) == nil)
+
+
+
+        }
         do {
             let rig = Rig(), socket = rig.ready()
             rig.controller.scroll(dy: -12)
@@ -197,9 +368,30 @@ private final class MemoryStore: AndroidTVPairingStorage {
             rig.controller.key(navigation)
             check("navigation waits for the single in-flight action", rig.controller.canControl && socket.sent.count == 1)
             socket.ack(0)
-            check("navigation follows the ACK without replaying queued gestures", socket.sent.count == 2 && socket.sent[1]["type"] as? String == "key" && socket.sent[1]["key"] as? String == navigation.rawValue)
+            check("a scroll burst stays coalesced ahead of deliberate actions", socket.sent.count == 2 && socket.sent[1]["type"] as? String == "scroll")
             socket.ack(1)
-            check("leaving a page cannot replay stale clicks or scrolling", socket.sent.count == 2)
+            check("navigation cannot silently discard an explicit queued click", socket.sent.count == 3 && socket.sent[2]["type"] as? String == "click")
+            socket.ack(2)
+            check("navigation follows earlier accepted input in FIFO order", socket.sent.count == 4 && socket.sent[3]["key"] as? String == navigation.rawValue)
+            socket.ack(3)
+            check("coalesced burst has no remaining backlog", socket.sent.count == 4)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.move(dx: 12, dy: -3)
+            rig.controller.click(); rig.controller.scroll(dy: -9)
+            rig.controller.key(.back); rig.controller.key(.home)
+            for index in 0..<5 { socket.ack(index) }
+            check("legacy move-click-scroll-Back-Home preserves every accepted action", socket.sent.map { $0["type"] as? String } == ["move", "click", "scroll", "key", "key"] && socket.sent[3]["key"] as? String == "back" && socket.sent[4]["key"] as? String == "home")
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), state = extendedStatus(), socket = extendedReady(rig, state)
+            _ = rig.controller.remoteKey(.right); _ = rig.controller.remoteKey(.confirm)
+            _ = rig.controller.remoteKey(.back); _ = rig.controller.remoteKey(.home)
+            for index in 0..<4 { socket.ack(index, extra: state) }
+            check("native Home never erases queued confirmation or Back", socket.sent.compactMap { $0["key"] as? String } == ["right", "confirm", "back", "home"])
             rig.controller.disconnect()
         }
         do {

@@ -12,6 +12,7 @@
 		0C3B35855B50DA22F878C842 /* PairingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8F19D4B8423478A9CA42C50 /* PairingView.swift */; };
 		14781C4CA2D4BF8AA1B01BFC /* AndroidTVController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 51766130EE2B9540E1118AD5 /* AndroidTVController.swift */; };
 		235031F88751C7AF87089F98 /* ControllerModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A3175A3377E3E1F6F1FD381 /* ControllerModel.swift */; };
+		24B7504D534E738295974142 /* AndroidTVControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25BF159DE748CFC489FA86F2 /* AndroidTVControls.swift */; };
 		282012F3931864B44AE6BDED /* UnlockCredentialVault.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */; };
 		2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 895EB1B944638483C701ADDC /* TouchGestureState.swift */; };
 		320D03B356374CB42AB659EB /* GestureConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CD153A949AB5AE1D0EF3CC3 /* GestureConfiguration.swift */; };
@@ -41,12 +42,16 @@
 		A2A404ACCEC5948E6FA6E3D0 /* AndroidTVPairingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 653112145C3AC3F8360E3E33 /* AndroidTVPairingStore.swift */; };
 		A48C6B42061DF866CF421F83 /* ComputerUnlockController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5315D7C30FD44FEBDC00AB29 /* ComputerUnlockController.swift */; };
 		A56D49F018B31B26158F30AA /* AddDeviceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7278E8AE3984D11185A862A /* AddDeviceView.swift */; };
+		B5CFBF6C0FCDCB2F7375011E /* AndroidTVComposer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2579134CBB91C5AF446BB081 /* AndroidTVComposer.swift */; };
 		C82EC59E5997ED1D13DC5853 /* NativeControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = 073F44E198299E317E1E4D3D /* NativeControls.swift */; };
 		D9564E7710C99F8C4C4A87C8 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 1B2A47565A0A05BBDD0E3FFA /* InfoPlist.strings */; };
 		DB24AEDE5DA4BDD2DDD5E78B /* ReceiverState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8836BE62D39309B8AF525D9F /* ReceiverState.swift */; };
+		DDA469CF01E095E18A1A6DEA /* AndroidTVNavigationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 27466787F2CA3B385E583839 /* AndroidTVNavigationView.swift */; };
 		E535D68E8BB20BB759348ADE /* RemoteGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */; };
 		E545FB7FE173DBF5F9706E06 /* WebOSTVController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CF51DCE61822E27D84BBE78 /* WebOSTVController.swift */; };
+		E67E09D46D76CA4E15A1726F /* TVAuxiliaryControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = A5B5E1C1C1C0D5EEC852A841 /* TVAuxiliaryControls.swift */; };
 		E75D5F66DCD0E08ADAA87B62 /* SavedDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E456A2636B418FE1F7D1358 /* SavedDevice.swift */; };
+		F7E1EC778F398C48ED57B813 /* TVAuxiliaryPager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9606A77DF1CE0D82EB3F153F /* TVAuxiliaryPager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -57,6 +62,9 @@
 		1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockCredentialVault.swift; sourceTree = "<group>"; };
 		1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechDictationController.swift; sourceTree = "<group>"; };
 		20F1B0BF662710D27BF406A2 /* GestureLabels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GestureLabels.swift; sourceTree = "<group>"; };
+		2579134CBB91C5AF446BB081 /* AndroidTVComposer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVComposer.swift; sourceTree = "<group>"; };
+		25BF159DE748CFC489FA86F2 /* AndroidTVControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVControls.swift; sourceTree = "<group>"; };
+		27466787F2CA3B385E583839 /* AndroidTVNavigationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AndroidTVNavigationView.swift; sourceTree = "<group>"; };
 		28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteGuideView.swift; sourceTree = "<group>"; };
 		2D0FBB7BB69219144E687559 /* RemoteView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteView.swift; sourceTree = "<group>"; };
 		2EEF117295FCDC44389DDD7D /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
@@ -93,7 +101,9 @@
 		8E456A2636B418FE1F7D1358 /* SavedDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SavedDevice.swift; sourceTree = "<group>"; };
 		951A32A70DFF898858DD7CDD /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		95606E97C5C6FFEA489A4B4B /* de */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = de; path = de.lproj/Localizable.strings; sourceTree = "<group>"; };
+		9606A77DF1CE0D82EB3F153F /* TVAuxiliaryPager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVAuxiliaryPager.swift; sourceTree = "<group>"; };
 		9CD3F8FDD463C84C1A8DE3BD /* ar */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ar; path = ar.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		A5B5E1C1C1C0D5EEC852A841 /* TVAuxiliaryControls.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TVAuxiliaryControls.swift; sourceTree = "<group>"; };
 		A8F19D4B8423478A9CA42C50 /* PairingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairingView.swift; sourceTree = "<group>"; };
 		B2194963D13F182243533BEB /* SofaTapApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SofaTapApp.swift; sourceTree = "<group>"; };
 		B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockProtocol.swift; sourceTree = "<group>"; };
@@ -132,6 +142,7 @@
 				8E456A2636B418FE1F7D1358 /* SavedDevice.swift */,
 				1CFE8991201D1F2D103B6851 /* SpeechDictationController.swift */,
 				895EB1B944638483C701ADDC /* TouchGestureState.swift */,
+				A5B5E1C1C1C0D5EEC852A841 /* TVAuxiliaryControls.swift */,
 				1B97D575181E25F83B3EFBFD /* UnlockCredentialVault.swift */,
 				B4A7AE9B52EF945FBF4ADE53 /* UnlockProtocol.swift */,
 				AA396E4842395A96D1597827 /* TV */,
@@ -158,6 +169,7 @@
 			isa = PBXGroup;
 			children = (
 				51766130EE2B9540E1118AD5 /* AndroidTVController.swift */,
+				25BF159DE748CFC489FA86F2 /* AndroidTVControls.swift */,
 				653112145C3AC3F8360E3E33 /* AndroidTVPairingStore.swift */,
 				D18FB04130086BA45CCC4601 /* AndroidTVProtocol.swift */,
 				522343BC19D300FF01229D20 /* AndroidTVSocket.swift */,
@@ -181,6 +193,8 @@
 			isa = PBXGroup;
 			children = (
 				B7278E8AE3984D11185A862A /* AddDeviceView.swift */,
+				2579134CBB91C5AF446BB081 /* AndroidTVComposer.swift */,
+				27466787F2CA3B385E583839 /* AndroidTVNavigationView.swift */,
 				E6DC33E8052762AFA900FC59 /* AndroidTVPairingView.swift */,
 				85379312D5D6E9D72286A890 /* ComputerUnlockView.swift */,
 				0416314FF9ABB35588FD4779 /* EdgeScrollStrip.swift */,
@@ -192,6 +206,7 @@
 				28E007C2BEF814D3E66D04AD /* RemoteGuideView.swift */,
 				2D0FBB7BB69219144E687559 /* RemoteView.swift */,
 				4B99D4BAF864FB311C326502 /* TouchParticleRenderer.swift */,
+				9606A77DF1CE0D82EB3F153F /* TVAuxiliaryPager.swift */,
 				54AF04458B57B98FBC0F3928 /* TVPairingView.swift */,
 			);
 			path = Views;
@@ -290,7 +305,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A56D49F018B31B26158F30AA /* AddDeviceView.swift in Sources */,
+				B5CFBF6C0FCDCB2F7375011E /* AndroidTVComposer.swift in Sources */,
 				14781C4CA2D4BF8AA1B01BFC /* AndroidTVController.swift in Sources */,
+				24B7504D534E738295974142 /* AndroidTVControls.swift in Sources */,
+				DDA469CF01E095E18A1A6DEA /* AndroidTVNavigationView.swift in Sources */,
 				A2A404ACCEC5948E6FA6E3D0 /* AndroidTVPairingStore.swift in Sources */,
 				0880E9F8731F50DEA8E7378E /* AndroidTVPairingView.swift in Sources */,
 				57D1C6677714CCDE21AC5467 /* AndroidTVProtocol.swift in Sources */,
@@ -316,6 +334,8 @@
 				E75D5F66DCD0E08ADAA87B62 /* SavedDevice.swift in Sources */,
 				993101E15B174AACF754C9CD /* SofaTapApp.swift in Sources */,
 				9B23565B2FC4026413463FBB /* SpeechDictationController.swift in Sources */,
+				E67E09D46D76CA4E15A1726F /* TVAuxiliaryControls.swift in Sources */,
+				F7E1EC778F398C48ED57B813 /* TVAuxiliaryPager.swift in Sources */,
 				93F0C888DB704DABA66D5901 /* TVPairingView.swift in Sources */,
 				2CA8D98DD58E0E28DC36DD7A /* TouchGestureState.swift in Sources */,
 				62AA238634D7F21FECC82508 /* TouchParticleRenderer.swift in Sources */,
@@ -377,7 +397,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -397,7 +417,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 20;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = SofaTap/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -49,7 +49,7 @@ public class ReceiverServerTest {
     }
 
     @After public void stopAllLocalResources() throws Exception {
-        input.release.countDown(); server.close();
+        input.release.countDown(); input.releaseDisconnect.countDown(); server.close();
         for (SocketPeer peer : peers) if (peer.socket != null) peer.socket.cancel();
         for (SSLSocket socket : rawSockets) socket.close();
         client.connectionPool().evictAll(); client.dispatcher().executorService().shutdownNow();
@@ -64,6 +64,49 @@ public class ReceiverServerTest {
         SocketPeer resumed = connect(token); assertFalse(resumed.message().has("pairingToken"));
         assertTrue(resumed.socket.send(action(UUID.randomUUID().toString(), "click")));
         assertTrue(resumed.message().getBoolean("ok")); assertEquals(1, input.applied.get());
+    }
+
+    @Test public void naturalWorkerExitInvalidatesOldInputBeforeAReplacementCanAcquireHello() throws Exception {
+        SocketPeer first = connect(bootstrap); String token = first.message().getString("pairingToken");
+        input.blockDisconnect = true;
+        first.socket.cancel();
+        assertTrue(input.disconnectEntered.await(2, TimeUnit.SECONDS));
+        SocketPeer resumed = connect(token);
+        // The replacement connection blocks at listener registration or ownership
+        // acquisition while the old driver's invalidation is deliberately held here.
+        await(() -> Thread.getAllStackTraces().entrySet().stream().anyMatch(entry ->
+            entry.getKey().getState() == Thread.State.BLOCKED && Arrays.stream(entry.getValue()).anyMatch(frame ->
+                frame.getClassName().equals(ReceiverServer.class.getName()) &&
+                    (frame.getMethodName().equals("handle") || frame.getMethodName().equals("accept")))));
+        assertTrue("New hello must wait for old-session invalidation", resumed.messages.isEmpty());
+        input.blockDisconnect = false; input.releaseDisconnect.countDown();
+        assertEquals("hello", resumed.message().getString("type"));
+        resumed.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(resumed.message().getBoolean("ok"));
+        assertEquals(1, input.disconnections.get()); assertEquals(1, input.applied.get()); assertTrue(server.connected());
+    }
+
+    @Test public void extendedActionsCarryFreshStatusWithLegacyAccessibilityUnavailable() throws Exception {
+        input.nativeControls = true;
+        SocketPeer peer = connect(bootstrap); JSONObject hello = peer.message();
+        assertFalse(hello.getBoolean("inputAvailable"));
+        assertFalse(hello.getJSONObject("capabilities").getBoolean("text"));
+        assertEquals("ready", hello.getJSONObject("tvControls").getString("navigationStatus"));
+        String command = new JSONObject().put("id", UUID.randomUUID().toString()).put("type", "remote_key").put("key", "confirm").toString();
+        peer.socket.send(command); JSONObject keyAck = peer.message();
+        assertTrue(keyAck.getBoolean("ok")); assertFalse(keyAck.getBoolean("inputAvailable"));
+        assertEquals("accessibility_required", keyAck.getString("inputStatus"));
+        assertEquals(input.editorEpoch, keyAck.getJSONObject("tvControls").getString("editorEpoch"));
+        input.editorEpoch = UUID.randomUUID().toString();
+        peer.socket.send(action(UUID.randomUUID().toString(), "ping"));
+        assertEquals(input.editorEpoch, peer.message().getJSONObject("tvControls").getString("editorEpoch"));
+        peer.socket.send(command); assertEquals(keyAck.toString(), peer.message().toString());
+        assertEquals(1, input.applied.get()); // Extended inputs retain the existing no-replay guarantee.
+        input.rejectedCode = "stale_editor";
+        peer.socket.send(new JSONObject().put("id", UUID.randomUUID().toString()).put("type", "text_backspace").put("editorEpoch", UUID.randomUUID().toString()).toString());
+        JSONObject stale = peer.message(); assertFalse(stale.getBoolean("ok"));
+        assertEquals("stale_editor", stale.getString("error"));
+        assertEquals(input.editorEpoch, stale.getJSONObject("tvControls").getString("editorEpoch"));
     }
 
     @Test public void productionPeerPolicyAllowsOnlyPrivateIpv4AndLoopbackRequiresExplicitTestBind() throws Exception {
@@ -350,7 +393,15 @@ public class ReceiverServerTest {
         volatile String rejectedKey;
         volatile long delayMillis;
         final List<TVProtocol.Action> received = new CopyOnWriteArrayList<>();
-        public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
+        volatile boolean nativeControls;
+        volatile String editorEpoch = UUID.randomUUID().toString();
+        public JSONObject snapshot() throws Exception {
+            JSONObject status = new JSONObject().put("ready", true);
+            if (nativeControls) status.put("inputAvailable", false).put("inputStatus", "accessibility_required")
+                .put("capabilities", new JSONObject().put("text", false))
+                .put("tvControls", new JSONObject().put("version", 1).put("navigationStatus", "ready").put("textStatus", "ready").put("editorEpoch", editorEpoch));
+            return status;
+        }
         public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
             this.current = current; applyThread = Thread.currentThread();
             entered.countDown(); if (block) release.await(3, TimeUnit.SECONDS);
@@ -365,7 +416,15 @@ public class ReceiverServerTest {
             if (rejectedCode != null) return new JSONObject().put("ok", false).put("code", rejectedCode);
             return new JSONObject().put("ok", true);
         }
-        public void disconnected() { disconnections.incrementAndGet(); }
+        volatile boolean blockDisconnect;
+        final CountDownLatch disconnectEntered = new CountDownLatch(1), releaseDisconnect = new CountDownLatch(1);
+        public void disconnected() {
+            disconnections.incrementAndGet();
+            if (blockDisconnect) {
+                disconnectEntered.countDown();
+                try { releaseDisconnect.await(5, TimeUnit.SECONDS); } catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); }
+            }
+        }
     }
 
     private final class SocketPeer extends WebSocketListener {

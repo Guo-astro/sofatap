@@ -21,8 +21,8 @@ public final class MainActivity extends Activity {
     private static final int BACKGROUND = Color.rgb(18, 35, 34), MINT = Color.rgb(167, 237, 203), INK = Color.rgb(225, 244, 236);
     private final Handler main = new Handler(Looper.getMainLooper());
     private ImageView qr;
-    private TextView qrCaption, status, help, capabilities;
-    private Button start, pair, permission;
+    private TextView qrCaption, status, help, capabilities, nativeControls;
+    private Button start, pair, permission, enableIme, selectIme;
     private Switch autoStart;
     private ReceiverStartup startup;
     private Spinner network;
@@ -89,6 +89,16 @@ public final class MainActivity extends Activity {
         }); padded(right, autoStart, 12);
         TextView startupHelp = text(14, Color.rgb(164, 189, 180)); startupHelp.setText(R.string.auto_start_help);
         padded(right, startupHelp, 2);
+        nativeControls = text(16, MINT); padded(right, nativeControls, 14);
+        enableIme = button(R.string.ime_enable, () -> {
+            new AlertDialog.Builder(this).setTitle(R.string.ime_enable).setMessage(R.string.ime_disclosure)
+                .setNegativeButton(android.R.string.cancel, null).setPositiveButton(R.string.ime_enable, (dialog, which) -> {
+                    try { startActivity(new Intent(Settings.ACTION_INPUT_METHOD_SETTINGS)); }
+                    catch (ActivityNotFoundException missing) { Toast.makeText(this, R.string.open_settings_manually, Toast.LENGTH_LONG).show(); }
+                }).show();
+        }); padded(right, enableIme, 6);
+        selectIme = button(R.string.ime_select, () -> getSystemService(android.view.inputmethod.InputMethodManager.class).showInputMethodPicker());
+        padded(right, selectIme, 6);
         capabilities = text(14, Color.rgb(164, 189, 180)); padded(right, capabilities, 16);
         setContentView(root); renderQR(null); start.requestFocus();
         if (startup.runRequested() && ReceiverService.instance == null) ReceiverStartup.start(this);
@@ -99,6 +109,8 @@ public final class MainActivity extends Activity {
         ReceiverServer server = receiver == null ? null : receiver.server;
         JSONObject probe = InputBridge.snapshot(this);
         boolean enabled = probe.optBoolean("inputAvailable");
+        String nav = receiver == null ? "unavailable" : receiver.navigationStatus();
+        boolean nativeReady = nav.equals("ready");
         boolean needsPermission = "accessibility_required".equals(probe.optString("inputStatus"));
         permission.setVisibility(needsPermission ? View.VISIBLE : View.GONE);
         start.setText(receiver == null ? R.string.start : R.string.stop);
@@ -124,10 +136,15 @@ public final class MainActivity extends Activity {
         } else if (server == null) {
             status.setText(R.string.starting); help.setText(R.string.start_help);
         } else {
-            status.setText(!enabled && !needsPermission ? R.string.input_paused : connected ? enabled ? R.string.connected : R.string.connected_permission : enabled ? R.string.ready : R.string.permission_needed);
-            help.setText(enabled ? R.string.control_help : needsPermission ? R.string.permission_help : R.string.input_paused_help);
+            status.setText(nativeReady ? (connected ? R.string.connected : R.string.ready) : !enabled && !needsPermission ? R.string.input_paused : connected ? enabled ? R.string.connected : R.string.connected_permission : enabled ? R.string.ready : R.string.permission_needed);
+            help.setText(nativeReady ? R.string.native_remote_ready : enabled ? R.string.control_help : needsPermission ? R.string.permission_help : R.string.input_paused_help);
             qrCaption.setText(uri != null ? R.string.scan_qr : connected ? R.string.phone_connected : R.string.new_qr_help);
         }
+        boolean imeEnabled = SofatapInputMethodService.isEnabled(this), imeSelected = SofatapInputMethodService.isSelected(this);
+        enableIme.setVisibility(imeEnabled ? View.GONE : View.VISIBLE);
+        selectIme.setVisibility(imeEnabled && !imeSelected ? View.VISIBLE : View.GONE);
+        nativeControls.setText(getString(nav.equals("ready") ? R.string.native_remote_ready : nav.equals("pairing") ? R.string.native_remote_pairing : R.string.native_remote_setup)
+            + "\n" + getString(imeSelected ? R.string.ime_selected_help : R.string.ime_setup_help));
         capabilities.setText(getString(R.string.probe_limitations) + "\n" + getString(R.string.probe_state,
             getString(probe.optBoolean("activeWindowReadable") && !probe.optBoolean("activeWindowProtected") ? R.string.available : R.string.unavailable)));
     }

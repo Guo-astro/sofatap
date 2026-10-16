@@ -12,7 +12,8 @@ struct NativeDraftEditor: UIViewRepresentable {
     var liveEditing = false
     var control: Control? = nil
     var onEmptyBackspace: (() -> Void)? = nil
-    var editorAccessibilityLabel: String { liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿") }
+    var accessibilityLabelOverride: String? = nil
+    var editorAccessibilityLabel: String { accessibilityLabelOverride ?? (liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿")) }
 
     /// UITextView does not report a text change when Backspace is pressed on an
     /// empty draft. Keep that key distinct from deleting local/marked text.
@@ -227,6 +228,7 @@ struct TouchSurface: UIViewRepresentable {
     let onDraggingChanged: (Bool) -> Void
     let onScroll: (Double) -> Void
     var onShortcut: (GestureAction) -> Void = { _ in }
+    var onInteractionBegan: () -> Void = {}
 
     /// Overlay controls cancel the underlying pad synchronously before opening
     /// another UI. This also cancels deferred taps and releases an active drag.
@@ -346,6 +348,9 @@ struct TouchSurface: UIViewRepresentable {
         }
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { return }
+            // Only the other overlay is cancelled. Contacts already on this
+            // surface keep their normal two-finger gesture state.
+            parent?.onInteractionBegan()
             for touch in touches {
                 let id = ObjectIdentifier(touch), point = touch.location(in: self)
                 contacts[id] = point

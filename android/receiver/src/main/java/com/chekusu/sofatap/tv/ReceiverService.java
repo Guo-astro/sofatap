@@ -24,6 +24,7 @@ public final class ReceiverService extends Service {
     volatile ReceiverIdentity identity;
     volatile PairingAuthority authority;
     volatile String error;
+    private volatile RemoteV2Client remote;
     private boolean starting;
     private boolean refreshPending;
     interface AddressSource { List<String> read() throws Exception; }
@@ -93,6 +94,12 @@ public final class ReceiverService extends Service {
         setup.execute(() -> {
             ReceiverServer candidate = null;
             try {
+                if (remote == null) {
+                    try {
+                        RemoteV2Client created = new RemoteV2Client(new RemoteV2Identity(this));
+                        synchronized (this) { if (stopped) { created.close(); return; } remote = created; }
+                    } catch (Exception unavailable) { /* Remote identity failure does not disable the existing manual receiver. */ }
+                }
                 List<String> addresses = addressSource.read();
                 if (stopped) return;
                 ReceiverIdentity credentials = identity;
@@ -116,11 +123,23 @@ public final class ReceiverService extends Service {
                     if (stopped) return;
                     candidate = new ReceiverServer(credentials.tls(), null, 53319, auth, new ReceiverServer.Input() {
                         @Override public JSONObject snapshot() throws Exception {
-                            return onMain(() -> InputBridge.snapshot(ReceiverService.this));
+                            return onMain(() -> inputSnapshot());
                         }
                         @Override public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+                            if (action.type().startsWith("remote_")) {
+                                if (stopped || !current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "session_ended");
+                                RemoteV2Client controller = remote;
+                                String result = controller == null ? "remote_unavailable" : switch (action.type()) {
+                                    case "remote_pair_start" -> controller.startPairing(current);
+                                    case "remote_pair_code" -> controller.submitCode(action.code(), current);
+                                    case "remote_key" -> controller.key(action.key(), current);
+                                    default -> "unsupported_action";
+                                };
+                                return new JSONObject().put("ok", result.equals("ok")).put("code", result);
+                            }
                             return onMain(() -> {
                                 if (stopped || !current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "session_ended");
+                                if (action.type().startsWith("text_")) return SofatapInputMethodService.apply(ReceiverService.this, action, current);
                                 String kind = action.type();
                                 if (kind.equals("key")) {
                                     kind = action.key();
@@ -131,7 +150,11 @@ public final class ReceiverService extends Service {
                             });
                         }
                         @Override public void disconnected() {
-                            main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
+                            RemoteV2Client controller = remote; if (controller != null) controller.disconnected();
+                            main.post(() -> {
+                                SofatapInputMethodService.disconnected();
+                                ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect();
+                            });
                         }
                     }, name);
                     synchronized (this) {
@@ -154,6 +177,15 @@ public final class ReceiverService extends Service {
             }
         });
     }
+    private JSONObject inputSnapshot() throws Exception {
+        JSONObject legacy = InputBridge.snapshot(this);
+        RemoteV2Client controller = remote;
+        if (controller != null) controller.ensureConnected();
+        JSONObject controls = SofatapInputMethodService.snapshot(this).put("version", 1)
+            .put("navigationStatus", controller == null ? "unavailable" : controller.status());
+        return legacy.put("tvControls", controls);
+    }
+    String navigationStatus() { RemoteV2Client value = remote; return value == null ? "unavailable" : value.status(); }
     private synchronized void closeRuntime() {
         // authorize() and retire() share the authority lock, so a previous listener
         // can never save a new credential after a replacement identity is written.
@@ -197,7 +229,8 @@ public final class ReceiverService extends Service {
         synchronized (this) { stopped = true; closeRuntime(); }
         main.removeCallbacks(refreshNetwork);
         if (connectivity != null && networkRegistered) connectivity.unregisterNetworkCallback(networkCallback);
-        setup.shutdownNow(); InputBridge.setInterruptionListener(null); InputBridge.disconnect();
+        setup.shutdownNow(); RemoteV2Client controller = remote; if (controller != null) controller.close();
+        SofatapInputMethodService.disconnected(); InputBridge.setInterruptionListener(null); InputBridge.disconnect();
         if (instance == this) instance = null;
         stopForeground(STOP_FOREGROUND_REMOVE); super.onDestroy();
     }

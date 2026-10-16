@@ -396,7 +396,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS utilise l’interface de pointeur du téléviseur. Cliquer agit à la position du pointeur ; Confirmer agit sur l’élément en surbrillance. Le résultat dépend du téléviseur et de l’app.";
 "接收器当前可用操作" = "Commandes signalées par le récepteur";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "Le contrôle du téléviseur ne prend pas encore en charge le clic droit, le double-clic de souris, le glisser-déposer, le clavier ou la saisie vocale.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Attribuez Confirmer, Retour et Accueil dans les réglages des gestes. Retour et Accueil disposent aussi de boutons en bas de la zone tactile.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Attribuez Confirmer, Retour et Accueil dans les réglages des gestes. Retour et Accueil disposent aussi de boutons dédiés.";
 "等待设备报告" = "En attente des informations de l’appareil";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "Le bord droit sert toujours au défilement. Les gestes suivent vos attributions actuelles ci-dessus. Le contenu ciblé doit permettre le défilement.";
 "点击光标下的可访问控件" = "Cliquer sur une commande accessible sous le curseur";
@@ -407,3 +407,48 @@
 "当前没有可确认的高亮项，请先用电视方向键选择。" = "Aucun élément en surbrillance ne peut être confirmé. Sélectionnez-en un avec les touches de direction du téléviseur.";
 "此位置无法点击。请移动到可点击控件，或使用确认高亮项。" = "Impossible de cliquer à cet endroit. Déplacez le curseur sur une commande cliquable ou utilisez Confirmer pour l’élément en surbrillance.";
 "此区域无法滚动。请把光标移到可滚动区域。" = "Cette zone ne peut pas défiler. Déplacez le curseur vers une zone défilante.";
+
+/* Native TV navigation, pairing, and optional keyboard input. */
+"上次操作可能已执行。请检查电视，删除草稿中已经输入的内容，再继续发送。不会自动重发。" = "La dernière action a peut-être déjà été exécutée. Vérifiez le téléviseur, retirez du brouillon le texte déjà saisi, puis reprenez l’envoi. Rien n’est renvoyé automatiquement.";
+"上次输入结果未确认，请先检查电视。" = "La dernière saisie n’a pas été confirmée. Vérifiez d’abord le téléviseur.";
+"光标模式" = "Mode pointeur";
+"切换电视遥控与光标模式" = "Basculer entre télécommande TV et pointeur";
+"在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Balayez la petite zone en bas à droite vers la gauche ou la droite pour trouver le bouton de mode et passer au pointeur. Les réglages des gestes concernent uniquement ce mode ; les réglages de l’ordinateur restent inchangés.";
+"向上" = "Haut";
+"向下" = "Bas";
+"向右" = "Droite";
+"向左" = "Gauche";
+"在电视上显示配对码" = "Afficher le code de jumelage sur le téléviseur";
+"在电视设置中启用并选择 Sofatap 输入法，再选中电视上的输入框。手机键盘或本机听写生成草稿，发送后插入电视当前光标位置；不会替换整个输入框。" = "Activez et sélectionnez le clavier Sofatap dans les paramètres TV, puis sélectionnez un champ sur le téléviseur. Le clavier de l’iPhone ou la dictée locale crée un brouillon. L’envoi l’insère au curseur TV sans remplacer tout le champ.";
+"安全输入框不接受手机输入。" = "Les champs protégés n’acceptent pas la saisie depuis l’iPhone.";
+"已查看电视" = "Téléviseur vérifié";
+"当前接收器暂不支持电视文字输入。" = "Ce récepteur ne prend pas encore en charge la saisie de texte TV.";
+"执行电视输入框操作" = "Exécuter l’action du champ TV";
+"方向键与确认" = "Touches de direction et sélection";
+"检查电视后继续" = "Vérifier le téléviseur avant de continuer";
+"正在发送…" = "Envoi…";
+"此接收器暂不提供系统遥控，请更新接收器或使用光标模式。" = "Ce récepteur ne propose pas encore la télécommande système. Mettez-le à jour ou utilisez le mode pointeur.";
+"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。" = "Des repères de direction apparaissent lorsque votre doigt touche la surface tactile. Glissez vers la gauche, la droite, le haut ou le bas pour déplacer la sélection sur le téléviseur, puis touchez pour valider. Les repères disparaissent lorsque vous levez le doigt. Retour et Accueil s’affichent par défaut en bas à droite. Balayez cette petite zone vers la gauche ou la droite pour accéder aux autres commandes. Ce mode ne déplace pas de pointeur de souris.";
+"电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。" = "Clic droit, double-clic de souris et glissement TV ne sont pas encore pris en charge. La saisie nécessite le clavier Sofatap.";
+"电视输入框已变化，请重新选中输入框后发送。" = "Le champ TV a changé. Sélectionnez-le à nouveau avant d’envoyer.";
+"电视退格" = "Effacement arrière sur le téléviseur";
+"电视配对码" = "Code de jumelage TV";
+"电视键盘与语音输入" = "Clavier TV et dictée";
+"确认配对" = "Confirmer le jumelage";
+"草稿清空只作用于手机。电视退格直接删除电视光标前的文字；发送完成后，回车按钮执行搜索或当前输入框操作。安全输入框及未提供标准输入接口的页面不支持。" = "Effacer le brouillon agit uniquement sur l’iPhone. L’effacement arrière TV supprime le texte avant le curseur du téléviseur. Après l’envoi, la touche Entrée exécute la recherche ou l’action du champ. Les champs protégés et les pages sans interface standard de saisie ne sont pas pris en charge.";
+"要发送到电视的文字草稿" = "Brouillon à envoyer au téléviseur";
+"请先在电视上选中输入框。" = "Sélectionnez d’abord un champ sur le téléviseur.";
+"请先连接电视系统遥控服务。" = "Connectez d’abord le service de télécommande système du téléviseur.";
+"请在电视的键盘设置中启用并选择 Sofatap 输入法。" = "Activez et sélectionnez le clavier Sofatap dans les paramètres du clavier TV.";
+"轻震动表示手机已接收操作；电视是否执行请以画面为准。操作被拒绝时会显示提示并给出不同反馈。" = "Une légère vibration signifie que l’iPhone a reçu l’action. Vérifiez à l’écran TV si elle a été exécutée. Les actions refusées affichent un message et produisent un retour différent.";
+"输入或听写，发送到电视当前输入框" = "Saisissez ou dictez, puis envoyez au champ TV actif";
+"输入电视画面上显示的 6 位配对码。" = "Saisissez le code de jumelage à 6 caractères affiché sur le téléviseur.";
+"连接后，方向键和确认键会像电视遥控器一样工作。光标模式仍可单独使用。" = "Une fois connecté, les touches de direction et de sélection fonctionnent comme une télécommande TV. Le mode pointeur reste disponible séparément.";
+"连接电视遥控" = "Connecter la télécommande TV";
+"配对码未被接受，请核对电视上显示的代码。" = "Code de jumelage refusé. Vérifiez le code affiché sur le téléviseur.";
+"首次使用系统遥控时，按提示输入电视上显示的配对码。" = "Lors de la première utilisation de la télécommande système, saisissez le code affiché sur le téléviseur à l’invite.";
+
+/* Paged TV quick controls. */
+"电视快捷操作" = "Commandes rapides du téléviseur";
+"左右滑动切换操作" = "Balayez vers la gauche ou la droite pour changer de commandes";
+"操作页 %1$d，共 %2$d 页" = "Page de commandes %1$d sur %2$d";

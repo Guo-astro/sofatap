@@ -396,7 +396,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS menggunakan antarmuka penunjuk TV. Klik bekerja di posisi penunjuk; Konfirmasi bekerja pada item yang disorot. Hasil bergantung pada TV dan aplikasi.";
 "接收器当前可用操作" = "Kontrol yang dilaporkan penerima";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "Kontrol TV belum mendukung klik kanan, klik ganda mouse, menyeret, keyboard, atau input suara.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Atur Konfirmasi, Kembali, dan Beranda di pengaturan gestur. Tombol Kembali dan Beranda juga tersedia di bagian bawah area sentuh.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Atur Konfirmasi, Kembali, dan Beranda di pengaturan gestur. Kembali dan Beranda juga dapat digunakan melalui tombol khusus.";
 "等待设备报告" = "Menunggu informasi perangkat";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "Tepi kanan selalu digunakan untuk menggulir. Gestur mengikuti pengaturan Anda saat ini di atas. Konten tujuan harus mendukung pengguliran.";
 "点击光标下的可访问控件" = "Klik kontrol aksesibilitas di bawah kursor";
@@ -407,3 +407,48 @@
 "当前没有可确认的高亮项，请先用电视方向键选择。" = "Tidak ada item tersorot yang dapat dikonfirmasi. Pilih item terlebih dahulu dengan tombol arah TV.";
 "此位置无法点击。请移动到可点击控件，或使用确认高亮项。" = "Posisi ini tidak dapat diklik. Pindahkan kursor ke kontrol yang dapat diklik, atau gunakan Konfirmasi untuk item yang disorot.";
 "此区域无法滚动。请把光标移到可滚动区域。" = "Area ini tidak dapat digulir. Pindahkan kursor ke area yang dapat digulir.";
+
+/* Native TV navigation, pairing, and optional keyboard input. */
+"上次操作可能已执行。请检查电视，删除草稿中已经输入的内容，再继续发送。不会自动重发。" = "Tindakan terakhir mungkin sudah dijalankan. Periksa TV, hapus teks yang sudah dimasukkan dari draf, lalu lanjutkan pengiriman. Tidak ada yang dikirim ulang otomatis.";
+"上次输入结果未确认，请先检查电视。" = "Input terakhir belum dikonfirmasi. Periksa TV terlebih dahulu.";
+"光标模式" = "Mode Penunjuk";
+"切换电视遥控与光标模式" = "Beralih antara remote TV dan mode penunjuk";
+"在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Usap ke kiri atau kanan pada area kecil di sudut kanan bawah untuk menemukan tombol mode dan beralih ke penunjuk. Pengaturan gestur hanya berlaku untuk mode penunjuk; pengaturan komputer tidak berubah.";
+"向上" = "Atas";
+"向下" = "Bawah";
+"向右" = "Kanan";
+"向左" = "Kiri";
+"在电视上显示配对码" = "Tampilkan Kode Pemasangan di TV";
+"在电视设置中启用并选择 Sofatap 输入法，再选中电视上的输入框。手机键盘或本机听写生成草稿，发送后插入电视当前光标位置；不会替换整个输入框。" = "Aktifkan dan pilih papan ketik Sofatap di pengaturan TV, lalu pilih kolom teks di TV. Papan ketik iPhone atau dikte di perangkat membuat draf. Saat dikirim, teks disisipkan pada kursor TV tanpa mengganti seluruh kolom.";
+"安全输入框不接受手机输入。" = "Kolom terlindungi tidak menerima input dari iPhone.";
+"已查看电视" = "TV Sudah Saya Periksa";
+"当前接收器暂不支持电视文字输入。" = "Penerima ini belum mendukung input teks TV.";
+"执行电视输入框操作" = "Jalankan Tindakan Kolom TV";
+"方向键与确认" = "Tombol Arah dan Pilih";
+"检查电视后继续" = "Periksa TV Sebelum Melanjutkan";
+"正在发送…" = "Mengirim…";
+"此接收器暂不提供系统遥控，请更新接收器或使用光标模式。" = "Penerima ini belum menyediakan remote sistem. Perbarui penerima atau gunakan mode penunjuk.";
+"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。" = "Petunjuk arah muncul saat jari menyentuh permukaan sentuh. Usap ke kiri, kanan, atas, atau bawah untuk memindahkan sorotan TV, lalu ketuk untuk memilih. Petunjuk menghilang saat jari diangkat. Kembali dan Beranda ditampilkan secara default di sudut kanan bawah. Usap ke kiri atau kanan pada area kecil ini untuk mengakses kontrol lain. Mode ini tidak menggerakkan penunjuk mouse.";
+"电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。" = "Klik kanan, klik ganda mouse, dan seret di TV belum didukung. Input teks memerlukan papan ketik Sofatap.";
+"电视输入框已变化，请重新选中输入框后发送。" = "Kolom TV berubah. Pilih kembali kolom sebelum mengirim.";
+"电视退格" = "Hapus Sebelum Kursor TV";
+"电视配对码" = "Kode Pemasangan TV";
+"电视键盘与语音输入" = "Papan Ketik TV dan Dikte";
+"确认配对" = "Konfirmasi Pemasangan";
+"草稿清空只作用于手机。电视退格直接删除电视光标前的文字；发送完成后，回车按钮执行搜索或当前输入框操作。安全输入框及未提供标准输入接口的页面不支持。" = "Mengosongkan draf hanya berlaku di iPhone. Hapus di TV menghapus teks sebelum kursor TV. Setelah mengirim, tombol Enter menjalankan pencarian atau tindakan kolom saat ini. Kolom terlindungi dan halaman tanpa antarmuka input teks standar tidak didukung.";
+"要发送到电视的文字草稿" = "Draf teks untuk dikirim ke TV";
+"请先在电视上选中输入框。" = "Pilih kolom teks di TV terlebih dahulu.";
+"请先连接电视系统遥控服务。" = "Hubungkan layanan remote sistem TV terlebih dahulu.";
+"请在电视的键盘设置中启用并选择 Sofatap 输入法。" = "Aktifkan dan pilih papan ketik Sofatap di pengaturan papan ketik TV.";
+"轻震动表示手机已接收操作；电视是否执行请以画面为准。操作被拒绝时会显示提示并给出不同反馈。" = "Getaran ringan berarti iPhone menerima tindakan Anda. Periksa layar TV untuk memastikan tindakan dijalankan. Tindakan yang ditolak menampilkan pesan dan memberi umpan balik berbeda.";
+"输入或听写，发送到电视当前输入框" = "Ketik atau dikte, lalu kirim ke kolom TV saat ini";
+"输入电视画面上显示的 6 位配对码。" = "Masukkan kode pemasangan 6 karakter yang ditampilkan di TV.";
+"连接后，方向键和确认键会像电视遥控器一样工作。光标模式仍可单独使用。" = "Setelah terhubung, tombol arah dan Pilih bekerja seperti remote TV. Mode penunjuk tetap tersedia secara terpisah.";
+"连接电视遥控" = "Hubungkan Remote TV";
+"配对码未被接受，请核对电视上显示的代码。" = "Kode pemasangan ditolak. Periksa kode yang ditampilkan di TV.";
+"首次使用系统遥控时，按提示输入电视上显示的配对码。" = "Saat pertama kali memakai remote sistem, masukkan kode pemasangan yang ditampilkan di TV ketika diminta.";
+
+/* Paged TV quick controls. */
+"电视快捷操作" = "Kontrol cepat TV";
+"左右滑动切换操作" = "Usap ke kiri atau kanan untuk mengganti kontrol";
+"操作页 %1$d，共 %2$d 页" = "Halaman kontrol %1$d dari %2$d";
