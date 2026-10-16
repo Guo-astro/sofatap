@@ -44,6 +44,7 @@ struct RemoteView: View {
     @State private var showingSpeechError = false
     @State private var touchControl = TouchSurface.Control()
     @State private var tvNavigationControl = AndroidTVNavigationPad.Control()
+    @State private var tvAuxiliaryControl = TVAuxiliaryPager.Control()
     @State private var edgeScrollControl = EdgeScrollStrip.Control()
     @State private var draftEditorControl = NativeDraftEditor.Control()
     @State private var dictationImpact = UIImpactFeedbackGenerator(style: .light)
@@ -75,9 +76,12 @@ struct RemoteView: View {
     }
     private var tvNavigationSelected: Bool { androidTVSelected && tvMode == .navigation }
     private var currentStatusTitle: String { androidTVSelected ? androidTV.title : televisionSelected ? tv.title : model.statusTitle }
-    private var inputEnabled: Bool {
-        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet &&
+    private var interfaceAvailable: Bool {
+        scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet &&
         !tvRemoteSetupSheet && !tvDirectionSheet && !showingSpeechError && !resendAlert && !clearAlert
+    }
+    private var inputEnabled: Bool {
+        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && interfaceAvailable
     }
 
     private var gestureTarget: GestureTarget { televisionSelected ? .television : .computer }
@@ -248,14 +252,14 @@ struct RemoteView: View {
             } else if new == nil { tvKeyboardFocused = false }
         }
         .onChange(of: androidTV.phase) { _, phase in
-            if androidTVSelected && phase != .ready { touchControl.cancel(); tvNavigationControl.cancel() }
+            if androidTVSelected && phase != .ready { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() }
             if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet && !tvRemoteSetupSheet { androidTV.resumeInput() }
         }
         .onChange(of: androidTV.canControl) { _, available in
-            if androidTVSelected && !available { touchControl.cancel(); tvNavigationControl.cancel() }
+            if androidTVSelected && !available { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() }
         }
         .onChange(of: tv.phase) { _, phase in
-            if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel(); tvNavigationControl.cancel() }
+            if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() }
             if televisionSelected && !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet { tv.resumeInput() }
         }
     }
@@ -298,7 +302,7 @@ struct RemoteView: View {
             else { resumeCurrentInput() }
         }
         .onChange(of: gesturePreferences) { _, preferences in
-            touchControl.cancel(); tvNavigationControl.cancel()
+            touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel()
             if !model.demo { _ = preferences.save(to: .standard) }
         }
         .onChange(of: model.pairingError) { _, error in
@@ -465,28 +469,33 @@ struct RemoteView: View {
             EdgeScrollStrip(enabled: inputEnabled && !tvNavigationSelected && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
                             control: edgeScrollControl,
                             interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
-                            onInteractionBegan: { touchControl.cancel(); tvNavigationControl.cancel() },
+                            onInteractionBegan: { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() },
                             onScroll: scrollCurrentDevice)
                 .frame(width: EdgeScrollStrip.minimumHitWidth)
                 .opacity(tvNavigationSelected ? 0 : 1)
                 // The scroll target stays on the physical right, including RTL locales.
-                // The lower-right space is intentionally free of other controls.
+                // TV tools own the bottom-right area; the scroll rail stops above them.
                 .padding(.top, 80)
-                .padding(.bottom, 16)
+                .padding(.bottom, televisionSelected ? 128 : 16)
                 .padding(layoutDirection == .rightToLeft ? .leading : .trailing, 8)
         }
         .overlay(alignment: .top) { header.padding(.horizontal, 20).padding(.top, 20) }
-        .overlay(alignment: .topTrailing) {
-            if televisionSelected {
-                televisionAuxiliaryBar.environment(\.layoutDirection, .leftToRight)
-                    .padding(.trailing, 22).padding(.top, 78)
-            }
-        }
         .overlay(alignment: .bottom) {
             // Physical control positions reserve the right edge for scrolling.
             // Text elsewhere continues to follow the selected language's direction.
             bottomBar.environment(\.layoutDirection, .leftToRight)
                 .padding(.horizontal, 20).padding(.bottom, 20)
+        }
+        .overlay {
+            if televisionSelected {
+                GeometryReader { geometry in
+                    let toolsLayout = TVAuxiliaryLayout(cardWidth: geometry.size.width)
+                    let toolsFrame = toolsLayout.frame(cardWidth: geometry.size.width, cardHeight: geometry.size.height)
+                    televisionAuxiliaryPager(layout: toolsLayout)
+                        .frame(width: toolsLayout.width, height: toolsLayout.height)
+                        .position(x: toolsFrame.midX, y: toolsFrame.midY)
+                }
+            }
         }
         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
     }
@@ -522,57 +531,40 @@ struct RemoteView: View {
             else { computerBottomBar }
         }
     }
-    private var televisionAuxiliaryBar: some View {
-        Group {
-            if androidTVSelected { androidTVAuxiliaryBar }
-            else {
-                HStack(spacing: 0) {
-                    tvBottomButton("chevron.backward", label: String(localized: "返回"), identifier: "tvBackButton", enabled: inputEnabled) {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred(); tv.button(.back)
-                    }
-                    tvBottomButton("house", label: String(localized: "电视主页"), identifier: "tvHomeButton", enabled: inputEnabled) {
-                        UIImpactFeedbackGenerator(style: .light).impactOccurred(); tv.button(.home)
-                    }
-                }
-                .padding(.horizontal, 4)
-                .background(Palette.background.opacity(0.86), in: Capsule())
-                .overlay(Capsule().strokeBorder(Palette.mint.opacity(0.13), lineWidth: 1).allowsHitTesting(false))
-            }
+    private func televisionAuxiliaryPager(layout: TVAuxiliaryLayout) -> some View {
+        TVAuxiliaryPager(pages: televisionAuxiliaryPages,
+                         identity: androidTVSelected ? "android:" + (androidTV.selectedDeviceID?.uuidString ?? "none") : "webos:" + (tv.selectedDeviceID?.uuidString ?? "none"),
+                         layout: layout, interactionEnabled: interfaceAvailable, control: tvAuxiliaryControl) {
+            touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel(); edgeScrollControl.cancel()
         }
     }
-
-    private var androidTVAuxiliaryBar: some View {
-        HStack(spacing: 0) {
-            tvBottomButton("chevron.backward", label: String(localized: "返回"), identifier: "tvBackButton",
-                           enabled: inputEnabled && (tvNavigationSelected ? androidTV.canNavigate : androidTV.status?.capabilities.back == true)) {
+    private var televisionAuxiliaryPages: [[TVAuxiliaryPager.Action]] {
+        let back = TVAuxiliaryPager.Action(symbol: "chevron.backward", label: String(localized: "返回"), identifier: "tvBackButton",
+                                           enabled: inputEnabled && (!androidTVSelected || (tvNavigationSelected ? androidTV.canNavigate : androidTV.status?.capabilities.back == true))) {
+            if androidTVSelected {
                 if tvNavigationSelected { _ = androidTV.remoteKey(.back) } else { _ = androidTV.key(.back) }
-            }
-            tvBottomButton("house", label: String(localized: "电视主页"), identifier: "tvHomeButton",
-                           enabled: inputEnabled && (tvNavigationSelected ? androidTV.canNavigate : androidTV.status?.capabilities.home == true)) {
-                if tvNavigationSelected { _ = androidTV.remoteKey(.home) } else { _ = androidTV.key(.home) }
-            }
-            if tvNavigationSelected {
-                tvBottomButton("dpad", label: String(localized: "方向键与确认"), identifier: "tvDirectionButtons",
-                               enabled: inputEnabled && androidTV.canNavigate) {
-                    tvKeyboardFocused = false; tvWantsDictation = false
-                    UISelectionFeedbackGenerator().selectionChanged(); tvDirectionSheet = true
-                }
-            }
-            Button { toggleTVControlMode() } label: {
-                Image(systemName: tvMode == .navigation ? "hand.draw" : "cursorarrow")
-                    .font(.system(size: 19)).frame(width: 44, height: 44).foregroundStyle(Palette.mint)
-            }
-            .buttonStyle(RemoteIconButtonStyle())
-            .accessibilityLabel(String(localized: "切换电视遥控与光标模式"))
-            .accessibilityValue(tvMode == .navigation ? String(localized: "电视遥控") : String(localized: "光标模式"))
-            .accessibilityIdentifier("tvControlMode")
+            } else { UIImpactFeedbackGenerator(style: .light).impactOccurred(); tv.button(.back) }
         }
-        .padding(.horizontal, 4)
-        .background(Palette.background.opacity(0.86), in: Capsule())
-        .overlay(Capsule().strokeBorder(Palette.mint.opacity(0.13), lineWidth: 1).allowsHitTesting(false))
+        let home = TVAuxiliaryPager.Action(symbol: "house", label: String(localized: "电视主页"), identifier: "tvHomeButton",
+                                           enabled: inputEnabled && (!androidTVSelected || (tvNavigationSelected ? androidTV.canNavigate : androidTV.status?.capabilities.home == true))) {
+            if androidTVSelected {
+                if tvNavigationSelected { _ = androidTV.remoteKey(.home) } else { _ = androidTV.key(.home) }
+            } else { UIImpactFeedbackGenerator(style: .light).impactOccurred(); tv.button(.home) }
+        }
+        guard androidTVSelected else { return [[back, home]] }
+        let directions = TVAuxiliaryPager.Action(symbol: "dpad", label: String(localized: "方向键与确认"), identifier: "tvDirectionButtons",
+                                                 enabled: inputEnabled && androidTV.canNavigate) {
+            tvKeyboardFocused = false; tvWantsDictation = false
+            UISelectionFeedbackGenerator().selectionChanged(); tvDirectionSheet = true
+        }
+        let mode = TVAuxiliaryPager.Action(symbol: tvMode == .navigation ? "hand.draw" : "cursorarrow", label: String(localized: "切换电视遥控与光标模式"),
+                                           identifier: "tvControlMode", value: tvMode == .navigation ? String(localized: "电视遥控") : String(localized: "光标模式")) {
+            toggleTVControlMode()
+        }
+        return [[back, home], [directions, mode]]
     }
     private func toggleTVControlMode() {
-        touchControl.cancel(); tvNavigationControl.cancel(); edgeScrollControl.cancel(); tvWantsDictation = false
+        touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel(); edgeScrollControl.cancel(); tvWantsDictation = false
         let next: AndroidTVControlMode = tvMode == .navigation ? .pointer : .navigation
         if let identity = androidTV.saved?.deviceIdentity {
             tvControlModes[identity] = next.rawValue
@@ -587,7 +579,7 @@ struct RemoteView: View {
         // Match the desktop card's physical keyboard and microphone anchors.
         HStack(spacing: 13) {
             Button {
-                touchControl.cancel(); tvNavigationControl.cancel(); edgeScrollControl.cancel()
+                touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel(); edgeScrollControl.cancel()
                 tvWantsDictation = false; composerVisible = true
                 withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { tvKeyboardFocused.toggle() }
                 UISelectionFeedbackGenerator().selectionChanged()
@@ -607,7 +599,7 @@ struct RemoteView: View {
             .accessibilityIdentifier("tvKeyboardButton")
             Spacer(minLength: 0)
             Button {
-                touchControl.cancel(); tvNavigationControl.cancel(); edgeScrollControl.cancel()
+                touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel(); edgeScrollControl.cancel()
                 composerVisible = true; tvKeyboardFocused = false
                 dictationImpact.impactOccurred(); tvWantsDictation.toggle()
             } label: {
@@ -629,16 +621,6 @@ struct RemoteView: View {
             Color.clear.frame(width: 48, height: 52).allowsHitTesting(false)
         }
     }
-    private func tvBottomButton(_ symbol: String, label: String, identifier: String, enabled: Bool, action: @escaping () -> Void) -> some View {
-        Button { touchControl.cancel(); tvNavigationControl.cancel(); edgeScrollControl.cancel(); action() } label: {
-            Image(systemName: symbol).font(.system(size: 19)).frame(width: 44, height: 44)
-                .contentShape(Rectangle()).foregroundStyle(Palette.mint)
-                .contentTransition(reduceMotion ? .opacity : .symbolEffect(.replace))
-        }
-        .buttonStyle(RemoteIconButtonStyle()).disabled(!enabled)
-        .accessibilityLabel(label).accessibilityIdentifier(identifier)
-    }
-
     private var computerBottomBar: some View {
         HStack(spacing: 13) {
             Button { toggleKeyboard() } label: {
@@ -930,7 +912,7 @@ struct RemoteView: View {
     }
     private func interruptTouch() {
         edgeScrollControl.cancel()
-        touchControl.cancel(); tvNavigationControl.cancel()
+        touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel()
         model.pauseInput()
         tv.pauseInput()
         androidTV.pauseInput()

@@ -413,7 +413,7 @@
 "上次输入结果未确认，请先检查电视。" = "Die letzte Eingabe wurde nicht bestätigt. Prüfe zuerst den Fernseher.";
 "光标模式" = "Zeigermodus";
 "切换电视遥控与光标模式" = "Zwischen TV-Fernbedienung und Zeigermodus wechseln";
-"触控区上方小工具栏的模式按钮可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Mit der Modustaste in der kompakten Leiste über der Touchfläche wechselst du zum Zeiger. Gesteneinstellungen gelten nur für den Zeigermodus; die Computereinstellungen bleiben unverändert.";
+"在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Wische im kleinen Bereich unten rechts nach links oder rechts, um die Modustaste zu finden und zum Zeiger zu wechseln. Gesteneinstellungen gelten nur für den Zeigermodus; die Computereinstellungen bleiben unverändert.";
 "向上" = "Oben";
 "向下" = "Unten";
 "向右" = "Rechts";
@@ -428,7 +428,7 @@
 "检查电视后继续" = "Fernseher prüfen, dann fortfahren";
 "正在发送…" = "Wird gesendet …";
 "此接收器暂不提供系统遥控，请更新接收器或使用光标模式。" = "Dieser Empfänger bietet noch keine Systemfernsteuerung. Aktualisiere ihn oder verwende den Zeigermodus.";
-"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。触控区上方的小工具栏提供返回、主页和可选方向按钮。此模式不移动鼠标光标。" = "Wenn dein Finger die Touchfläche berührt, erscheinen Richtungshinweise. Wische nach links, rechts, oben oder unten, um die TV-Markierung zu bewegen, und tippe zum Bestätigen. Sobald du den Finger anhebst, verschwinden die Hinweise. Eine kompakte Leiste über der Touchfläche bietet Zurück, Home und optional nutzbare Richtungstasten. Dieser Modus bewegt keinen Mauszeiger.";
+"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。" = "Wenn dein Finger die Touchfläche berührt, erscheinen Richtungshinweise. Wische nach links, rechts, oben oder unten, um die TV-Markierung zu bewegen, und tippe zum Bestätigen. Sobald du den Finger anhebst, verschwinden die Hinweise. Unten rechts werden standardmäßig Zurück und Home angezeigt. Wische in diesem kleinen Bereich nach links oder rechts, um weitere Bedienelemente anzuzeigen. Dieser Modus bewegt keinen Mauszeiger.";
 "电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。" = "TV-Rechtsklick, Mausdoppelklick und Ziehen werden noch nicht unterstützt. Texteingabe benötigt die Sofatap-Tastatur.";
 "电视输入框已变化，请重新选中输入框后发送。" = "Das TV-Eingabefeld hat sich geändert. Wähle es vor dem Senden erneut aus.";
 "电视退格" = "TV-Rücktaste";
@@ -447,3 +447,8 @@
 "连接电视遥控" = "TV-Fernbedienung verbinden";
 "配对码未被接受，请核对电视上显示的代码。" = "Kopplungscode nicht akzeptiert. Prüfe den Code auf dem Fernseher.";
 "首次使用系统遥控时，按提示输入电视上显示的配对码。" = "Gib bei der ersten Nutzung der Systemfernsteuerung den angezeigten TV-Kopplungscode ein, wenn du dazu aufgefordert wirst.";
+
+/* Paged TV quick controls. */
+"电视快捷操作" = "TV-Schnellsteuerung";
+"左右滑动切换操作" = "Nach links oder rechts wischen, um die Bedienelemente zu wechseln";
+"操作页 %1$d，共 %2$d 页" = "Steuerungsseite %1$d von %2$d";

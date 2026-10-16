@@ -93,8 +93,8 @@ struct RemoteGuideView: View {
         if context.tvNavigation {
             guideCard("dpad", gesture: .tvRemote,
                       title: String(localized: "方向键与确认"),
-                      detail: String(localized: "手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。触控区上方的小工具栏提供返回、主页和可选方向按钮。此模式不移动鼠标光标。"))
-            Text(String(localized: "触控区上方小工具栏的模式按钮可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。"))
+                      detail: String(localized: "手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。"))
+            Text(String(localized: "在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。"))
                 .font(.footnote).foregroundStyle(Palette.muted)
         } else { guideCard("cursorarrow", gesture: .tvFocus,
                   title: String(localized: "点击与确认"),

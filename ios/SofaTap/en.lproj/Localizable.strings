@@ -417,7 +417,7 @@
 "上次输入结果未确认，请先检查电视。" = "The last input was not confirmed. Check the TV first.";
 "光标模式" = "Pointer Mode";
 "切换电视遥控与光标模式" = "Switch between TV remote and pointer modes";
-"触控区上方小工具栏的模式按钮可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Use the mode button in the compact toolbar above the touch surface to switch to the pointer. Gesture settings affect pointer mode only; your computer settings stay unchanged.";
+"在右下角的小区域左右滑动，找到模式按钮即可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。" = "Swipe left or right across the small area in the bottom-right corner to find the mode button and switch to the pointer. Gesture settings affect pointer mode only; your computer settings stay unchanged.";
 "向上" = "Up";
 "向下" = "Down";
 "向右" = "Right";
@@ -432,7 +432,7 @@
 "检查电视后继续" = "Check the TV Before Continuing";
 "正在发送…" = "Sending…";
 "此接收器暂不提供系统遥控，请更新接收器或使用光标模式。" = "This receiver does not yet provide system remote control. Update the receiver or use pointer mode.";
-"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。触控区上方的小工具栏提供返回、主页和可选方向按钮。此模式不移动鼠标光标。" = "Direction hints appear when your finger touches the touch surface. Swipe left, right, up, or down to move the TV highlight, and tap to select. The hints disappear when you lift your finger. A compact toolbar above the touch surface provides Back, Home, and optional direction buttons. This mode does not move a mouse pointer.";
+"手指碰到触控区时会出现方向提示，向左、右、上、下滑动即可移动电视的高亮项，单击确认。松手后提示会消失。右下角默认显示返回和主页，左右滑动这块小区域可切换其他操作。此模式不移动鼠标光标。" = "Direction hints appear when your finger touches the touch surface. Swipe left, right, up, or down to move the TV highlight, and tap to select. The hints disappear when you lift your finger. Back and Home appear in the bottom-right corner by default. Swipe left or right across this small area to find other controls. This mode does not move a mouse pointer.";
 "电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。" = "TV right-click, mouse double-click and drag are not supported yet. Text input requires the Sofatap keyboard.";
 "电视输入框已变化，请重新选中输入框后发送。" = "The TV field changed. Select the field again before sending.";
 "电视退格" = "TV Backspace";
@@ -451,3 +451,8 @@
 "连接电视遥控" = "Connect TV Remote";
 "配对码未被接受，请核对电视上显示的代码。" = "The pairing code was not accepted. Check the code shown on the TV.";
 "首次使用系统遥控时，按提示输入电视上显示的配对码。" = "The first time you use system remote control, enter the pairing code shown on the TV when prompted.";
+
+/* Paged TV quick controls. */
+"电视快捷操作" = "TV quick controls";
+"左右滑动切换操作" = "Swipe left or right to change controls";
+"操作页 %1$d，共 %2$d 页" = "Controls page %1$d of %2$d";

@@ -108,6 +108,8 @@ jobs:
         run: bash ios/scripts/test-tv-controller.sh
       - name: Android TV QR pairing and acknowledged input lifecycle
         run: bash ios/scripts/test-android-tv.sh
+      - name: TV auxiliary paging and control placement without device input
+        run: bash ios/scripts/test-tv-auxiliary-controls.sh
       - name: TV TLS and WebSocket transport on loopback only
         run: bash ios/scripts/test-tv-transport.sh
       - name: Native iPhone draft composition with TV gesture profiles
