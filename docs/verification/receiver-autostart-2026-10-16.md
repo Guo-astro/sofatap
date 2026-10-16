@@ -19,7 +19,7 @@ The household Sony and Xiaomi TVs have **not** been field-tested. Actual cold bo
 
 ## Recorded checks
 
-- Windows: 97 portable startup/protocol checks and native/preview compilation passed locally. Real COM shortcut checks run on Windows CI with temporary folders.
+- Windows: 100 portable startup/protocol checks and native/preview compilation passed locally. Real COM shortcut checks run on Windows CI with temporary folders.
 - macOS: 27 injected login-item checks, 35 launch-isolation checks, arm64/x64 compilation, 12 offscreen view fixtures and four QR rendering checks passed. Both release architectures use CHEKUSU Developer ID signing and require completed Apple notarization, stapling and Gatekeeper assessment before publication.
 - Linux: all 15 startup/instance tests (including Gio Exec argument round-trip) passed on Linux CI; protocol, worker/portal checks and private-Xvfb GTK close/quit/opt-out checks passed. On macOS the Gio test is correctly skipped.
 - Android: 73 JVM tests, 10 headless API 31 TV instrumentation tests and lint (zero errors; 22 existing warnings) passed. Actual emulator reboot verified that enabled startup resumes the foreground service while the TV launcher remains visible, and disabled startup stays stopped. The new APK has the same signing certificate as 0.1.1 beta.1 and a higher version code (3), so it can cover-install that release. A paired physical-TV reboot was not tested.

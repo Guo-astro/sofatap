@@ -28,6 +28,9 @@ internal static class StartupChecks
         Check(ReceiverLaunchOptions.Parse(["--startup", "--dry-run"]) is null, "Conflicting launch modes rejected");
         Check(ReceiverLaunchOptions.Parse(["--startup", "--startup"]) is null, "Duplicate startup markers rejected");
         Check(ReceiverLaunchOptions.Parse(["--unknown"]) is null, "Unknown launch option rejected");
+        Check(ReceiverLaunchOptions.Parse(["--enable-autostart"]) is { StartupPreference: true }, "Enable script selects native configuration mode");
+        Check(ReceiverLaunchOptions.Parse(["--disable-autostart"]) is { StartupPreference: false }, "Disable script selects native configuration mode");
+        Check(StartupRegistration.IsRecoverableError(new ArgumentException("Synthetic COM rejection")), "Invalid native startup request is recoverable");
         if (OperatingSystem.IsWindows()) RunWindowsChecks(Check);
         return count;
     }
@@ -68,6 +71,9 @@ internal static class StartupChecks
             var realStore = new WindowsStartupStore(executable, shortcut, preference);
             var realRegistration = new StartupRegistration(realStore);
             Check(realRegistration.Initialize() && File.Exists(shortcut), "Windows creates a real shortcut in isolated temporary folder");
+            var saved = realStore.ReadShortcut();
+            Check(saved.Target == executable && saved.WorkingDirectory == Path.GetDirectoryName(executable) && saved.Arguments == "--startup",
+                "Native Unicode shortcut round-trip preserves full target, working directory and background argument");
             var bytes = File.ReadAllBytes(shortcut);
             Check(realRegistration.Initialize() && bytes.SequenceEqual(File.ReadAllBytes(shortcut)), "Unchanged existing shortcut is not rewritten");
             Check(realStore.ReadPreference() == true, "Startup preference persists atomically");

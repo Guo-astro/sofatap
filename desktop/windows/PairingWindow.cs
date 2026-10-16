@@ -445,12 +445,9 @@ internal sealed class PairingWindow : Form
             _startup ??= new StartupRegistration(new WindowsStartupStore());
             SetStartupCheck(_startup.Initialize());
         }
-        catch (Exception error) when (StartupError(error)) { ShowStartupFailure(); }
+        catch (Exception error) when (StartupRegistration.IsRecoverableError(error)) { ShowStartupFailure(); }
     }
 
-    private static bool StartupError(Exception error) => error is IOException or UnauthorizedAccessException
-        or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException or COMException or ArgumentException
-        or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException;
 
     private void SetStartupCheck(bool enabled)
     {
@@ -467,7 +464,7 @@ internal sealed class PairingWindow : Form
             _startup ??= new StartupRegistration(new WindowsStartupStore());
             SetStartupCheck(_startup.SetEnabled(_startAtLogin.Checked));
         }
-        catch (Exception error) when (StartupError(error))
+        catch (Exception error) when (StartupRegistration.IsRecoverableError(error))
         {
             SetStartupCheck(!_startAtLogin.Checked);
             ShowStartupFailure();

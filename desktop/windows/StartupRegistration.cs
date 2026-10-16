@@ -27,6 +27,10 @@ internal sealed class StartupRegistration(IStartupStore store)
         return true;
     }
 
+    internal static bool IsRecoverableError(Exception error) => error is IOException or UnauthorizedAccessException
+        or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException
+        or System.Runtime.InteropServices.COMException or ArgumentException;
+
     internal bool SetEnabled(bool enabled)
     {
         if (enabled) store.EnsureShortcut();
@@ -36,14 +40,15 @@ internal sealed class StartupRegistration(IStartupStore store)
     }
 }
 
-internal sealed record ReceiverLaunchOptions(bool DryRun, bool Startup)
+internal sealed record ReceiverLaunchOptions(bool DryRun, bool Startup, bool? StartupPreference = null)
 {
-    internal bool ManagesStartup => !DryRun;
+    internal bool ManagesStartup => !DryRun && StartupPreference is null;
     internal string[] BackendArguments => DryRun ? ["--dry-run"] : [];
     internal static ReceiverLaunchOptions? Parse(string[] arguments)
     {
-        if (arguments.Any(argument => argument is not ("--dry-run" or "--startup")) ||
+        if (arguments.Any(argument => argument is not ("--dry-run" or "--startup" or "--enable-autostart" or "--disable-autostart")) ||
             arguments.Distinct().Count() != arguments.Length || arguments.Length > 1) return null;
-        return new(arguments.Contains("--dry-run"), arguments.Contains("--startup"));
+        return new(arguments.Contains("--dry-run"), arguments.Contains("--startup"),
+            arguments.Contains("--enable-autostart") ? true : arguments.Contains("--disable-autostart") ? false : null);
     }
 }
