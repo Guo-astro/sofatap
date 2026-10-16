@@ -25,6 +25,7 @@ public class ReceiverServerTest {
     private FakeInput input;
     private OkHttpClient client;
     private SSLContext trustedTls;
+    private SSLContext serverTls;
     private String bootstrap;
     private final List<SocketPeer> peers = new ArrayList<>();
     private final List<SSLSocket> rawSockets = new ArrayList<>();
@@ -38,10 +39,10 @@ public class ReceiverServerTest {
             new java.security.cert.Certificate[]{certificate.certificate()});
         KeyManagerFactory manager = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         manager.init(keys, "test".toCharArray());
-        SSLContext tls = SSLContext.getInstance("TLS"); tls.init(manager.getKeyManagers(), null, null);
+        serverTls = SSLContext.getInstance("TLS"); serverTls.init(manager.getKeyManagers(), null, null);
         authority = new PairingAuthority(null, System::currentTimeMillis, digest -> {});
         bootstrap = authority.newPairing(); input = new FakeInput();
-        server = new ReceiverServer(tls, InetAddress.getByName("127.0.0.1"), 0, authority, input, "Local test");
+        server = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"), 0, authority, input, "Local test");
         server.start();
         client = new OkHttpClient.Builder().sslSocketFactory(trusted.sslSocketFactory(), trusted.trustManager())
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).build();
@@ -222,6 +223,103 @@ public class ReceiverServerTest {
         assertEquals(401, connect(token).failedStatus());
     }
 
+    @Test public void disconnectWithoutRevocationImmediatelyInvalidatesQueuedInputAndNotifiesOnce() throws Exception {
+        SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
+        long generation = authority.generation();
+        input.block = true; peer.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        BooleanSupplier oldSession = input.current;
+        Thread oldWorker = input.applyThread;
+
+        server.disconnectController();
+        assertFalse("Disconnect must release ownership before returning", server.connected());
+        assertFalse("Queued input must be invalid before TLS cleanup finishes", oldSession.getAsBoolean());
+        assertEquals("Disconnect must not revoke the saved pairing", generation, authority.generation());
+        assertEquals(1, input.disconnections.get());
+        server.disconnectController();
+        assertEquals("Repeated disconnect must not repeat input cleanup", 1, input.disconnections.get());
+
+        input.release.countDown();
+        await(() -> input.cancelled.get() == 1);
+        awaitHandlerExit(oldWorker);
+        assertEquals(0, input.applied.get());
+        assertEquals("Worker finalization must not notify a second time", 1, input.disconnections.get());
+        SocketPeer resumed = connect(token);
+        assertFalse(resumed.message().has("pairingToken"));
+    }
+
+    @Test public void oldWorkerFinalizationCannotDisconnectANewAuthenticatedController() throws Exception {
+        SocketPeer old = connect(bootstrap); String token = old.message().getString("pairingToken");
+        input.block = true; old.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        Thread oldWorker = input.applyThread;
+        server.disconnectController();
+
+        // Keep the old input callback blocked until a distinct worker owns the new session.
+        SocketPeer resumed = connect(token); resumed.message();
+        assertTrue(server.connected());
+        input.block = false; input.release.countDown();
+        await(() -> input.cancelled.get() == 1);
+        awaitHandlerExit(oldWorker);
+        assertEquals(0, input.applied.get());
+        assertEquals("Old finally must not clear the new controller", 1, input.disconnections.get());
+        assertTrue(server.connected());
+
+        String id = UUID.randomUUID().toString();
+        resumed.socket.send(action(id, "click"));
+        JSONObject ack = resumed.message();
+        assertEquals(id, ack.getString("id")); assertTrue(ack.getBoolean("ok"));
+        assertEquals(1, input.applied.get());
+        resumed.socket.cancel();
+        await(() -> !server.connected() && input.disconnections.get() == 2);
+    }
+
+    @Test public void stoppedListenerReleasesItsPortAndRepeatedCloseLeavesReplacementAlone() throws Exception {
+        SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
+        int port = server.port();
+        FakeInput replacementInput = new FakeInput();
+        server.close();
+        assertFalse(server.connected()); assertEquals(1, input.disconnections.get());
+        assertTrue("Background setup must await accept termination before rebinding",
+            server.awaitListenerStopped(2, TimeUnit.SECONDS));
+        // Exercise the real listener's socket options, not a test socket that adds reuse itself.
+        // No bind retry, client closure or polling after the production completion signal.
+        try (ReceiverServer replacement = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"),
+                port, authority, replacementInput, "Replacement test")) {
+            replacement.start();
+            SocketPeer resumed = connect(replacement, token);
+            assertFalse(resumed.message().has("pairingToken"));
+            server.close(); server.disconnectController(); server.close();
+            String id = UUID.randomUUID().toString();
+            resumed.socket.send(action(id, "ping"));
+            JSONObject ack = resumed.message();
+            assertEquals(id, ack.getString("id")); assertTrue(ack.getBoolean("ok"));
+            assertTrue(replacement.connected());
+            assertEquals(port, replacement.port());
+            assertEquals(1, input.disconnections.get());
+            assertEquals(0, replacementInput.disconnections.get());
+            assertEquals(0, replacementInput.applied.get());
+        }
+    }
+
+    @Test public void closingBeforeStartSignalsListenerTerminationAndCannotStartAcceptingLater() throws Exception {
+        FakeInput neverStartedInput = new FakeInput();
+        try (ReceiverServer neverStarted = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"),
+                0, authority, neverStartedInput, "Never started")) {
+            neverStarted.close();
+            assertTrue("Closing a bound but unstarted listener must signal completion",
+                neverStarted.awaitListenerStopped(0, TimeUnit.SECONDS));
+            neverStarted.start();
+            assertTrue(neverStarted.awaitListenerStopped(0, TimeUnit.SECONDS));
+            assertFalse(neverStarted.connected());
+            assertNotNull("Starting a closed server must not reopen its listener",
+                connect(neverStarted, bootstrap).failure.poll(3, TimeUnit.SECONDS));
+            assertEquals("An unstarted listener cannot consume enrollment", bootstrap, authority.bootstrap());
+            assertEquals(0, neverStartedInput.applied.get());
+            assertEquals(0, neverStartedInput.disconnections.get());
+        }
+    }
+
     @Test public void closingServerCancelsQueuedActionAndStopsNewConnections() throws Exception {
         SocketPeer peer = connect(bootstrap); peer.message(); input.block = true;
         peer.socket.send(action(UUID.randomUUID().toString(), "click")); assertTrue(input.entered.await(2, TimeUnit.SECONDS));
@@ -244,6 +342,9 @@ public class ReceiverServerTest {
 
     private static final class FakeInput implements ReceiverServer.Input {
         final AtomicInteger applied = new AtomicInteger(); final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        final AtomicInteger cancelled = new AtomicInteger(), disconnections = new AtomicInteger();
+        volatile BooleanSupplier current;
+        volatile Thread applyThread;
         volatile boolean block;
         volatile String rejectedCode;
         volatile String rejectedKey;
@@ -251,16 +352,20 @@ public class ReceiverServerTest {
         final List<TVProtocol.Action> received = new CopyOnWriteArrayList<>();
         public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
         public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+            this.current = current; applyThread = Thread.currentThread();
             entered.countDown(); if (block) release.await(3, TimeUnit.SECONDS);
             if (delayMillis > 0) Thread.sleep(delayMillis);
-            if (!current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "cancelled");
+            if (!current.getAsBoolean()) {
+                cancelled.incrementAndGet();
+                return new JSONObject().put("ok", false).put("code", "cancelled");
+            }
             applied.incrementAndGet(); received.add(action);
             if (action.key() != null && action.key().equals(rejectedKey))
                 return new JSONObject().put("ok", false).put("code", "action_rejected");
             if (rejectedCode != null) return new JSONObject().put("ok", false).put("code", rejectedCode);
             return new JSONObject().put("ok", true);
         }
-        public void disconnected() { }
+        public void disconnected() { disconnections.incrementAndGet(); }
     }
 
     private final class SocketPeer extends WebSocketListener {
@@ -272,8 +377,11 @@ public class ReceiverServerTest {
         int failedStatus() throws Exception { Integer status = statuses.poll(3, TimeUnit.SECONDS); assertNotNull("Expected upgrade refusal", status); return status; }
     }
     private SocketPeer connect(String token) {
+        return connect(server, token);
+    }
+    private SocketPeer connect(ReceiverServer target, String token) {
         SocketPeer peer = new SocketPeer(); peers.add(peer);
-        peer.socket = client.newWebSocket(new Request.Builder().url("wss://127.0.0.1:" + server.port() + "/control")
+        peer.socket = client.newWebSocket(new Request.Builder().url("wss://127.0.0.1:" + target.port() + "/control")
             .header("Authorization", "Bearer " + token).build(), peer); return peer;
     }
 
@@ -309,6 +417,12 @@ public class ReceiverServerTest {
         assertTrue(headers.toString("US-ASCII").startsWith("HTTP/1.1 101 ")); return peer;
     }
     private static String action(String id, String type) throws Exception { return new JSONObject().put("id", id).put("type", type).toString(); }
+    private static void awaitHandlerExit(Thread worker) throws Exception {
+        // Observe completion of the actual handler, including its finally block, without
+        // adding a production hook or shutting down the newly authenticated session.
+        await(() -> Arrays.stream(worker.getStackTrace()).noneMatch(frame ->
+            frame.getClassName().equals(ReceiverServer.class.getName()) && frame.getMethodName().equals("handle")));
+    }
     private static void await(BooleanSupplier condition) throws Exception {
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (!condition.getAsBoolean() && System.nanoTime() < until) Thread.sleep(10);

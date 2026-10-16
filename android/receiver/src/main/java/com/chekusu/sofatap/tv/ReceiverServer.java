@@ -25,13 +25,28 @@ public final class ReceiverServer implements AutoCloseable {
     private final ExecutorService workers = new ThreadPoolExecutor(0, 4, 30, TimeUnit.SECONDS,
         new SynchronousQueue<>());
     private final ScheduledExecutorService deadlines = Executors.newSingleThreadScheduledExecutor();
+    // TLS close can write close_notify, even when aborting a socket. Android
+    // lifecycle callbacks must never perform that network I/O on the main thread.
+    private final ExecutorService cleanup = Executors.newSingleThreadExecutor(
+        task -> new Thread(task, "Sofatap-TV-cleanup"));
     private final Set<Socket> sockets = ConcurrentHashMap.newKeySet();
     private final AtomicReference<Socket> controller = new AtomicReference<>();
+    private final CountDownLatch listenerStopped = new CountDownLatch(1);
+    private boolean started;
     private volatile boolean closed;
 
     public ReceiverServer(SSLContext tls, InetAddress bind, int port, PairingAuthority authority,
                           Input input, String name) throws IOException {
-        this.listener = (SSLServerSocket)tls.getServerSocketFactory().createServerSocket(port, 4, bind);
+        this.listener = (SSLServerSocket)tls.getServerSocketFactory().createServerSocket();
+        // A replacement listener must be able to bind while retired connections
+        // finish closing. Set reuse before bind so accepted sockets inherit it.
+        try {
+            listener.setReuseAddress(true);
+            listener.bind(new InetSocketAddress(bind, port), 4);
+        } catch (IOException failure) {
+            try { listener.close(); } catch (IOException ignored) { }
+            throw failure;
+        }
         this.allowLoopbackPeers = bind != null && bind.isLoopbackAddress();
         List<String> protocols = new ArrayList<>();
         for (String p : listener.getSupportedProtocols()) if (p.equals("TLSv1.2") || p.equals("TLSv1.3")) protocols.add(p);
@@ -40,19 +55,42 @@ public final class ReceiverServer implements AutoCloseable {
     }
     public int port() { return listener.getLocalPort(); }
     public boolean connected() { return controller.get() != null; }
-    public void start() { new Thread(this::accept, "Sofatap-TV-listener").start(); }
-    private void accept() {
-        while (!closed) {
-            try {
-                SSLSocket socket = (SSLSocket)listener.accept();
-                if (!allowsPeer(socket.getInetAddress(), allowLoopbackPeers)) { close(socket); continue; }
-                sockets.add(socket);
-                try { workers.execute(() -> handle(socket)); }
-                catch (RejectedExecutionException busy) { sockets.remove(socket); close(socket); }
-            } catch (IOException error) { if (!closed) close(); }
-        }
+    public synchronized void start() {
+        if (closed || started) return;
+        started = true;
+        new Thread(this::accept, "Sofatap-TV-listener").start();
     }
-    public void disconnectController() { Socket socket = controller.get(); if (socket != null) close(socket); }
+    /** Background lifecycle barrier; never wait from main or while holding a service lock. */
+    boolean awaitListenerStopped(long timeout, TimeUnit unit) throws InterruptedException {
+        return listenerStopped.await(timeout, unit);
+    }
+    private void accept() {
+        try {
+            while (!closed) {
+                try {
+                    SSLSocket socket = (SSLSocket)listener.accept();
+                    if (!allowsPeer(socket.getInetAddress(), allowLoopbackPeers)) { close(socket); continue; }
+                    boolean stopping;
+                    synchronized (this) {
+                        // close() may have run between accept() and registration.
+                        stopping = closed;
+                        if (!stopping) sockets.add(socket);
+                    }
+                    if (stopping) { close(socket); return; }
+                    try { workers.execute(() -> handle(socket)); }
+                    catch (RejectedExecutionException busy) { sockets.remove(socket); close(socket); }
+                } catch (IOException error) { if (!closed) close(); }
+            }
+        } finally { listenerStopped.countDown(); }
+    }
+    public synchronized void disconnectController() {
+        Socket socket = controller.getAndSet(null);
+        if (socket == null) return;
+        // Invalidate queued input now, without waiting for TLS cleanup. The old
+        // worker's finally block must not disconnect a newly resumed controller.
+        input.disconnected();
+        cleanup.execute(() -> close(socket));
+    }
     static boolean allowsPeer(InetAddress address, boolean allowLoopback) {
         // Production QR endpoints are RFC1918 IPv4. Wildcard binding must not also
         // expose an authenticated control service to public IPv6 or other interfaces.
@@ -67,7 +105,9 @@ public final class ReceiverServer implements AutoCloseable {
             socket.setSoTimeout(5000); socket.setTcpNoDelay(true); socket.startHandshake();
             InputStream in = socket.getInputStream(); OutputStream out = socket.getOutputStream();
             Map<String, String> h = WebSocketCodec.request(in);
-            if (!controller.compareAndSet(null, socket)) { reject(out, "409 Conflict"); return; }
+            boolean acquired;
+            synchronized (this) { acquired = !closed && controller.compareAndSet(null, socket); }
+            if (!acquired) { reject(out, "409 Conflict"); return; }
             String auth = h.getOrDefault("authorization", "");
             long generation = authority.generation();
             PairingAuthority.Grant grant = authority.authorize(auth.startsWith("Bearer ") ? auth.substring(7) : null);
@@ -153,10 +193,17 @@ public final class ReceiverServer implements AutoCloseable {
         try { socket.shutdownInput(); } catch (IOException ignored) { }
         try { socket.close(); } catch (IOException ignored) { }
     }
-    @Override public void close() {
+    @Override public synchronized void close() {
+        if (closed) return;
         closed = true;
+        disconnectController();
+        // Initiate listener shutdown without TLS I/O. Some runtimes defer the
+        // native close until accept exits; setup waits for listenerStopped.
         try { listener.close(); } catch (IOException ignored) { }
-        for (Socket socket : sockets) close(socket);
+        if (!started) listenerStopped.countDown();
+        for (Socket socket : sockets) cleanup.execute(() -> close(socket));
         workers.shutdownNow(); deadlines.shutdownNow();
+        // Drain every accepted cleanup, including disconnects queued above.
+        cleanup.shutdown();
     }
 }
