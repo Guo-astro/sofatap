@@ -1,5 +1,9 @@
 import AppKit
+#if SOFATAP_MAC_APP_STORE
+import CoreGraphics
+#else
 @preconcurrency import ApplicationServices
+#endif
 import Combine
 import Darwin
 import Foundation
@@ -43,7 +47,18 @@ final class ReceiverController: ObservableObject {
         copied = false
         accessRequested = false
         accessNotice = nil
-        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/SofaTapHost")
+        #if SOFATAP_MAC_APP_STORE
+        #if arch(arm64)
+        let helperPath = "Contents/Helpers/arm64/SofaTapHost"
+        #elseif arch(x86_64)
+        let helperPath = "Contents/Helpers/x64/SofaTapHost"
+        #else
+        #error("Unsupported Mac App Store helper architecture")
+        #endif
+        #else
+        let helperPath = "Contents/Helpers/SofaTapHost"
+        #endif
+        let helper = Bundle.main.bundleURL.appendingPathComponent(helperPath)
         guard FileManager.default.isExecutableFile(atPath: helper.path) else {
             fail("找不到 Mac 接收组件。请重新安装 Sofatap。")
             return
@@ -53,6 +68,16 @@ final class ReceiverController: ObservableObject {
         let input = Pipe(), output = Pipe(), errors = Pipe()
         child.executableURL = helper
         child.arguments = ["--native-ui"] + (CommandLine.arguments.contains("--dry-run") ? ["--dry-run"] : [])
+        #if SOFATAP_MAC_APP_STORE
+        do {
+            let directories = try ReceiverStoreDirectories.production()
+            child.arguments?.append(contentsOf: ["--data-dir", directories.data.path])
+            child.environment = directories.helperEnvironment(inherited: ProcessInfo.processInfo.environment)
+        } catch {
+            fail("无法打开 Sofatap 的应用存储空间。请确认正在使用完整的 Mac App Store 应用。")
+            return
+        }
+        #endif
         child.standardInput = input
         child.standardOutput = output
         child.standardError = errors
@@ -120,12 +145,19 @@ final class ReceiverController: ObservableObject {
         // Ask from the user-visible, signed .app, so macOS can identify Sofatap rather
         // than only its helper. Apple documents this prompt as asynchronous: the
         // return value is current trust, not the user's response or helper readiness.
+        #if SOFATAP_MAC_APP_STORE
+        // App Sandbox cannot use AXUIElement. Basic control asks only for event
+        // posting access from an explicit native button click. A granted parent
+        // preflight does not prove that the bundled helper can inject events.
+        if !CGPreflightPostEventAccess() { _ = CGRequestPostEventAccess() }
+        #else
         let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
         _ = AXIsProcessTrustedWithOptions(options)
+        #endif
         accessRequested = true
         accessNotice = "请在系统提示中打开设置，并允许 Sofatap Receiver。若没有出现提示，可点“打开系统设置”；列表中没有应用时，点 + 选择已安装的 Sofatap Receiver.app。"
         // Leave the asynchronous system prompt in front. Do not concurrently ask
-        // the helper to open Settings. Its periodic AX/CG preflight remains the
+        // the helper to open Settings. Its periodic permission preflight remains the
         // authority for whether real input is available.
         send(.refresh)
     }

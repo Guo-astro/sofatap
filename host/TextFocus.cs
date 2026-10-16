@@ -14,10 +14,15 @@ public interface ITextFocusProbe : IDisposable
 
 public static class TextFocusProbe
 {
-    public static ITextFocusProbe Create() => new CachedTextFocusProbe(() =>
+    public static ITextFocusProbe Create() =>
+#if SOFATAP_MAC_APP_STORE
+        Unavailable();
+#else
+        new CachedTextFocusProbe(() =>
         OperatingSystem.IsWindows() ? new WindowsTextFocusProbe() :
         OperatingSystem.IsMacOS() ? new MacTextFocusProbe() :
         OperatingSystem.IsLinux() ? new LinuxTextFocusProbe() : new UnknownTextFocusProbe());
+#endif
 
     public static ITextFocusProbe Unavailable() => new UnknownTextFocusProbe();
 }

@@ -48,7 +48,7 @@ The release bundling script supplies the matching helper architecture, Info.plis
 
 The helper's stdout is newline-delimited JSON. Each complete `state` has `name`, `platform: "macos"`, `inputStatus`, `dryRun`, `connected`, and `pairings: [{host, uri, qrPng}]`. `qrPng` is a base64 PNG. The protocol allowlists only `{"type":"refresh"}`, `{"type":"requestAccess"}` or `{"type":"quit"}`, each followed by a newline.
 
-The Mac authorization button calls Apple's [AXIsProcessTrustedWithOptions](https://developer.apple.com/documentation/applicationservices/1459186-axisprocesstrustedwithoptions) with `kAXTrustedCheckOptionPrompt: true` **from the signed parent app**, only after an explicit click. Apple's prompt is asynchronous; its immediate return value never marks the helper as ready. A separate button opens normal Accessibility settings if the prompt does not appear. The UI gives manual `+` instructions for selecting the installed `Sofatap Receiver.app`. Install the signed app at a stable path before granting permission. The helper still independently checks AX trust and event-posting access in periodic states; granting parent permission is not itself proof that helper injection works. Neither startup, Refresh nor status reads prompt for permission, and dry-run cannot request it.
+The website distribution's Mac authorization button calls Apple's [AXIsProcessTrustedWithOptions](https://developer.apple.com/documentation/applicationservices/1459186-axisprocesstrustedwithoptions) with `kAXTrustedCheckOptionPrompt: true` **from the signed parent app**, only after an explicit click. Apple's prompt is asynchronous; its immediate return value never marks the helper as ready. A separate button opens normal Accessibility settings if the prompt does not appear. The UI gives manual `+` instructions for selecting the installed `Sofatap Receiver.app`. Install the signed app at a stable path before granting permission. The helper still independently checks AX trust and event-posting access in periodic states; granting parent permission is not itself proof that helper injection works. Neither startup, Refresh nor status reads prompt for permission, and dry-run cannot request it.
 
 The UI model is main-actor isolated. Independent `DispatchSourceRead` readers consume stdout and drain stderr using nonblocking reads; the command writer operates away from the UI thread. Do not replace these with two `FileHandle.bytes` loops: Foundation's shared serial async IO actor can block stdout behind a quiet stderr. Frame sizes and PNG dimensions are bounded before decoding, and the UI stream buffers only the latest state. A missing update for eight seconds clears visible pairing state. Process exit, malformed frames and pipe failure show a generic error and clear the QR. Raw stderr is discarded. The QR and URI are held in memory, are never logged or saved by the launcher, and only reach the clipboard after an explicit Copy action. The helper separately owns the persistent pairing profile.
 
@@ -91,3 +91,28 @@ xcrun swiftc -parse-as-library -swift-version 5 -target arm64-apple-macosx15.0 \
 ```
 
 No actual login-item registration, logout/reboot or shared-desktop input is performed by these checks. A display connection change does not terminate a normal receiver; only the explicitly isolated QA launch exits if its assigned display disappears or ceases to be isolated. This change does not establish a cause for any household display-switch failure.
+
+## Mac App Store basic build
+
+Compile both the launcher and backend with `SOFATAP_MAC_APP_STORE` for the separate sandboxed distribution. Keep the receiver bundle identifier stable. This build is intended for manual pointer, click, drag, scrolling and ordinary text/key sending. It does not inspect other applications with Accessibility APIs, detect focused input fields or advertise precise live editing. Building the sandbox variant is not proof that event injection works through its final signed helper; real permission and input acceptance remain a release gate.
+
+The store launcher selects only `Contents/Helpers/arm64/SofaTapHost` or `Contents/Helpers/x64/SofaTapHost`, according to its compiled architecture. The signed parent resolves Application Support and Caches through Foundation, checks that both are inside its own sandbox container, passes an explicit private `--data-dir`, and replaces any inherited `DOTNET_BUNDLE_EXTRACT_BASE_DIR` with its container cache. Missing sandbox containment fails closed; it does not read or migrate the website receiver's pairing profile.
+
+The store permission button uses `CGPreflightPostEventAccess` and, if access is not already granted, `CGRequestPostEventAccess`. It never compiles a call to `AXIsProcessTrustedWithOptions`. The helper's periodic event-access status remains authoritative for the visible ready state. Requests still require an explicit click and remain disabled for dry-run; no prompt is issued at startup or during Refresh.
+
+For startup, the store build presents a first-run checkbox preselected to enable launch at login, followed by a **确认设置** button. The selection alone does not register a login item: the explicit confirmation applies the user's choice. Declining it persists, existing system registration choices are respected, and failures do not cause automatic retries. The website build retains its existing one-time default registration.
+
+The same injected login-item tests run with and without the store define. Container checks use only temporary fixture paths and cover outside-container and symlink escapes:
+
+```sh
+xcrun swiftc -parse-as-library -swift-version 6 -D SOFATAP_MAC_APP_STORE \
+  -target arm64-apple-macosx15.0 desktop/macos/ReceiverLoginItem.swift \
+  desktop/macos/tests/ReceiverLoginItemTests.swift -o /tmp/Sofatap-StoreLoginTests
+/tmp/Sofatap-StoreLoginTests
+xcrun swiftc -parse-as-library -swift-version 6 -target arm64-apple-macosx15.0 \
+  desktop/macos/ReceiverStoreEnvironment.swift \
+  desktop/macos/tests/ReceiverStoreEnvironmentTests.swift -o /tmp/Sofatap-StoreEnvironmentTests
+/tmp/Sofatap-StoreEnvironmentTests
+```
+
+Add `-D SOFATAP_MAC_APP_STORE` to the offscreen appearance-fixture command to inspect the store capability note and first-run startup confirmation. These fixtures cannot replace real Mac App Store screenshots or physical input acceptance.

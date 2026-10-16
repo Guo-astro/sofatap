@@ -9,7 +9,8 @@ enum ReceiverLoginItemTests {
             checks += 1
         }
         func model(_ service: FakeService, _ preferences: FakePreferences, available: Bool = true) -> ReceiverLoginItem {
-            ReceiverLoginItem(isAvailable: available, service: service, preferences: preferences)
+            ReceiverLoginItem(isAvailable: available, service: service, preferences: preferences,
+                              firstLaunchPolicy: .automaticRegistration)
         }
         let service = FakeService(), preferences = FakePreferences()
         let first = model(service, preferences)
@@ -88,6 +89,60 @@ enum ReceiverLoginItemTests {
         check(!ReceiverLoginItem.canManage(arguments: [], bundleIdentifier: nil, bundleURL: bundle), "raw compiled executable excluded")
         check(!ReceiverLoginItem.canManage(arguments: [], bundleIdentifier: "fixture", bundleURL: bundle), "different bundle excluded")
         check(!ReceiverLoginItem.canManage(arguments: [], bundleIdentifier: identifier, bundleURL: URL(fileURLWithPath: "/tmp/SofaTap")), "non-app excluded")
+
+        let storeService = FakeService(), storePrefs = FakePreferences()
+        let store = ReceiverLoginItem(isAvailable: true, service: storeService, preferences: storePrefs,
+                                      firstLaunchPolicy: .explicitConsent)
+        store.configureFirstLaunch()
+        check(store.needsFirstLaunchConsent && store.firstLaunchRequested && !store.isRequested,
+              "store default is an unconfirmed selection, not an active login item")
+        check(storeService.registrations == 0 && !storePrefs.hasConfiguredLoginItem,
+              "store launch does not register or record consent")
+        store.refresh()
+        store.configureFirstLaunch()
+        check(storeService.registrations == 0 && store.needsFirstLaunchConsent,
+              "repeated launch/refresh cannot substitute for consent")
+        store.confirmFirstLaunch()
+        check(storeService.registrations == 1 && store.isRequested && storePrefs.hasConfiguredLoginItem
+              && !store.needsFirstLaunchConsent, "explicit confirmation enables the selected startup choice")
+        store.confirmFirstLaunch()
+        check(storeService.registrations == 1, "duplicate confirmation cannot re-register")
+        store.setRequested(false)
+        store.configureFirstLaunch()
+        check(storeService.registrations == 1 && !store.isRequested && !store.needsFirstLaunchConsent,
+              "store opt-out survives reopening without another prompt")
+
+        let declinedService = FakeService(), declinedPrefs = FakePreferences()
+        let declined = ReceiverLoginItem(isAvailable: true, service: declinedService, preferences: declinedPrefs,
+                                         firstLaunchPolicy: .explicitConsent)
+        declined.configureFirstLaunch()
+        declined.firstLaunchRequested = false
+        declined.confirmFirstLaunch()
+        declined.configureFirstLaunch()
+        check(declinedService.registrations == 0 && declinedPrefs.hasConfiguredLoginItem
+              && !declined.needsFirstLaunchConsent, "declining setup persists without any OS registration")
+
+        let consentFailService = FakeService(), consentFailPrefs = FakePreferences()
+        consentFailService.shouldFail = true
+        let consentFailure = ReceiverLoginItem(isAvailable: true, service: consentFailService, preferences: consentFailPrefs,
+                                               firstLaunchPolicy: .explicitConsent)
+        consentFailure.configureFirstLaunch()
+        consentFailure.confirmFirstLaunch()
+        consentFailure.configureFirstLaunch()
+        check(consentFailure.failure != nil && !consentFailure.isRequested && consentFailService.registrations == 1,
+              "failed store consent does not silently retry or claim startup is enabled")
+
+        let knownService = FakeService(.requiresApproval)
+        let known = ReceiverLoginItem(isAvailable: true, service: knownService, preferences: FakePreferences(),
+                                       firstLaunchPolicy: .explicitConsent)
+        known.configureFirstLaunch()
+        check(!known.needsFirstLaunchConsent && knownService.registrations == 0 && known.status == .requiresApproval,
+              "existing pending system choice is not overridden by first-run onboarding")
+        #if SOFATAP_MAC_APP_STORE
+        check(ReceiverLoginFirstLaunchPolicy.distributionDefault == .explicitConsent, "store compilation uses explicit consent")
+        #else
+        check(ReceiverLoginFirstLaunchPolicy.distributionDefault == .automaticRegistration, "website compilation keeps existing behavior")
+        #endif
         print("PASS: \(checks) login-start checks (injected services and in-memory preferences; no OS registration, window or receiver)")
     }
 }

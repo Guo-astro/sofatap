@@ -12,6 +12,13 @@
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(SofatapMacAppStore)' == 'true'">
+    <DefineConstants>$(DefineConstants);SOFATAP_MAC_APP_STORE</DefineConstants>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(SofatapMacAppStore)' == 'true'">
+    <!-- The store receiver has no cross-application AX inspection/editing code. -->
+    <Compile Remove="MacTextFocus.cs;MacTextEditor.cs" />
+  </ItemGroup>
   <ItemGroup><PackageReference Include="QRCoder" Version="1.7.0" /></ItemGroup>
   <ItemGroup Condition="'$(RuntimeIdentifier)' == '' Or '$(RuntimeIdentifier)' == 'linux-x64' Or '$(RuntimeIdentifier)' == 'linux-arm64'">
     <Content Include="../desktop/linux/input_worker.py;../desktop/linux/input_common.py;../desktop/linux/x11_input.py;../desktop/linux/wayland_input.py;../desktop/linux/text_focus_worker.py"
