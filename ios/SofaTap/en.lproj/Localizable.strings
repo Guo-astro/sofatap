@@ -400,7 +400,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS uses the TV’s pointer interface. Click acts at the pointer position; Confirm acts on the highlighted item. Results depend on the TV and app.";
 "接收器当前可用操作" = "Controls reported by the receiver";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "TV control does not yet support right-click, mouse double-click, dragging, keyboard or voice input.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Assign Confirm, Back and Home in Gesture Settings. Back and Home also have buttons at the bottom of the touch area.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Assign Confirm, Back and Home in Gesture Settings. Back and Home also have dedicated buttons.";
 "等待设备报告" = "Waiting for device details";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "The right edge always scrolls. Gestures use your current mappings above. The target content must support scrolling.";
 "点击光标下的可访问控件" = "Click an accessible control under the cursor";

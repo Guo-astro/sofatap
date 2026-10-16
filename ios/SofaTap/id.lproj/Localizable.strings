@@ -396,7 +396,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS menggunakan antarmuka penunjuk TV. Klik bekerja di posisi penunjuk; Konfirmasi bekerja pada item yang disorot. Hasil bergantung pada TV dan aplikasi.";
 "接收器当前可用操作" = "Kontrol yang dilaporkan penerima";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "Kontrol TV belum mendukung klik kanan, klik ganda mouse, menyeret, keyboard, atau input suara.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Atur Konfirmasi, Kembali, dan Beranda di pengaturan gestur. Tombol Kembali dan Beranda juga tersedia di bagian bawah area sentuh.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Atur Konfirmasi, Kembali, dan Beranda di pengaturan gestur. Kembali dan Beranda juga dapat digunakan melalui tombol khusus.";
 "等待设备报告" = "Menunggu informasi perangkat";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "Tepi kanan selalu digunakan untuk menggulir. Gestur mengikuti pengaturan Anda saat ini di atas. Konten tujuan harus mendukung pengguliran.";
 "点击光标下的可访问控件" = "Klik kontrol aksesibilitas di bawah kursor";

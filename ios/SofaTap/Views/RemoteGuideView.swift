@@ -127,9 +127,9 @@ struct RemoteGuideView: View {
             }
             .foregroundStyle(Palette.mint).padding(.vertical, 12)
             .background(Palette.background, in: RoundedRectangle(cornerRadius: 16))
-            // Match the physical lower-left Back / lower-middle Home locations.
+            // Keep the Back / Home illustration in a consistent order across languages.
             .environment(\.layoutDirection, .leftToRight)
-            Text(context.tvNavigation ? String(localized: "首次使用系统遥控时，按提示输入电视上显示的配对码。") : String(localized: "在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。"))
+            Text(context.tvNavigation ? String(localized: "首次使用系统遥控时，按提示输入电视上显示的配对码。") : String(localized: "在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。"))
                 .font(.footnote).foregroundStyle(Palette.muted)
         }
         .padding(18).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))

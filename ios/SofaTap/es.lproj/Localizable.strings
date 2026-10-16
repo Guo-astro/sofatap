@@ -396,7 +396,7 @@
 "LG webOS 使用电视的指针接口。点击操作光标位置，确认操作当前高亮项；具体效果取决于电视和应用。" = "LG webOS usa la interfaz de puntero del televisor. Clic actúa en la posición del puntero; Confirmar actúa sobre el elemento resaltado. El resultado depende del televisor y la app.";
 "接收器当前可用操作" = "Controles indicados por el receptor";
 "电视暂不支持右键、鼠标双击、拖动、键盘或语音输入。" = "El control del televisor todavía no admite clic derecho, doble clic de ratón, arrastrar, teclado ni entrada por voz.";
-"在手势设置中可绑定确认、返回和主页。返回与主页也可使用触控区下方的按钮。" = "Asigna Confirmar, Atrás e Inicio en los ajustes de gestos. Atrás e Inicio también tienen botones en la parte inferior del área táctil.";
+"在手势设置中可绑定确认、返回和主页。返回与主页也可使用专用按钮。" = "Asigna Confirmar, Atrás e Inicio en los ajustes de gestos. Atrás e Inicio también tienen botones propios.";
 "等待设备报告" = "Esperando información del dispositivo";
 "右侧滚动条固定用于滚动；手势按上方当前映射执行。滚动需要目标内容支持。" = "El borde derecho siempre desplaza el contenido. Los gestos usan tus asignaciones actuales de arriba. El contenido de destino debe permitir el desplazamiento.";
 "点击光标下的可访问控件" = "Hacer clic en un control accesible bajo el cursor";
