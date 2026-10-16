@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BooleanSupplier;
@@ -85,8 +86,10 @@ public final class ReceiverLifecycleDeviceTest {
                 assertFalse("Server close must invalidate control before returning", fixture.server.connected());
                 assertEquals(1, fixture.disconnected.get());
             });
-            // Bind immediately: no retry, old-peer read, sleep or certificate generation
-            // may hide a listener that remains unavailable after close() returns.
+            // Wait for accept() to finish only on the instrumentation thread, never
+            // Android main. Then bind once, without retrying or waiting for old-peer TLS cleanup.
+            assertTrue("Listener must finish after close without blocking Android main",
+                fixture.server.awaitListenerStopped(2, TimeUnit.SECONDS));
             try (Fixture replacement = new Fixture(fixture, previousPort)) {
                 assertEquals(previousPort, replacement.server.port());
                 Peer resumed = replacement.connect(replacement.bootstrap);

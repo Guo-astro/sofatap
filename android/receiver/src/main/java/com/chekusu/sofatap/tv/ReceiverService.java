@@ -13,6 +13,10 @@ import java.util.List;
 /** User-visible foreground listener, with opt-out boot startup and no wake lock. */
 public final class ReceiverService extends Service {
     static volatile ReceiverService instance;
+    // Preserve the listener shutdown barrier across stop/start Service instances.
+    // Waiting happens only on the setup executor, never in Android main callbacks.
+    private static final ConcurrentLinkedQueue<ReceiverServer> retiringListeners = new ConcurrentLinkedQueue<>();
+    private static final Object listenerSetup = new Object();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final ExecutorService setup = Executors.newSingleThreadExecutor();
     private volatile boolean stopped;
@@ -107,30 +111,34 @@ public final class ReceiverService extends Service {
                 String name = PairingUri.deviceName(Build.MODEL);
                 // Preserve the existing hello frame's 128-byte display-name contract.
                 if (name.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 128) name = "Android TV";
-                candidate = new ReceiverServer(credentials.tls(), null, 53319, auth, new ReceiverServer.Input() {
-                    @Override public JSONObject snapshot() throws Exception {
-                        return onMain(() -> InputBridge.snapshot(ReceiverService.this));
+                synchronized (listenerSetup) {
+                    awaitRetiringListeners();
+                    if (stopped) return;
+                    candidate = new ReceiverServer(credentials.tls(), null, 53319, auth, new ReceiverServer.Input() {
+                        @Override public JSONObject snapshot() throws Exception {
+                            return onMain(() -> InputBridge.snapshot(ReceiverService.this));
+                        }
+                        @Override public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+                            return onMain(() -> {
+                                if (stopped || !current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "session_ended");
+                                String kind = action.type();
+                                if (kind.equals("key")) {
+                                    kind = action.key();
+                                    if (kind.equals("confirm")) kind = "focus_click";
+                                    else if (!kind.equals("back") && !kind.equals("home")) kind = "focus_" + kind;
+                                }
+                                return InputBridge.perform(ReceiverService.this, kind, action.dx(), action.dy());
+                            });
+                        }
+                        @Override public void disconnected() {
+                            main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
+                        }
+                    }, name);
+                    synchronized (this) {
+                        if (stopped) { candidate.close(); return; }
+                        identity = credentials; authority = auth; server = candidate; candidate.start();
+                        error = null;
                     }
-                    @Override public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
-                        return onMain(() -> {
-                            if (stopped || !current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "session_ended");
-                            String kind = action.type();
-                            if (kind.equals("key")) {
-                                kind = action.key();
-                                if (kind.equals("confirm")) kind = "focus_click";
-                                else if (!kind.equals("back") && !kind.equals("home")) kind = "focus_" + kind;
-                            }
-                            return InputBridge.perform(ReceiverService.this, kind, action.dx(), action.dy());
-                        });
-                    }
-                    @Override public void disconnected() {
-                        main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
-                    }
-                }, name);
-                synchronized (this) {
-                    if (stopped) { candidate.close(); return; }
-                    identity = credentials; authority = auth; server = candidate; candidate.start();
-                    error = null;
                 }
             } catch (Exception failure) {
                 synchronized (this) {
@@ -152,8 +160,19 @@ public final class ReceiverService extends Service {
         if (authority != null) authority.retire();
         authority = null;
         ReceiverServer previous = server; server = null;
-        if (previous != null) previous.close();
+        if (previous != null) {
+            retiringListeners.add(previous);
+            previous.close();
+        }
         main.post(() -> { ReceiverServer active = server; if (active == null || !active.connected()) InputBridge.disconnect(); });
+    }
+    private static void awaitRetiringListeners() throws Exception {
+        ReceiverServer previous;
+        while ((previous = retiringListeners.peek()) != null) {
+            if (!previous.awaitListenerStopped(2, TimeUnit.SECONDS))
+                throw new java.io.IOException("listener_shutdown_timeout");
+            retiringListeners.remove(previous);
+        }
     }
     private <T> T onMain(Callable<T> action) throws Exception {
         FutureTask<T> task = new FutureTask<>(action); main.post(task);

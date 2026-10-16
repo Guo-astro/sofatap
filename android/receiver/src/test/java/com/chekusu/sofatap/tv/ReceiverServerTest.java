@@ -274,14 +274,16 @@ public class ReceiverServerTest {
         await(() -> !server.connected() && input.disconnections.get() == 2);
     }
 
-    @Test public void closeReleasesListeningPortBeforeReturningAndRepeatedCloseLeavesReplacementAlone() throws Exception {
+    @Test public void stoppedListenerReleasesItsPortAndRepeatedCloseLeavesReplacementAlone() throws Exception {
         SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
         int port = server.port();
         FakeInput replacementInput = new FakeInput();
         server.close();
         assertFalse(server.connected()); assertEquals(1, input.disconnections.get());
+        assertTrue("Background setup must await accept termination before rebinding",
+            server.awaitListenerStopped(2, TimeUnit.SECONDS));
         // Exercise the real listener's socket options, not a test socket that adds reuse itself.
-        // No retry, client closure or polling: network refresh replaces this listener immediately.
+        // No bind retry, client closure or polling after the production completion signal.
         try (ReceiverServer replacement = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"),
                 port, authority, replacementInput, "Replacement test")) {
             replacement.start();
@@ -297,6 +299,24 @@ public class ReceiverServerTest {
             assertEquals(1, input.disconnections.get());
             assertEquals(0, replacementInput.disconnections.get());
             assertEquals(0, replacementInput.applied.get());
+        }
+    }
+
+    @Test public void closingBeforeStartSignalsListenerTerminationAndCannotStartAcceptingLater() throws Exception {
+        FakeInput neverStartedInput = new FakeInput();
+        try (ReceiverServer neverStarted = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"),
+                0, authority, neverStartedInput, "Never started")) {
+            neverStarted.close();
+            assertTrue("Closing a bound but unstarted listener must signal completion",
+                neverStarted.awaitListenerStopped(0, TimeUnit.SECONDS));
+            neverStarted.start();
+            assertTrue(neverStarted.awaitListenerStopped(0, TimeUnit.SECONDS));
+            assertFalse(neverStarted.connected());
+            assertNotNull("Starting a closed server must not reopen its listener",
+                connect(neverStarted, bootstrap).failure.poll(3, TimeUnit.SECONDS));
+            assertEquals("An unstarted listener cannot consume enrollment", bootstrap, authority.bootstrap());
+            assertEquals(0, neverStartedInput.applied.get());
+            assertEquals(0, neverStartedInput.disconnections.get());
         }
     }
 
