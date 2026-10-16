@@ -10,6 +10,8 @@ import org.junit.Test;
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
+import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
@@ -222,6 +224,73 @@ public class ReceiverServerTest {
         assertEquals(401, connect(token).failedStatus());
     }
 
+    @Test public void disconnectWithoutRevocationImmediatelyInvalidatesQueuedInputAndNotifiesOnce() throws Exception {
+        SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
+        long generation = authority.generation();
+        input.block = true; peer.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        BooleanSupplier oldSession = input.current;
+        Thread oldWorker = input.applyThread;
+
+        server.disconnectController();
+        assertFalse("Disconnect must release ownership before returning", server.connected());
+        assertFalse("Queued input must be invalid before TLS cleanup finishes", oldSession.getAsBoolean());
+        assertEquals("Disconnect must not revoke the saved pairing", generation, authority.generation());
+        assertEquals(1, input.disconnections.get());
+        server.disconnectController();
+        assertEquals("Repeated disconnect must not repeat input cleanup", 1, input.disconnections.get());
+
+        input.release.countDown();
+        await(() -> input.cancelled.get() == 1);
+        awaitHandlerExit(oldWorker);
+        assertEquals(0, input.applied.get());
+        assertEquals("Worker finalization must not notify a second time", 1, input.disconnections.get());
+        SocketPeer resumed = connect(token);
+        assertFalse(resumed.message().has("pairingToken"));
+    }
+
+    @Test public void oldWorkerFinalizationCannotDisconnectANewAuthenticatedController() throws Exception {
+        SocketPeer old = connect(bootstrap); String token = old.message().getString("pairingToken");
+        input.block = true; old.socket.send(action(UUID.randomUUID().toString(), "click"));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        Thread oldWorker = input.applyThread;
+        server.disconnectController();
+
+        // Keep the old input callback blocked until a distinct worker owns the new session.
+        SocketPeer resumed = connect(token); resumed.message();
+        assertTrue(server.connected());
+        input.block = false; input.release.countDown();
+        await(() -> input.cancelled.get() == 1);
+        awaitHandlerExit(oldWorker);
+        assertEquals(0, input.applied.get());
+        assertEquals("Old finally must not clear the new controller", 1, input.disconnections.get());
+        assertTrue(server.connected());
+
+        String id = UUID.randomUUID().toString();
+        resumed.socket.send(action(id, "click"));
+        JSONObject ack = resumed.message();
+        assertEquals(id, ack.getString("id")); assertTrue(ack.getBoolean("ok"));
+        assertEquals(1, input.applied.get());
+        resumed.socket.cancel();
+        await(() -> !server.connected() && input.disconnections.get() == 2);
+    }
+
+    @Test public void closeReleasesListeningPortBeforeReturningAndRepeatedCloseLeavesReplacementAlone() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message();
+        int port = server.port();
+        server.close();
+        assertFalse(server.connected()); assertEquals(1, input.disconnections.get());
+        try (ServerSocket replacement = new ServerSocket()) {
+            replacement.setReuseAddress(true);
+            // No retry or polling: network refresh constructs the replacement immediately.
+            replacement.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+            server.close(); server.disconnectController(); server.close();
+            assertFalse(replacement.isClosed());
+            assertEquals(port, replacement.getLocalPort());
+            assertEquals(1, input.disconnections.get());
+        }
+    }
+
     @Test public void closingServerCancelsQueuedActionAndStopsNewConnections() throws Exception {
         SocketPeer peer = connect(bootstrap); peer.message(); input.block = true;
         peer.socket.send(action(UUID.randomUUID().toString(), "click")); assertTrue(input.entered.await(2, TimeUnit.SECONDS));
@@ -244,6 +313,9 @@ public class ReceiverServerTest {
 
     private static final class FakeInput implements ReceiverServer.Input {
         final AtomicInteger applied = new AtomicInteger(); final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
+        final AtomicInteger cancelled = new AtomicInteger(), disconnections = new AtomicInteger();
+        volatile BooleanSupplier current;
+        volatile Thread applyThread;
         volatile boolean block;
         volatile String rejectedCode;
         volatile String rejectedKey;
@@ -251,16 +323,20 @@ public class ReceiverServerTest {
         final List<TVProtocol.Action> received = new CopyOnWriteArrayList<>();
         public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
         public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
+            this.current = current; applyThread = Thread.currentThread();
             entered.countDown(); if (block) release.await(3, TimeUnit.SECONDS);
             if (delayMillis > 0) Thread.sleep(delayMillis);
-            if (!current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "cancelled");
+            if (!current.getAsBoolean()) {
+                cancelled.incrementAndGet();
+                return new JSONObject().put("ok", false).put("code", "cancelled");
+            }
             applied.incrementAndGet(); received.add(action);
             if (action.key() != null && action.key().equals(rejectedKey))
                 return new JSONObject().put("ok", false).put("code", "action_rejected");
             if (rejectedCode != null) return new JSONObject().put("ok", false).put("code", rejectedCode);
             return new JSONObject().put("ok", true);
         }
-        public void disconnected() { }
+        public void disconnected() { disconnections.incrementAndGet(); }
     }
 
     private final class SocketPeer extends WebSocketListener {
@@ -309,6 +385,12 @@ public class ReceiverServerTest {
         assertTrue(headers.toString("US-ASCII").startsWith("HTTP/1.1 101 ")); return peer;
     }
     private static String action(String id, String type) throws Exception { return new JSONObject().put("id", id).put("type", type).toString(); }
+    private static void awaitHandlerExit(Thread worker) throws Exception {
+        // Observe completion of the actual handler, including its finally block, without
+        // adding a production hook or shutting down the newly authenticated session.
+        await(() -> Arrays.stream(worker.getStackTrace()).noneMatch(frame ->
+            frame.getClassName().equals(ReceiverServer.class.getName()) && frame.getMethodName().equals("handle")));
+    }
     private static void await(BooleanSupplier condition) throws Exception {
         long until = System.nanoTime() + TimeUnit.SECONDS.toNanos(3);
         while (!condition.getAsBoolean() && System.nanoTime() < until) Thread.sleep(10);

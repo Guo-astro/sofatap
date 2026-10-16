@@ -4,7 +4,7 @@ This is the Android/Google TV experimental receiver for **free manual control**.
 
 **No physical TV model or third-party TV app is qualified yet.** A successful build, network connection, or visible cursor does not establish that a television accepts clicks. This is not a Google Play release.
 
-The [0.1.2 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) (version code 3) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Physical testing has started on a Sony XRJ-85X95L running Android 12; the Xiaomi TV is still untested. Neither has completed model acceptance.
+The [0.1.2 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) (version code 3) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Physical testing has started on a Sony XRJ-85X95L running Android 12; first installation and user-granted accessibility setup are now confirmed on a Xiaomi MiTV-MOEU0 running Android 14. Neither has completed model acceptance. The Xiaomi setup exposed a TLS-disconnect crash; see the [cleanup fix and test boundaries](../docs/verification/android-tv-disconnect-cleanup-2026-10-17.md).
 
 ## Build
 

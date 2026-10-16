@@ -1,8 +1,10 @@
 # Sofatap 实机验收
 
-## Android/Google TV：现场测试待完成（2026-10-16）
+## Android/Google TV：现场测试待完成（2026-10-17）
 
-**索尼 XRJ-85X95L 已开始现场测试，尚未完成验收；小米仍未现场测试。** 索尼运行 Android 12（API 31），已通过用户授权的网络安装装入接收器 0.1.2-beta.1，并由用户启用辅助功能。用户确认单击和滚动可用，同时报告快速滚动导致后续点击延迟、连接中断，以及返回不可用；各应用覆盖和修复后的返回仍待复测。单元测试、Swift/Java TLS 联调、模拟器运行和 APK 打包均不代表实体电视已验收。参见 [输入队列修复记录](verification/tv-input-and-guide-2026-10-16.md)及 [TV 重连验证](verification/android-tv-reconnect-2026-10-16.md)。
+**索尼 XRJ-85X95L 已开始现场测试，尚未完成验收；小米 MiTV-MOEU0（Android 14 / API 34）已完成现场安装和用户授权，实际输入验收仍待完成。** 索尼运行 Android 12（API 31），已通过用户授权的网络安装装入接收器 0.1.2-beta.1，并由用户启用辅助功能。用户确认单击和滚动可用，同时报告快速滚动导致后续点击延迟、连接中断，以及返回不可用；各应用覆盖和修复后的返回仍待复测。单元测试、Swift/Java TLS 联调、模拟器运行和 APK 打包均不代表实体电视已验收。参见 [输入队列修复记录](verification/tv-input-and-guide-2026-10-16.md)及 [TV 重连验证](verification/android-tv-reconnect-2026-10-16.md)。
+
+小米首次设置期间发现无障碍服务重连触发的 TLS 主线程关闭崩溃；修复及软件回归见 [2026-10-17 连接清理验证](verification/android-tv-disconnect-cleanup-2026-10-17.md)。不把安装成功或模拟器测试当作实体电视控制验收。
 
 | 现场项目 | 索尼 | 小米 |
 | --- | --- | --- |
