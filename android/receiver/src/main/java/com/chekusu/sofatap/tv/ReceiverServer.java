@@ -35,7 +35,16 @@ public final class ReceiverServer implements AutoCloseable {
 
     public ReceiverServer(SSLContext tls, InetAddress bind, int port, PairingAuthority authority,
                           Input input, String name) throws IOException {
-        this.listener = (SSLServerSocket)tls.getServerSocketFactory().createServerSocket(port, 4, bind);
+        this.listener = (SSLServerSocket)tls.getServerSocketFactory().createServerSocket();
+        // A replacement listener must be able to bind while retired connections
+        // finish closing. Set reuse before bind so accepted sockets inherit it.
+        try {
+            listener.setReuseAddress(true);
+            listener.bind(new InetSocketAddress(bind, port), 4);
+        } catch (IOException failure) {
+            try { listener.close(); } catch (IOException ignored) { }
+            throw failure;
+        }
         this.allowLoopbackPeers = bind != null && bind.isLoopbackAddress();
         List<String> protocols = new ArrayList<>();
         for (String p : listener.getSupportedProtocols()) if (p.equals("TLSv1.2") || p.equals("TLSv1.3")) protocols.add(p);

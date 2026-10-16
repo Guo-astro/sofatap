@@ -14,6 +14,7 @@ import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLException;
 import javax.net.ssl.SSLParameters;
 import javax.net.ssl.SSLSocket;
@@ -77,17 +78,40 @@ public final class ReceiverLifecycleDeviceTest {
     @Test public void mainThreadCloseWithLiveTlsIsImmediateAndIdempotent() throws Exception {
         try (Fixture fixture = new Fixture()) {
             Peer peer = fixture.connect(fixture.bootstrap);
+            int previousPort = fixture.server.port();
             assertTrue(fixture.server.connected());
             strictMain(() -> {
                 fixture.server.close();
                 assertFalse("Server close must invalidate control before returning", fixture.server.connected());
-                fixture.server.close();
-                fixture.server.disconnectController();
                 assertEquals(1, fixture.disconnected.get());
             });
-            peer.assertClosed();
-            assertEquals("Worker finally must not emit a second disconnect", 1, fixture.disconnected.get());
-            assertEquals(0, fixture.applied.get());
+            // Bind immediately: no retry, old-peer read, sleep or certificate generation
+            // may hide a listener that remains unavailable after close() returns.
+            try (Fixture replacement = new Fixture(fixture, previousPort)) {
+                assertEquals(previousPort, replacement.server.port());
+                Peer resumed = replacement.connect(replacement.bootstrap);
+                assertTrue(replacement.server.connected());
+                strictMain(() -> {
+                    fixture.server.close();
+                    fixture.server.disconnectController();
+                    assertFalse(fixture.server.connected());
+                    assertTrue("Old-instance teardown must not affect its replacement", replacement.server.connected());
+                    assertEquals(1, fixture.disconnected.get());
+                    assertEquals(0, replacement.disconnected.get());
+                });
+                peer.assertClosed();
+                assertTrue(replacement.server.connected());
+                strictMain(() -> {
+                    replacement.server.close();
+                    assertFalse(replacement.server.connected());
+                    assertEquals(1, replacement.disconnected.get());
+                });
+                resumed.assertClosed();
+                assertEquals("Old worker finally must not emit a second disconnect", 1, fixture.disconnected.get());
+                assertEquals("Replacement disconnects exactly once", 1, replacement.disconnected.get());
+                assertEquals(0, fixture.applied.get());
+                assertEquals(0, replacement.applied.get());
+            }
         }
     }
 
@@ -113,16 +137,29 @@ public final class ReceiverLifecycleDeviceTest {
         final PairingAuthority authority;
         final String bootstrap;
         final ReceiverServer server;
+        final SSLContext serverTls;
         final HandshakeCertificates clientCertificates;
         final List<SSLSocket> sockets = new ArrayList<>();
 
         Fixture() throws Exception {
-            HeldCertificate leaf = ReceiverCertificate.generate(Collections.singletonList("127.0.0.1"));
-            HandshakeCertificates serverCertificates = new HandshakeCertificates.Builder().heldCertificate(leaf).build();
-            clientCertificates = new HandshakeCertificates.Builder().addTrustedCertificate(leaf.certificate()).build();
+            this(ReceiverCertificate.generate(Collections.singletonList("127.0.0.1")));
+        }
+
+        private Fixture(HeldCertificate leaf) throws Exception {
+            this(new HandshakeCertificates.Builder().heldCertificate(leaf).build().sslContext(),
+                new HandshakeCertificates.Builder().addTrustedCertificate(leaf.certificate()).build(), 0);
+        }
+
+        Fixture(Fixture previous, int port) throws Exception {
+            this(previous.serverTls, previous.clientCertificates, port);
+        }
+
+        private Fixture(SSLContext serverTls, HandshakeCertificates clientCertificates, int port) throws Exception {
+            this.serverTls = serverTls;
+            this.clientCertificates = clientCertificates;
             authority = new PairingAuthority(null, SystemClock::elapsedRealtime, digest -> { });
             bootstrap = authority.newPairing();
-            server = new ReceiverServer(serverCertificates.sslContext(), InetAddress.getByName("127.0.0.1"), 0,
+            server = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"), port,
                 authority, new ReceiverServer.Input() {
                     @Override public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
                     @Override public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {

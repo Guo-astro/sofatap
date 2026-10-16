@@ -8,15 +8,15 @@ The same socket teardown helper is reachable from controller disconnect, pairing
 
 ## Change
 
-The receiver synchronously clears controller ownership and notifies input cleanup once. It closes connected TLS sockets on a dedicated cleanup executor, independently of the bounded input workers. Pending old-session input becomes invalid immediately and cannot be replayed into a resumed session. Closing the receiver still releases the listening port before returning, so network refresh can bind the replacement listener. Registered sockets are drained before the cleanup executor exits; registration and shutdown are synchronized.
+The receiver synchronously clears controller ownership and notifies input cleanup once. It closes connected TLS sockets on a dedicated cleanup executor, independently of the bounded input workers. Pending old-session input becomes invalid immediately and cannot be replayed into a resumed session. Closing the receiver still releases the listening port before returning. The listener explicitly enables address reuse before binding, so network refresh can immediately bind a replacement while old accepted connections finish cleanup; Linux CI caught the missing setting. Registered sockets are drained before the cleanup executor exits; registration and shutdown are synchronized.
 
 The candidate Android package is **0.1.3-beta.1 (code 4)**. It uses the same development signing identity as the installed 0.1.2-beta.1 package. This record is not a Google Play release or a model-compatibility certification.
 
 ## Validation
 
-- 79 JVM tests passed, including real loopback TLS tests for immediate cancellation without credential revocation, one disconnect notification per session, old-worker/new-controller isolation, and immediate port release with repeated close.
+- 79 JVM tests passed, including real loopback TLS tests for immediate cancellation without credential revocation, one disconnect notification per session, old-worker/new-controller isolation, and immediate same-port replacement with a real ReceiverServer, authenticated reconnect and repeated old-server close.
 - Android lint, debug APK and instrumentation APK builds passed.
-- 12 tests passed on an explicitly opted-in headless Android TV API 31 emulator. Two new tests establish real Android TLS/WebSocket sessions and call disconnect / close on main with `detectNetwork().penaltyDeathOnNetwork()` enabled, then check peer closure and authenticated reconnection. They use temporary in-memory credentials and do not send real input or change persisted pairing.
+- 12 tests passed on an explicitly opted-in headless Android TV API 31 emulator. Two new tests establish real Android TLS/WebSocket sessions and call disconnect / close on main with `detectNetwork().penaltyDeathOnNetwork()` enabled, then check peer closure, authenticated reconnection and immediate same-port receiver replacement. They use temporary in-memory credentials and do not send real input or change persisted pairing.
 - These StrictMode tests exercise the receiver entry points used by lifecycle callbacks. They do not replace a physical television restart, standby or input-compatibility test.
 
 ## Physical-device boundary

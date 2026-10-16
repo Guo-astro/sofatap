@@ -10,8 +10,6 @@ import org.junit.Test;
 import javax.net.ssl.*;
 import java.io.*;
 import java.net.InetAddress;
-import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyStore;
 import java.util.*;
@@ -27,6 +25,7 @@ public class ReceiverServerTest {
     private FakeInput input;
     private OkHttpClient client;
     private SSLContext trustedTls;
+    private SSLContext serverTls;
     private String bootstrap;
     private final List<SocketPeer> peers = new ArrayList<>();
     private final List<SSLSocket> rawSockets = new ArrayList<>();
@@ -40,10 +39,10 @@ public class ReceiverServerTest {
             new java.security.cert.Certificate[]{certificate.certificate()});
         KeyManagerFactory manager = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
         manager.init(keys, "test".toCharArray());
-        SSLContext tls = SSLContext.getInstance("TLS"); tls.init(manager.getKeyManagers(), null, null);
+        serverTls = SSLContext.getInstance("TLS"); serverTls.init(manager.getKeyManagers(), null, null);
         authority = new PairingAuthority(null, System::currentTimeMillis, digest -> {});
         bootstrap = authority.newPairing(); input = new FakeInput();
-        server = new ReceiverServer(tls, InetAddress.getByName("127.0.0.1"), 0, authority, input, "Local test");
+        server = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"), 0, authority, input, "Local test");
         server.start();
         client = new OkHttpClient.Builder().sslSocketFactory(trusted.sslSocketFactory(), trusted.trustManager())
             .connectTimeout(2, TimeUnit.SECONDS).readTimeout(3, TimeUnit.SECONDS).build();
@@ -276,18 +275,28 @@ public class ReceiverServerTest {
     }
 
     @Test public void closeReleasesListeningPortBeforeReturningAndRepeatedCloseLeavesReplacementAlone() throws Exception {
-        SocketPeer peer = connect(bootstrap); peer.message();
+        SocketPeer peer = connect(bootstrap); String token = peer.message().getString("pairingToken");
         int port = server.port();
+        FakeInput replacementInput = new FakeInput();
         server.close();
         assertFalse(server.connected()); assertEquals(1, input.disconnections.get());
-        try (ServerSocket replacement = new ServerSocket()) {
-            replacement.setReuseAddress(true);
-            // No retry or polling: network refresh constructs the replacement immediately.
-            replacement.bind(new InetSocketAddress(InetAddress.getByName("127.0.0.1"), port));
+        // Exercise the real listener's socket options, not a test socket that adds reuse itself.
+        // No retry, client closure or polling: network refresh replaces this listener immediately.
+        try (ReceiverServer replacement = new ReceiverServer(serverTls, InetAddress.getByName("127.0.0.1"),
+                port, authority, replacementInput, "Replacement test")) {
+            replacement.start();
+            SocketPeer resumed = connect(replacement, token);
+            assertFalse(resumed.message().has("pairingToken"));
             server.close(); server.disconnectController(); server.close();
-            assertFalse(replacement.isClosed());
-            assertEquals(port, replacement.getLocalPort());
+            String id = UUID.randomUUID().toString();
+            resumed.socket.send(action(id, "ping"));
+            JSONObject ack = resumed.message();
+            assertEquals(id, ack.getString("id")); assertTrue(ack.getBoolean("ok"));
+            assertTrue(replacement.connected());
+            assertEquals(port, replacement.port());
             assertEquals(1, input.disconnections.get());
+            assertEquals(0, replacementInput.disconnections.get());
+            assertEquals(0, replacementInput.applied.get());
         }
     }
 
@@ -348,8 +357,11 @@ public class ReceiverServerTest {
         int failedStatus() throws Exception { Integer status = statuses.poll(3, TimeUnit.SECONDS); assertNotNull("Expected upgrade refusal", status); return status; }
     }
     private SocketPeer connect(String token) {
+        return connect(server, token);
+    }
+    private SocketPeer connect(ReceiverServer target, String token) {
         SocketPeer peer = new SocketPeer(); peers.add(peer);
-        peer.socket = client.newWebSocket(new Request.Builder().url("wss://127.0.0.1:" + server.port() + "/control")
+        peer.socket = client.newWebSocket(new Request.Builder().url("wss://127.0.0.1:" + target.port() + "/control")
             .header("Authorization", "Bearer " + token).build(), peer); return peer;
     }
 
