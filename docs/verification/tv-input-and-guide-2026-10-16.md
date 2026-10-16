@@ -17,3 +17,11 @@ The guide prioritizes the selected device, shows its reported capabilities and t
 - Android JVM tests include real local TLS exchanges for rejected clicks, bounded slow scrolling, Back ordering/rejection and continued connection health. Android input behavior, permissions and release version are unchanged by this patch.
 - The Sony receiver installation and accessibility service are confirmed. User-reported click/scroll success is recorded separately from software tests. A momentary YouTube accessibility-tree snapshot does not establish whether the user's click should have succeeded.
 - The updated iPhone queue and Back behavior still require physical Sony retesting. Xiaomi is untested. Software tests and phone interface checks are not TV input acceptance. This change is not a new TestFlight or receiver release.
+
+## Physical iPhone interface check
+
+A dedicated iPhone 16 Pro Max ran an independently installed development fixture under an exclusive device-pool lease. Production Swift files matched implementation commit `c83a63dc3ccd99c52b8d8946d98ff9e7908a929e`; only the private app entry point, mock transport/store and two controller-injection lines differed. The fixture opened no receiver network connection, preserved the installed Sofatap app and its pairings, and sent no TV or desktop input.
+
+Back and Home produced their respective commands at their centers and at all eight tested corner/edge positions inset eight points from the current accessibility frames. Back also worked four points inside its left edge. Two initial extreme-corner points inset only three points did not register; the entire nominal 52/64-point area is therefore not claimed as exhaustively accepted. No pointer click was emitted by the successful navigation-button tests. Physical vibration strength was not assessed by automation.
+
+The real phone displayed the TV-specific guide with the fixture device name, Android TV platform, reported capabilities, current mappings and Back/Home diagram. Local practice showed click and move feedback without increasing any receiver-command counter. These are physical phone UI checks against a simulated receiver, not physical Sony Back acceptance.
