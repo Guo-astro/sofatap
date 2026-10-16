@@ -29,6 +29,7 @@ struct TVAuxiliaryPager: UIViewRepresentable {
     final class PagerView: UIView {
         private var config: TVAuxiliaryPager?
         private var page = 0
+        private var accessibilityGeneration: UInt64 = 0
         private var gesture = TVAuxiliaryGesture()
         private weak var trackedTouch: UITouch?
         private let symbols = [UIImageView(), UIImageView()]
@@ -52,7 +53,11 @@ struct TVAuxiliaryPager: UIViewRepresentable {
         }
         required init?(coder: NSCoder) { fatalError("init(coder:) unavailable") }
         func configure(_ next: TVAuxiliaryPager) {
-            if config?.identity != next.identity { cancelContact(); page = 0 }
+            if config?.identity != next.identity {
+                cancelContact(); page = 0; accessibilityGeneration &+= 1
+            } else if config?.pages.map({ $0.map(\.identifier) }) != next.pages.map({ $0.map(\.identifier) }) {
+                cancelContact(); accessibilityGeneration &+= 1
+            }
             if config?.layout.vertical != next.layout.vertical { cancelContact() }
             if !next.interactionEnabled { cancelContact() }
             config = next; next.control.view = self
@@ -122,7 +127,14 @@ struct TVAuxiliaryPager: UIViewRepresentable {
         }
         override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) { cancelContact() }
         fileprivate func cancelContact() { trackedTouch = nil; gesture.cancel(); selection.forEach { $0.alpha = 0 } }
-        private func activate(_ index: Int) -> Bool {
+        private func token(for identifier: String) -> TVAuxiliaryActionToken? {
+            guard let config else { return nil }
+            return TVAuxiliaryActionToken(identity: config.identity, page: page, actionIdentifier: identifier, generation: accessibilityGeneration)
+        }
+        private func activate(_ index: Int, expected: TVAuxiliaryActionToken? = nil) -> Bool {
+            if let expected {
+                guard actions.indices.contains(index), token(for: actions[index].identifier) == expected else { return false }
+            }
             config?.onInteractionBegan()
             guard config?.interactionEnabled == true, actions.indices.contains(index), actions[index].enabled else { return false }
             actions[index].perform(); return true
@@ -132,7 +144,7 @@ struct TVAuxiliaryPager: UIViewRepresentable {
             guard let config, config.interactionEnabled else { return false }
             let next = TVAuxiliaryGesture.page(page, delta: delta, count: config.pages.count)
             guard next != page else { return false }
-            page = next
+            page = next; accessibilityGeneration &+= 1
             UIView.transition(with: self, duration: UIAccessibility.isReduceMotionEnabled ? 0 : 0.16, options: .transitionCrossDissolve) { self.render() }
             UISelectionFeedbackGenerator().selectionChanged()
             UIAccessibility.post(notification: .pageScrolled, argument: pageLabel)
@@ -147,7 +159,11 @@ struct TVAuxiliaryPager: UIViewRepresentable {
             var elements: [UIAccessibilityElement] = []
             for (index, action) in actions.enumerated() {
                 let element = ActionElement(accessibilityContainer: self)
-                element.activate = { [weak self] in self?.activate(index) ?? false }
+                let expected = token(for: action.identifier)
+                element.activate = { [weak self] in
+                    guard let expected else { return false }
+                    return self?.activate(index, expected: expected) ?? false
+                }
                 element.accessibilityLabel = action.label; element.accessibilityValue = action.value
                 element.accessibilityIdentifier = action.identifier
                 element.accessibilityTraits = action.enabled && config.interactionEnabled ? .button : [.button, .notEnabled]
@@ -156,7 +172,11 @@ struct TVAuxiliaryPager: UIViewRepresentable {
             }
             if config.pages.count > 1 {
                 let element = PageElement(accessibilityContainer: self)
-                element.change = { [weak self] delta in _ = self?.changePage(delta) }
+                let expectedIdentity = config.identity
+                element.change = { [weak self] delta in
+                    guard let self, self.config?.identity == expectedIdentity else { return }
+                    _ = self.changePage(delta)
+                }
                 element.accessibilityLabel = String(localized: "电视快捷操作")
                 element.accessibilityHint = String(localized: "左右滑动切换操作")
                 element.accessibilityValue = pageLabel; element.accessibilityTraits = .adjustable

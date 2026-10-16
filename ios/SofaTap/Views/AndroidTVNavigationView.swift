@@ -10,13 +10,15 @@ struct AndroidTVNavigationPad: UIViewRepresentable {
         fileprivate weak var view: Pad?
         func cancel() { view?.cancelContact() }
     }
+    var onInteractionBegan: () -> Void = {}
     let onKey: (AndroidTVKey) -> Void
-    func makeUIView(context: Context) -> Pad { let pad = Pad(); pad.onKey = onKey; control.view = pad; return pad }
-    func updateUIView(_ view: Pad, context: Context) { control.view = view; view.onKey = onKey; view.inputEnabled = enabled }
+    func makeUIView(context: Context) -> Pad { let pad = Pad(); pad.onKey = onKey; pad.onInteractionBegan = onInteractionBegan; control.view = pad; return pad }
+    func updateUIView(_ view: Pad, context: Context) { control.view = view; view.onKey = onKey; view.onInteractionBegan = onInteractionBegan; view.inputEnabled = enabled }
     static func dismantleUIView(_ view: Pad, coordinator: Void) { view.inputEnabled = false }
 
     final class Pad: UIView {
         var onKey: ((AndroidTVKey) -> Void)?
+        var onInteractionBegan: () -> Void = {}
         var inputEnabled = false { didSet { if !inputEnabled { cancelContact() } } }
         private var contact = AndroidTVNavigationContact()
         private weak var trackedTouch: UITouch?
@@ -65,6 +67,7 @@ struct AndroidTVNavigationPad: UIViewRepresentable {
             arrows[.down]?.frame = CGRect(x: 32, y: 64, width: 32, height: 32)
         }
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+            onInteractionBegan()
             guard inputEnabled, trackedTouch == nil, event?.allTouches?.count == 1, let touch = touches.first else {
                 cancelContact(); return
             }

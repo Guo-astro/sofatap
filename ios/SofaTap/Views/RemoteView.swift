@@ -452,7 +452,8 @@ struct RemoteView: View {
                          onRightTap: { if !televisionSelected { model.click("right") } },
                          onDraggingChanged: { if !televisionSelected { model.setDragging($0) } },
                          onScroll: scrollCurrentDevice,
-                         onShortcut: performGestureShortcut)
+                         onShortcut: performGestureShortcut,
+                         onInteractionBegan: { tvAuxiliaryControl.cancel() })
                 .allowsHitTesting(!tvNavigationSelected)
             if tvNavigationSelected {
                 tvNavigationSurface
@@ -465,19 +466,25 @@ struct RemoteView: View {
                                              startPoint: .topLeading, endPoint: .bottomTrailing), lineWidth: 1)
                 .allowsHitTesting(false)
         }
-        .overlay(alignment: layoutDirection == .rightToLeft ? .leading : .trailing) {
-            EdgeScrollStrip(enabled: inputEnabled && !tvNavigationSelected && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
-                            control: edgeScrollControl,
-                            interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
-                            onInteractionBegan: { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() },
-                            onScroll: scrollCurrentDevice)
-                .frame(width: EdgeScrollStrip.minimumHitWidth)
-                .opacity(tvNavigationSelected ? 0 : 1)
-                // The scroll target stays on the physical right, including RTL locales.
-                // TV tools own the bottom-right area; the scroll rail stops above them.
-                .padding(.top, 80)
-                .padding(.bottom, televisionSelected ? 128 : 16)
-                .padding(layoutDirection == .rightToLeft ? .leading : .trailing, 8)
+        .overlay {
+            if televisionSelected {
+                if !tvNavigationSelected {
+                    GeometryReader { geometry in
+                        let toolsLayout = TVAuxiliaryLayout(cardWidth: geometry.size.width)
+                        if let frame = toolsLayout.scrollFrame(cardWidth: geometry.size.width, cardHeight: geometry.size.height) {
+                            edgeScrollStrip
+                                .frame(width: frame.width, height: frame.height)
+                                .position(x: frame.midX, y: frame.midY)
+                        }
+                    }
+                }
+            } else {
+                edgeScrollStrip
+                    .frame(width: EdgeScrollStrip.minimumHitWidth)
+                    .frame(maxWidth: .infinity, alignment: layoutDirection == .rightToLeft ? .leading : .trailing)
+                    .padding(.top, 80).padding(.bottom, 16)
+                    .padding(layoutDirection == .rightToLeft ? .leading : .trailing, 8)
+            }
         }
         .overlay(alignment: .top) { header.padding(.horizontal, 20).padding(.top, 20) }
         .overlay(alignment: .bottom) {
@@ -500,8 +507,16 @@ struct RemoteView: View {
         .clipShape(RoundedRectangle(cornerRadius: 40, style: .continuous))
     }
 
+    private var edgeScrollStrip: some View {
+        EdgeScrollStrip(enabled: inputEnabled && (!androidTVSelected || androidTV.status?.capabilities.scroll == true),
+                        control: edgeScrollControl,
+                        interactionID: androidTVSelected ? "androidtv" : televisionSelected ? "webos" : "computer",
+                        onInteractionBegan: { touchControl.cancel(); tvNavigationControl.cancel(); tvAuxiliaryControl.cancel() },
+                        onScroll: scrollCurrentDevice)
+    }
+
     private var tvNavigationSurface: some View {
-        let surface = AndroidTVNavigationPad(enabled: inputEnabled && androidTV.canNavigate, control: tvNavigationControl) { _ = androidTV.remoteKey($0) }
+        let surface = AndroidTVNavigationPad(enabled: inputEnabled && androidTV.canNavigate, control: tvNavigationControl, onInteractionBegan: { tvAuxiliaryControl.cancel() }) { _ = androidTV.remoteKey($0) }
 #if SOFATAP_TV_UI_TESTING
         return surface.accessibilityValue(androidTV.fixtureActionSummary)
 #else

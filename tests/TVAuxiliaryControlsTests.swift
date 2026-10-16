@@ -45,6 +45,24 @@ import CoreGraphics
                 check("two independent 44pt touch targets at \(width)", hit.width == 44 && hit.height == 44)
             }
         }
+        for width in [296.0, 378, 800] {
+            for height in [170.0, 180, 200, 210, 220, 240] {
+                let layout = TVAuxiliaryLayout(cardWidth: width)
+                if let rail = layout.scrollFrame(cardWidth: width, cardHeight: height) {
+                    check("short rail respects its native minimum", rail.height >= 44)
+                    check("short rail stays inside card", CGRect(x: 0, y: 0, width: width, height: height).contains(rail))
+                    check("short rail stays below header", rail.minY >= 80)
+                    check("short rail never overlaps TV tools", !rail.intersects(layout.frame(cardWidth: width, cardHeight: height)))
+                } else {
+                    check("too-short rail is omitted rather than forcing overflow", height < 212)
+                }
+            }
+        }
+        let original = TVAuxiliaryActionToken(identity: "tvA", page: 0, actionIdentifier: "back", generation: 1)
+        check("same action reference matches current state", original == TVAuxiliaryActionToken(identity: "tvA", page: 0, actionIdentifier: "back", generation: 1))
+        check("cached action cannot target a new page", original != TVAuxiliaryActionToken(identity: "tvA", page: 1, actionIdentifier: "directions", generation: 2))
+        check("cached action cannot target a different TV", original != TVAuxiliaryActionToken(identity: "tvB", page: 0, actionIdentifier: "back", generation: 2))
+        check("cached action stays invalid after returning to original page", original != TVAuxiliaryActionToken(identity: "tvA", page: 0, actionIdentifier: "back", generation: 3))
         print("\(count) TV auxiliary pager gesture/layout checks passed; no device input.")
     }
 }

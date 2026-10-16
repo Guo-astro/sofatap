@@ -14,6 +14,13 @@ struct TVAuxiliaryLayout {
         let y = CGFloat(cardHeight - Self.bottom - height)
         return CGRect(x: x, y: y, width: CGFloat(width), height: CGFloat(height))
     }
+    /// Do not ask the native scroll strip to fit less than its 44pt minimum.
+    /// On short cards, two-finger scrolling remains available instead.
+    func scrollFrame(cardWidth: Double, cardHeight: Double) -> CGRect? {
+        let available = frame(cardWidth: cardWidth, cardHeight: cardHeight).minY - 12 - 80
+        guard available >= 44 else { return nil }
+        return CGRect(x: CGFloat(cardWidth) - 52, y: 80, width: 44, height: available)
+    }
     func buttonFrame(_ index: Int) -> CGRect {
         let offset = CGFloat(index) * 44
         return CGRect(x: vertical ? 0 : offset, y: vertical ? offset : 0, width: 44, height: 44)
@@ -54,4 +61,14 @@ struct TVAuxiliaryGesture {
         guard count > 0 else { return 0 }
         return min(max(0, page + delta), count - 1)
     }
+}
+
+
+/// An accessibility reference belongs to one device, page and action. UIKit may
+/// retain old elements while the view has already changed its displayed items.
+struct TVAuxiliaryActionToken: Equatable {
+    let identity: String
+    let page: Int
+    let actionIdentifier: String
+    let generation: UInt64
 }

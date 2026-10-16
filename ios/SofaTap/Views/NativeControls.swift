@@ -228,6 +228,7 @@ struct TouchSurface: UIViewRepresentable {
     let onDraggingChanged: (Bool) -> Void
     let onScroll: (Double) -> Void
     var onShortcut: (GestureAction) -> Void = { _ in }
+    var onInteractionBegan: () -> Void = {}
 
     /// Overlay controls cancel the underlying pad synchronously before opening
     /// another UI. This also cancels deferred taps and releases an active drag.
@@ -347,6 +348,9 @@ struct TouchSurface: UIViewRepresentable {
         }
         override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
             guard parent?.enabled == true, active else { return }
+            // Only the other overlay is cancelled. Contacts already on this
+            // surface keep their normal two-finger gesture state.
+            parent?.onInteractionBegan()
             for touch in touches {
                 let id = ObjectIdentifier(touch), point = touch.location(in: self)
                 contacts[id] = point
