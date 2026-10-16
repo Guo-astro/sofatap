@@ -17,6 +17,14 @@ Regression checks use fake stores or private temporary startup directories. Shar
 
 The household Sony and Xiaomi TVs have **not** been field-tested. Actual cold boot, vendor power policy, Mac logout/login, Windows sign-in and physical HDMI switching remain hardware acceptance work. Existing permissions (macOS Accessibility, Wayland portal and TV Accessibility) remain required; startup does not grant or bypass them.
 
+## Recorded checks
+
+- Windows: 97 portable startup/protocol checks and native/preview compilation passed locally. Real COM shortcut checks run on Windows CI with temporary folders.
+- macOS: 27 injected login-item checks, 35 launch-isolation checks, arm64/x64 compilation, 12 offscreen view fixtures and four QR rendering checks passed. Both release architectures use CHEKUSU Developer ID signing and require completed Apple notarization, stapling and Gatekeeper assessment before publication.
+- Linux: all 15 startup/instance tests (including Gio Exec argument round-trip) passed on Linux CI; protocol, worker/portal checks and private-Xvfb GTK close/quit/opt-out checks passed. On macOS the Gio test is correctly skipped.
+- Android: 73 JVM tests, 10 headless API 31 TV instrumentation tests and lint (zero errors; 22 existing warnings) passed. Actual emulator reboot verified that enabled startup resumes the foreground service while the TV launcher remains visible, and disabled startup stays stopped. The new APK has the same signing certificate as 0.1.1 beta.1 and a higher version code (3), so it can cover-install that release. A paired physical-TV reboot was not tested.
+- TestFlight: at 2026-10-16 11:55 UTC, 1.0 (18) was the latest upload, VALID, beta-review APPROVED and IN_BETA_TESTING in both internal and public groups. The public invitation accepted testers, with a 10,000-person limit. This receiver release does not alter iPhone code.
+
 ## Platform references
 
 - [Windows Startup settings and per-user Startup folder](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows)

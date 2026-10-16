@@ -28,39 +28,65 @@ internal static class StartupChecks
         Check(ReceiverLaunchOptions.Parse(["--startup", "--dry-run"]) is null, "Conflicting launch modes rejected");
         Check(ReceiverLaunchOptions.Parse(["--startup", "--startup"]) is null, "Duplicate startup markers rejected");
         Check(ReceiverLaunchOptions.Parse(["--unknown"]) is null, "Unknown launch option rejected");
-        if (OperatingSystem.IsWindows())
-        {
-            var temporary = Path.Combine(Path.GetTempPath(), "sofatap-startup-test-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(temporary);
-            try
-            {
-                var executable = Path.Combine(temporary, "测试 folder", "SofaTap.exe");
-                var shortcut = Path.Combine(temporary, "fake Startup", "SofaTap.lnk");
-                var preference = Path.Combine(temporary, "fake LocalAppData", "desktop-startup.json");
-                var realStore = new WindowsStartupStore(executable, shortcut, preference);
-                var realRegistration = new StartupRegistration(realStore);
-                Check(realRegistration.Initialize() && File.Exists(shortcut), "Windows creates a real shortcut in isolated temporary folder");
-                var bytes = File.ReadAllBytes(shortcut);
-                Check(realRegistration.Initialize() && bytes.SequenceEqual(File.ReadAllBytes(shortcut)), "Unchanged existing shortcut is not rewritten");
-                Check(realStore.ReadPreference() == true, "Startup preference persists atomically");
-                Check(!realRegistration.SetEnabled(false) && !File.Exists(shortcut) && realStore.ReadPreference() == false, "Opt-out persists and removes only isolated shortcut");
-                Check(!new StartupRegistration(new WindowsStartupStore(executable, shortcut, preference)).Initialize(), "Restart reads persisted opt-out");
-                File.WriteAllText(preference, "broken json");
-                try { realRegistration.Initialize(); throw new Exception("Corrupt preference should fail closed"); }
-                catch (System.Text.Json.JsonException) { count++; }
-                Check(!File.Exists(shortcut), "Corrupt preferences do not silently re-enable login startup");
-                var foreign = new WindowsStartupStore(Path.Combine(temporary, "Other.exe"), shortcut, preference);
-                foreign.EnsureShortcut();
-                var foreignBytes = File.ReadAllBytes(shortcut);
-                try { realStore.EnsureShortcut(); throw new Exception("Foreign shortcut must not be overwritten"); }
-                catch (IOException) { count++; }
-                try { realStore.RemoveShortcut(); throw new Exception("Foreign shortcut must not be removed"); }
-                catch (IOException) { count++; }
-                Check(foreignBytes.SequenceEqual(File.ReadAllBytes(shortcut)), "Foreign shortcut preserved on enable and disable");
-            }
-            finally { Directory.Delete(temporary, recursive: true); }
-        }
+        if (OperatingSystem.IsWindows()) RunWindowsChecks(Check);
         return count;
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RunWindowsChecks(Action<bool, string> check)
+    {
+        // Production's WinForms entry point is STA. Keep COM tests on that same
+        // apartment even though the protocol suite's async Main resumes on MTA.
+        System.Runtime.ExceptionServices.ExceptionDispatchInfo? failure = null;
+        var thread = new Thread(() =>
+        {
+            try { RunShortcutChecks(check); }
+            catch (Exception error) { failure = System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error); }
+        }) { IsBackground = true };
+        thread.SetApartmentState(ApartmentState.STA);
+        thread.Start();
+        if (!thread.Join(TimeSpan.FromSeconds(30))) throw new TimeoutException("Windows shortcut checks did not finish.");
+        failure?.Throw();
+    }
+
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
+    private static void RunShortcutChecks(Action<bool, string> Check)
+    {
+        var temporary = Path.Combine(Path.GetTempPath(), "sofatap-startup-test-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(temporary);
+        try
+        {
+            var executable = Path.Combine(temporary, "测试 folder", "SofaTap.exe");
+            // A real installation always has an existing directory and executable.
+            // Keep Unicode and spaces in the path; never execute this inert copy.
+            Directory.CreateDirectory(Path.GetDirectoryName(executable)!);
+            File.Copy(Environment.ProcessPath ?? throw new IOException("Test executable is unavailable."), executable);
+            var foreignExecutable = Path.Combine(temporary, "Other.exe");
+            File.Copy(executable, foreignExecutable);
+            var shortcut = Path.Combine(temporary, "fake Startup", "SofaTap.lnk");
+            var preference = Path.Combine(temporary, "fake LocalAppData", "desktop-startup.json");
+            var realStore = new WindowsStartupStore(executable, shortcut, preference);
+            var realRegistration = new StartupRegistration(realStore);
+            Check(realRegistration.Initialize() && File.Exists(shortcut), "Windows creates a real shortcut in isolated temporary folder");
+            var bytes = File.ReadAllBytes(shortcut);
+            Check(realRegistration.Initialize() && bytes.SequenceEqual(File.ReadAllBytes(shortcut)), "Unchanged existing shortcut is not rewritten");
+            Check(realStore.ReadPreference() == true, "Startup preference persists atomically");
+            Check(!realRegistration.SetEnabled(false) && !File.Exists(shortcut) && realStore.ReadPreference() == false, "Opt-out persists and removes only isolated shortcut");
+            Check(!new StartupRegistration(new WindowsStartupStore(executable, shortcut, preference)).Initialize(), "Restart reads persisted opt-out");
+            File.WriteAllText(preference, "broken json");
+            try { realRegistration.Initialize(); throw new Exception("Corrupt preference should fail closed"); }
+            catch (System.Text.Json.JsonException) { Check(true, "Corrupt preference is rejected"); }
+            Check(!File.Exists(shortcut), "Corrupt preferences do not silently re-enable login startup");
+            var foreign = new WindowsStartupStore(foreignExecutable, shortcut, preference);
+            foreign.EnsureShortcut();
+            var foreignBytes = File.ReadAllBytes(shortcut);
+            try { realStore.EnsureShortcut(); throw new Exception("Foreign shortcut must not be overwritten"); }
+            catch (IOException) { Check(true, "Foreign shortcut operation is rejected"); }
+            try { realStore.RemoveShortcut(); throw new Exception("Foreign shortcut must not be removed"); }
+            catch (IOException) { Check(true, "Foreign shortcut operation is rejected"); }
+            Check(foreignBytes.SequenceEqual(File.ReadAllBytes(shortcut)), "Foreign shortcut preserved on enable and disable");
+        }
+        finally { Directory.Delete(temporary, recursive: true); }
     }
 
     private sealed class FakeStore : IStartupStore

@@ -449,7 +449,7 @@ internal sealed class PairingWindow : Form
     }
 
     private static bool StartupError(Exception error) => error is IOException or UnauthorizedAccessException
-        or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException or COMException
+        or System.Text.Json.JsonException or InvalidOperationException or KeyNotFoundException or COMException or ArgumentException
         or Microsoft.CSharp.RuntimeBinder.RuntimeBinderException;
 
     private void SetStartupCheck(bool enabled)
