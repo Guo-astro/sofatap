@@ -30,7 +30,7 @@
     <string name="new_qr_help">Use “Pair another iPhone” for a new code</string>
     <string name="phone_connected">Paired securely</string>
     <string name="network_address">Home network address</string>
-    <string name="probe_limitations">Experimental: clicks and scrolling depend on each app. Typing, dragging and right-click are not available yet.</string>
+    <string name="probe_limitations">Experimental pointer: clicks and scrolling depend on the TV app. Native remote keys and optional Sofatap keyboard are separate. Dragging and right-click remain unavailable.</string>
     <string name="probe_state">Current window controls: %1$s</string>
     <string name="available">readable</string>
     <string name="unavailable">unavailable</string>

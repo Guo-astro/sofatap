@@ -8,7 +8,10 @@ import java.util.UUID;
 
 /** Deliberately narrow manual-control wire format. No arbitrary Android intents or scripts. */
 public final class TVProtocol {
-    public record Action(String id, String type, double dx, double dy, String key) { }
+    public record Action(String id, String type, double dx, double dy, String key, String code, String editorEpoch, String text) {
+        public Action(String id, String type, double dx, double dy, String key) { this(id, type, dx, dy, key, null, null, null); }
+        public boolean extended() { return type.startsWith("remote_") || type.startsWith("text_"); }
+    }
     public static Action parse(String text) throws Exception {
         if (text.indexOf('\0') >= 0 || text.length() > WebSocketCodec.MAX_MESSAGE) throw new IllegalArgumentException("invalid_json");
         validateLexicalForm(text);
@@ -52,22 +55,41 @@ public final class TVProtocol {
         if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) throw new IllegalArgumentException("invalid_id");
         String type = string(o, "type");
         Set<String> allowed;
-        double dx = 0, dy = 0; String key = null;
+        double dx = 0, dy = 0; String key = null, code = null, editorEpoch = null, content = null;
         switch (type) {
             case "move": case "scroll":
                 allowed = Set.of("id", "type", "dx", "dy");
                 dx = number(o, "dx", type.equals("move") ? 500 : 1200);
                 dy = number(o, "dy", type.equals("move") ? 500 : 1200); break;
-            case "click": case "ping": allowed = Set.of("id", "type"); break;
-            case "key":
+            case "click": case "ping": case "remote_pair_start": allowed = Set.of("id", "type"); break;
+            case "key": case "remote_key":
                 allowed = Set.of("id", "type", "key"); key = string(o, "key");
                 if (!Set.of("back", "home", "up", "down", "left", "right", "confirm").contains(key))
                     throw new IllegalArgumentException("unsupported_key");
                 break;
+            case "remote_pair_code":
+                allowed = Set.of("id", "type", "code"); code = string(o, "code");
+                if (!code.matches("[0-9a-fA-F]{6}")) throw new IllegalArgumentException("invalid_pair_code");
+                break;
+            case "text_commit": case "text_backspace": case "text_action":
+                allowed = type.equals("text_commit") ? Set.of("id", "type", "editorEpoch", "text") : Set.of("id", "type", "editorEpoch");
+                editorEpoch = string(o, "editorEpoch");
+                if (!UUID.fromString(editorEpoch).toString().equalsIgnoreCase(editorEpoch)) throw new IllegalArgumentException("invalid_editor_epoch");
+                if (type.equals("text_commit")) {
+                    content = string(o, "text");
+                    if (content.isEmpty() || content.indexOf('\0') >= 0 || content.getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 4096)
+                        throw new IllegalArgumentException("invalid_text");
+                    for (int i = 0; i < content.length(); i++) {
+                        char value = content.charAt(i);
+                        if (Character.isHighSurrogate(value)) { if (++i >= content.length() || !Character.isLowSurrogate(content.charAt(i))) throw new IllegalArgumentException("invalid_text"); }
+                        else if (Character.isLowSurrogate(value)) throw new IllegalArgumentException("invalid_text");
+                    }
+                }
+                break;
             default: throw new IllegalArgumentException("unsupported_action");
         }
         if (!keys.equals(allowed)) throw new IllegalArgumentException("unexpected_fields");
-        return new Action(id, type, dx, dy, key);
+        return new Action(id, type, dx, dy, key, code, editorEpoch, content);
     }
     private static void validateLexicalForm(String text) {
         // Android's tokenizer accepts comments/lenient escapes; JVM org.json differs.

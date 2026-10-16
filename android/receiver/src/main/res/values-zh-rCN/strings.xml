@@ -30,7 +30,7 @@
     <string name="new_qr_help">选择“配对另一台 iPhone”以生成新二维码</string>
     <string name="phone_connected">已安全配对</string>
     <string name="network_address">家庭网络地址</string>
-    <string name="probe_limitations">实验功能：点击和滚动的支持情况因应用而异。暂不支持文字输入、拖动和右键。</string>
+    <string name="probe_limitations">实验性指针：点击与滚动取决于电视应用。原生遥控按键与可选 Sofatap 键盘是独立功能。暂不支持拖动和右键。</string>
     <string name="probe_state">当前窗口控件：%1$s</string>
     <string name="available">可读取</string>
     <string name="unavailable">不可用</string>

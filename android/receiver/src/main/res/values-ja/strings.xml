@@ -30,7 +30,7 @@
     <string name="new_qr_help">「別の iPhone とペアリング」で新しいコードを表示できます</string>
     <string name="phone_connected">安全にペアリングしました</string>
     <string name="network_address">ホームネットワークのアドレス</string>
-    <string name="probe_limitations">実験的な機能：クリックとスクロールの対応状況はアプリによって異なります。文字入力、ドラッグ、右クリックにはまだ対応していません。</string>
+    <string name="probe_limitations">実験的なポインター：クリックとスクロールはテレビアプリによります。リモコンキーと任意の Sofatap キーボードは別機能です。ドラッグと右クリックは未対応です。</string>
     <string name="probe_state">現在のウィンドウの操作項目：%1$s</string>
     <string name="available">読み取り可能</string>
     <string name="unavailable">利用できません</string>

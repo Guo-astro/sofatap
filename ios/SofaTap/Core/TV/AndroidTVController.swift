@@ -14,14 +14,41 @@ final class AndroidTVController: ObservableObject {
     @Published private(set) var status: AndroidTVStatus?
     @Published private(set) var notice = String(localized: "扫描 Android TV 接收器中的二维码。")
     @Published private(set) var inputFeedback: String?
+    @Published var textDraft = AndroidTVTextDraft()
+    @Published private(set) var textCommandPending = false
+    @Published private(set) var acceptedInputFeedback = 0
+    @Published private(set) var rejectedInputFeedback = 0
+    private var savedDrafts: [UUID: AndroidTVTextDraft] = [:]
+#if SOFATAP_TV_UI_TESTING
+    @Published var fixtureModeSelection: AndroidTVControlMode? = nil
+    @Published private(set) var fixtureActionSummary = "UI test: no TV command"
+    private var fixtureActionCount = 0
+    private var uiFixture = false
+    func configureUIFixture(pairingRequired: Bool, editorReady: Bool = false) {
+        guard !enabled else { return }
+        uiFixture = true; targetSelected = true; foreground = true; paused = false; phase = .ready
+        name = "UI test · No TV"
+        status = AndroidTVStatus(available: true, inputStatus: .ready,
+            capabilities: .init(overlayCursor: true, nodeClick: true, scroll: true, back: true, home: true, directionalFocus: true),
+            tvControls: .init(navigationStatus: pairingRequired ? .pairingRequired : .ready,
+                              textStatus: editorReady ? .ready : .noEditor, editorEpoch: editorReady ? UUID() : nil))
+    }
+#endif
     @Published private var paused = false
     var busy: Bool { phase == .connecting }
-    var canControl: Bool { phase == .ready && !paused && status?.available == true }
+    var connectionReady: Bool { phase == .ready && targetSelected && foreground }
+    var canControl: Bool { connectionReady && !paused && (status?.available == true || canNavigate || canInputText) }
+    var canNavigate: Bool { connectionReady && !paused && status?.tvControls?.navigationStatus == .ready }
+    var canInputText: Bool { connectionReady && !paused && status?.tvControls?.textStatus == .ready && status?.tvControls?.editorEpoch != nil }
+    var canSendText: Bool { canInputText && !textCommandPending && textDraft.delivery != .uncertain && !textDraft.text.isEmpty && textDraft.text.utf8.count <= 4096 && !textDraft.text.unicodeScalars.contains(where: { $0.value == 0 }) }
+    var canEditTVText: Bool { canInputText && !textCommandPending && textDraft.delivery != .uncertain }
     var title: String {
         switch phase {
-        case .idle, .failed: String(localized: "Android TV 未连接")
-        case .connecting: String(localized: "正在连接 Android TV…")
-        case .ready: status?.available == true ? String(localized: "Android TV · 实验性遥控") : String(localized: "Android TV · 等待权限")
+        case .idle, .failed: return String(localized: "Android TV 未连接")
+        case .connecting: return String(localized: "正在连接 Android TV…")
+        case .ready:
+            if status?.tvControls?.navigationStatus == .ready || status?.tvControls?.textStatus == .ready { return "Android TV · " + String(localized: "已连接") }
+            return status?.available == true ? String(localized: "Android TV · 实验性遥控") : String(localized: "Android TV · 等待权限")
         }
     }
     private let enabled: Bool
@@ -51,7 +78,7 @@ final class AndroidTVController: ObservableObject {
             // Explicit page navigation waits for the single in-flight ACK, whose
             // three-second deadline closes the connection and clears this queue.
             // It must not disappear under the shorter stale-gesture deadline.
-            if action == .key(.back) || action == .key(.home) { return false }
+            if action.isLeavingPage || action.isText || action.isPairing || action == .remoteKey(.confirm) { return false }
             return now - time > 0.5
         }
     }
@@ -72,6 +99,10 @@ final class AndroidTVController: ObservableObject {
     @discardableResult private func refreshSavedDevices() -> Bool {
         do {
             let library = try storage.library()
+            if selectedDeviceID != library.selectedID {
+                if let selectedDeviceID { savedDrafts[selectedDeviceID] = textDraft }
+                textDraft = library.selectedID.flatMap { savedDrafts[$0] } ?? AndroidTVTextDraft()
+            }
             savedDevices = library.devices; selectedDeviceID = library.selectedID
             saved = library.selected?.credential
             managementError = nil; savedSelectionAvailable = true
@@ -131,10 +162,16 @@ final class AndroidTVController: ObservableObject {
     }
     func becameActive() {
         foreground = true
+#if SOFATAP_TV_UI_TESTING
+        if uiFixture { paused = false; return }
+#endif
         guard enabled, refreshSavedDevices() else { return }
         if reconnectID == nil { connectAutomatically() }
     }
     func becameInactive() {
+#if SOFATAP_TV_UI_TESTING
+        if uiFixture { foreground = false; pauseInput(); return }
+#endif
         if bootstrap && phase == .connecting { reconnectBlocked = true }
         foreground = false
         closeConnection()
@@ -189,15 +226,24 @@ final class AndroidTVController: ObservableObject {
             case .ack(let id, let ok, let newStatus, let error):
                 guard phase == .ready, let pending, pending.id == id else { throw AndroidTVError.malformedMessage }
                 if pending.action == .ping, newStatus == nil { throw AndroidTVError.malformedMessage }
+                if pending.action.isText || pending.action.isPairing || { if case .remoteKey = pending.action { return true }; return false }() {
+                    guard newStatus?.tvControls != nil else { throw AndroidTVError.malformedMessage }
+                }
                 deadline?.cancel(); deadline = nil; self.pending = nil
                 if let newStatus {
                     status = newStatus
-                    if !newStatus.available { queue.removeAll() }
+                    discardUnavailableQueuedInput()
+                }
+                if pending.action.isText {
+                    textCommandPending = false
+                    if case .textCommit = pending.action {
+                        if ok { textDraft.accepted() } else { textDraft.rejected() }
+                    }
                 }
                 if ok {
                     // Motion and heartbeat acknowledgements must not immediately hide a rejected click.
                     switch pending.action {
-                    case .click, .key: inputFeedback = nil
+                    case .click, .key, .remoteKey, .remotePairStart, .remotePairCode, .textCommit, .textBackspace, .textAction: inputFeedback = nil
                     default: break
                     }
                     updateNotice()
@@ -205,7 +251,8 @@ final class AndroidTVController: ObservableObject {
                 else {
                     // A rejected scroll/click must not swallow a Back/Home the user
                     // already pressed to leave that page. All other queued input is stale.
-                    queue.removeAll { $0.action != .key(.back) && $0.action != .key(.home) }
+                    discardQueue { !$0.action.isLeavingPage && !$0.action.isPairing }
+                    if pending.action != .ping { rejectedInputFeedback &+= 1 }
                     inputFeedback = Self.inputFailureMessage(error, action: pending.action)
                     notice = inputFeedback!
                 }
@@ -215,7 +262,15 @@ final class AndroidTVController: ObservableObject {
     }
     private static func inputFailureMessage(_ error: String?, action: AndroidTVAction) -> String {
         switch error {
-        case "protected_window", "protected_target":
+        case "pairing_required", "remote_not_ready", "remote_unavailable":
+            return String(localized: "请先连接电视系统遥控服务。")
+        case "invalid_pairing_code", "pairing_failed", "invalid_code":
+            return String(localized: "配对码未被接受，请核对电视上显示的代码。")
+        case "ime_required":
+            return String(localized: "请在电视的键盘设置中启用并选择 Sofatap 输入法。")
+        case "no_editor", "stale_editor", "editor_changed":
+            return String(localized: "电视输入框已变化，请重新选中输入框后发送。")
+        case "sensitive", "sensitive_editor", "protected_window", "protected_target":
             return String(localized: "此界面受系统保护，无法遥控。")
         case "no_focused_target", "no_focus_target":
             return String(localized: "当前没有可确认的高亮项，请先用电视方向键选择。")
@@ -233,6 +288,10 @@ final class AndroidTVController: ObservableObject {
         }
     }
     private func updateNotice() {
+        if status?.tvControls?.navigationStatus == .ready || status?.tvControls?.textStatus == .ready {
+            notice = String(localized: "已连接")
+            return
+        }
         switch status?.inputStatus {
         case .ready:
             notice = String(localized: "实验性控制：移动屏幕上的指示光标，点击可访问控件。操作结果请以电视画面为准。")
@@ -248,9 +307,9 @@ final class AndroidTVController: ObservableObject {
         guard status?.capabilities.overlayCursor == true else { return }
         enqueue(.move(dx: dx, dy: dy))
     }
-    func click() {
-        guard status?.capabilities.nodeClick == true else { return }
-        enqueue(.click)
+    @discardableResult func click() -> Bool {
+        guard status?.capabilities.nodeClick == true else { return false }
+        return enqueue(.click)
     }
     func scroll(dy: Double) {
         guard status?.capabilities.scroll == true else { return }
@@ -258,29 +317,117 @@ final class AndroidTVController: ObservableObject {
         // Android's accessible-container action uses a positive delta for document down.
         enqueue(.scroll(dx: 0, dy: -dy))
     }
-    func key(_ key: AndroidTVKey) {
+    @discardableResult func key(_ key: AndroidTVKey) -> Bool {
         let caps = status?.capabilities
-        guard key == .back ? caps?.back == true : key == .home ? caps?.home == true : caps?.directionalFocus == true else { return }
-        enqueue(.key(key))
+        guard key == .back ? caps?.back == true : key == .home ? caps?.home == true : caps?.directionalFocus == true else { return false }
+        return enqueue(.key(key))
     }
-    private func enqueue(_ action: AndroidTVAction) {
-        guard canControl, (try? AndroidTVProtocol.encode(action, id: UUID().uuidString)) != nil else { return }
+    @discardableResult func remoteKey(_ key: AndroidTVKey) -> Bool {
+        guard canNavigate else { return false }
+        return enqueue(.remoteKey(key))
+    }
+    @discardableResult func startRemotePairing() -> Bool {
+        guard connectionReady, let controls = status?.tvControls, controls.navigationStatus != .unsupported else { return false }
+        return enqueue(.remotePairStart)
+    }
+    @discardableResult func submitRemotePairingCode(_ code: String) -> Bool {
+        guard connectionReady, status?.tvControls?.navigationStatus == .pairing else { return false }
+        return enqueue(.remotePairCode(code))
+    }
+    @discardableResult func sendTextDraft() -> Bool {
+        guard canSendText, let editor = status?.tvControls?.editorEpoch, let text = textDraft.begin() else { return false }
+        textCommandPending = true
+        guard enqueue(.textCommit(editorEpoch: editor, text: text)) else {
+            textCommandPending = false; textDraft.interrupted(wasSent: false); return false
+        }
+        return true
+    }
+    @discardableResult func textBackspace() -> Bool {
+        guard canEditTVText, let editor = status?.tvControls?.editorEpoch else { return false }
+        textCommandPending = true
+        guard enqueue(.textBackspace(editorEpoch: editor)) else { textCommandPending = false; return false }
+        return true
+    }
+    @discardableResult func performTextAction() -> Bool {
+        guard canEditTVText, let editor = status?.tvControls?.editorEpoch else { return false }
+        textCommandPending = true
+        guard enqueue(.textAction(editorEpoch: editor)) else { textCommandPending = false; return false }
+        return true
+    }
+    private func permits(_ action: AndroidTVAction) -> Bool {
+        guard connectionReady else { return false }
+        if action.isPairing { return status?.tvControls != nil }
+        guard !paused else { return false }
+        switch action {
+        case .remoteKey: return status?.tvControls?.navigationStatus == .ready
+        case .textCommit(let editor, _), .textBackspace(let editor), .textAction(let editor):
+            return status?.tvControls?.textStatus == .ready && status?.tvControls?.editorEpoch == editor
+        case .ping: return true
+        default: return status?.available == true
+        }
+    }
+    private func discardQueue(where shouldRemove: (Input) -> Bool) {
+        if queue.contains(where: { shouldRemove($0) && $0.action.isText }) {
+            textCommandPending = false; textDraft.interrupted(wasSent: false)
+        }
+        queue.removeAll(where: shouldRemove)
+    }
+    private func discardUnavailableQueuedInput() {
+        discardQueue { !permits($0.action) }
+    }
+    @discardableResult private func enqueue(_ action: AndroidTVAction) -> Bool {
+        guard permits(action), (try? AndroidTVProtocol.encode(action, id: UUID().uuidString)) != nil else { return false }
+        if action.isPairing && (pending?.action.isPairing == true || queue.contains(where: { $0.action.isPairing })) { return false }
+#if SOFATAP_TV_UI_TESTING
+        if uiFixture {
+            fixtureActionCount += 1
+            let label: String
+            switch action {
+            case .remoteKey(let key): label = "remote_key:" + key.rawValue
+            case .key(let key): label = "legacy_key:" + key.rawValue
+            case .click: label = "legacy_click"
+            case .move: label = "legacy_move"
+            case .scroll: label = "legacy_scroll"
+            case .ping: label = "ping"
+            case .remotePairStart: label = "remote_pair_start"
+            case .remotePairCode: label = "remote_pair_code"
+            case .textCommit: label = "text_commit"
+            case .textBackspace: label = "text_backspace"
+            case .textAction: label = "text_action"
+            }
+            fixtureActionSummary = "UI test \(fixtureActionCount): " + label
+            if action.isDiscrete { acceptedInputFeedback &+= 1 }
+            if action == .remotePairStart || { if case .remotePairCode = action { return true }; return false }() {
+                if var status, let controls = status.tvControls {
+                    status.tvControls = .init(navigationStatus: action == .remotePairStart ? .pairing : .ready,
+                                              textStatus: controls.textStatus, editorEpoch: controls.editorEpoch)
+                    self.status = status
+                }
+            }
+            if case .textCommit = action { textDraft.accepted() }
+            if action.isText { textCommandPending = false }
+            return true
+        }
+#endif
         let now = Date.timeIntervalSinceReferenceDate
         queue.removeAll { $0.isExpired(at: now) }
-        if action == .key(.back) || action == .key(.home) {
-            // Leaving the current page cancels gestures that have not reached the TV.
-            // Still wait for the one outstanding ACK; never replay or reorder sent input.
-            queue.removeAll()
+        if action.isLeavingPage {
+            // Preserve explicit click / Back / Home ordering. Only an insertion
+            // still waiting in the queue becomes unsafe when leaving its editor.
+            // Motion already coalesces and expires; it cannot grow an unbounded backlog.
+            discardQueue { $0.action.isText }
         }
         // Both pointer movement and wheel gestures can arrive faster than TV ACKs.
         // Coalesce only adjacent actions of the same kind, preserving click/key ordering.
         if let last = queue.last, let merged = Self.coalescing(last.action, with: action) {
             queue[queue.count - 1] = Input(action: merged, time: now)
         } else {
-            guard queue.count < 24 else { fail(String(localized: "电视响应过慢，已停止发送。请查看电视后手动重新连接。")); return }
+            guard queue.count < 24 else { fail(String(localized: "电视响应过慢，已停止发送。请查看电视后手动重新连接。")); return false }
             queue.append(Input(action: action, time: now))
         }
+        if action.isDiscrete { acceptedInputFeedback &+= 1 }
         drain()
+        return true
     }
     private static func coalescing(_ previous: AndroidTVAction, with next: AndroidTVAction) -> AndroidTVAction? {
         func bounded(_ value: Double) -> Double { max(-500, min(500, value)) }
@@ -293,7 +440,8 @@ final class AndroidTVController: ObservableObject {
         }
     }
     private func drain() {
-        guard phase == .ready, pending == nil, !paused, status?.available == true else { return }
+        guard phase == .ready, pending == nil else { return }
+        discardUnavailableQueuedInput()
         let now = Date.timeIntervalSinceReferenceDate
         queue.removeAll { $0.isExpired(at: now) }
         guard !queue.isEmpty else { return }
@@ -369,7 +517,7 @@ final class AndroidTVController: ObservableObject {
     private func fail(_ message: String) {
         closeConnection(); reconnectBlocked = true; phase = .failed; notice = message
     }
-    func pauseInput() { paused = true; queue.removeAll() }
+    func pauseInput() { paused = true; discardQueue { !$0.action.isPairing } }
     func resumeInput() { paused = false }
     func disconnect() {
         manuallyDisconnected = true
@@ -380,6 +528,11 @@ final class AndroidTVController: ObservableObject {
         cancelReconnect(resetAttempt: !preservingRetryAttempt)
         epoch = UUID()
         deadline?.cancel(); deadline = nil; heartbeat?.cancel(); heartbeat = nil
+        if pending?.action.isText == true {
+            textDraft.markUncertain()
+            rejectedInputFeedback &+= 1
+        } else { textDraft.interrupted(wasSent: false) }
+        textCommandPending = false
         socket?.close(); socket = nil; pairing = nil; pending = nil; queue.removeAll()
         status = nil; inputFeedback = nil; phase = .idle
     }

@@ -12,7 +12,8 @@ struct NativeDraftEditor: UIViewRepresentable {
     var liveEditing = false
     var control: Control? = nil
     var onEmptyBackspace: (() -> Void)? = nil
-    var editorAccessibilityLabel: String { liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿") }
+    var accessibilityLabelOverride: String? = nil
+    var editorAccessibilityLabel: String { accessibilityLabelOverride ?? (liveEditing ? String(localized: "与电脑实时同步的文字和选区") : String(localized: "要发送到电脑的文字草稿")) }
 
     /// UITextView does not report a text change when Backspace is pressed on an
     /// empty draft. Keep that key distinct from deleting local/marked text.

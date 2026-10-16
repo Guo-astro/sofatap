@@ -34,7 +34,7 @@ struct AndroidTVPairingView: View {
                     Button(String(localized: "开始遥控电视")) { finishPairing() }
                         // The sheet deliberately pauses the touch surface. Receiver
                         // permission, not that temporary pause, gates leaving pairing.
-                        .buttonStyle(.borderedProminent).disabled(tv.status?.available != true)
+                        .buttonStyle(.borderedProminent).disabled(tv.status?.available != true && tv.status?.tvControls == nil)
                     Button(String(localized: "断开电视")) { tv.disconnect() }
                 } else if tv.saved != nil {
                     Button(String(localized: "重新连接 Android TV")) { selectTV(); tv.reconnect() }
@@ -42,7 +42,7 @@ struct AndroidTVPairingView: View {
                 }
                 Text(tv.notice).foregroundStyle(tv.phase == .failed ? .orange : Palette.muted)
                     .accessibilityIdentifier("androidTVConnectionStatus")
-                Text(String(localized: "实验性接收端：光标是屏幕指示层，单击操作可访问控件，兼容性取决于电视与应用。暂不支持系统鼠标、右键、拖动、键盘或语音输入。"))
+                Text(tv.status?.tvControls == nil ? String(localized: "实验性接收端：光标是屏幕指示层，单击操作可访问控件，兼容性取决于电视与应用。暂不支持系统鼠标、右键、拖动、键盘或语音输入。") : String(localized: "电视暂不支持右键、鼠标双击或拖动。文字输入需启用 Sofatap 输入法。"))
                     .font(.footnote).foregroundStyle(Palette.muted)
                 Text(String(localized: "二维码五分钟后失效，首次连接后立即作废。连接未确认时，请在电视上生成新二维码。"))
                     .font(.footnote).foregroundStyle(Palette.muted)

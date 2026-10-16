@@ -43,6 +43,12 @@ struct DeviceGuideContextTests {
             check("\(platform) retains desktop guide and text help", context.target == .computer && context.showsTextInputHelp)
             check("\(platform) keeps desktop drag and double-click mappings", context.configuration(staleDesktop) == staleDesktop)
         }
+        let nativeTV = DeviceGuideContext(kind: .androidTV, deviceName: "Bedroom TV", connected: true, availableActions: [],
+                                          tvNavigation: true, tvNavigationReady: true, tvTextStatus: "ready")
+        check("native TV guide distinguishes remote navigation from pointer gestures", nativeTV.televisionActions == [.confirm, .back, .home] && nativeTV.availability(of: .confirm) == .supported && nativeTV.availability(of: .leftClick) == .unsupported)
+        check("TV text help uses its own instructions, never desktop live edit guidance", nativeTV.showsTVTextInputHelp && !nativeTV.showsTextInputHelp)
+        let pendingNative = DeviceGuideContext(kind: .androidTV, deviceName: "TV", connected: true, availableActions: fullTV, tvNavigation: true)
+        check("legacy focus capability never proves native remote pairing", pendingNative.availability(of: .confirm) == .unsupported)
         let fallback = DeviceGuideContext(kind: .computer(platform: nil), deviceName: "Select device", connected: false, availableActions: nil)
         check("unknown desktop platform remains a generic computer guide", fallback.kind == .computer && fallback.availability(of: .leftClick) == .unknown)
         print("PASS: \(passed) device-aware guide checks; no devices or input used.")

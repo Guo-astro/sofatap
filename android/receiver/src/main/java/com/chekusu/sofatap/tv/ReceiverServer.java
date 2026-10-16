@@ -148,8 +148,9 @@ public final class ReceiverServer implements AutoCloseable {
                     } else {
                         if (!current.getAsBoolean()) return;
                         JSONObject result = input.apply(action, current);
-                        ack = TVProtocol.ack(action.id(), result.optBoolean("ok", false),
-                            result.optBoolean("ok", false) ? null : result.optString("code", "input_unavailable"));
+                        ack = action.extended() ? input.snapshot().put("type", "ack").put("id", action.id()).put("ok", result.optBoolean("ok", false))
+                            : TVProtocol.ack(action.id(), result.optBoolean("ok", false), result.optBoolean("ok", false) ? null : result.optString("code", "input_unavailable"));
+                        if (action.extended() && !result.optBoolean("ok", false)) ack.put("error", result.optString("code", "input_unavailable"));
                     }
                     if (!current.getAsBoolean()) return;
                     seen.put(id, new Cached(digest, ack)); send(out, ack);
@@ -160,7 +161,12 @@ public final class ReceiverServer implements AutoCloseable {
             // Neither credentials nor input payloads are logged, even on malformed traffic.
         } finally {
             if (expiry != null) expiry.cancel(false);
-            if (controller.compareAndSet(socket, null)) input.disconnected();
+            synchronized (this) {
+                // Natural EOF/timeout has the same atomic release-and-notify boundary
+                // as explicit disconnect. A replacement cannot snapshot its new editor
+                // epoch or start its remote connection until the old invalidation ran.
+                if (controller.compareAndSet(socket, null)) input.disconnected();
+            }
             close(socket); sockets.remove(socket);
         }
     }

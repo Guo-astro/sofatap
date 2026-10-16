@@ -100,6 +100,9 @@ struct GestureSettingsView: View {
                 Text(target.title)
             }
         } footer: {
+            if guideContext?.tvNavigation == true {
+                Text(String(localized: "触控区上方小工具栏的模式按钮可切换到光标。手势设置只影响光标模式，电脑的设置不会改变。"))
+            }
             Text(selectedPreset == nil ? String(localized: "已自定义。电脑和电视分别保存设置。") : String(localized: "选择一套预设，也可以逐项修改。电脑和电视分别保存设置。"))
         }
         .listRowBackground(Palette.panel)
