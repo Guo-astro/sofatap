@@ -13,6 +13,7 @@ final class AndroidTVController: ObservableObject {
     @Published private(set) var name = ""
     @Published private(set) var status: AndroidTVStatus?
     @Published private(set) var notice = String(localized: "扫描 Android TV 接收器中的二维码。")
+    @Published private(set) var inputFeedback: String?
     @Published private var paused = false
     var busy: Bool { phase == .connecting }
     var canControl: Bool { phase == .ready && !paused && status?.available == true }
@@ -43,7 +44,17 @@ final class AndroidTVController: ObservableObject {
     private var epoch = UUID()
     private var deadline: Task<Void, Never>?
     private var heartbeat: Task<Void, Never>?
-    private struct Input { let action: AndroidTVAction; let time: TimeInterval }
+    private struct Input {
+        let action: AndroidTVAction
+        let time: TimeInterval
+        func isExpired(at now: TimeInterval) -> Bool {
+            // Explicit page navigation waits for the single in-flight ACK, whose
+            // three-second deadline closes the connection and clears this queue.
+            // It must not disappear under the shorter stale-gesture deadline.
+            if action == .key(.back) || action == .key(.home) { return false }
+            return now - time > 0.5
+        }
+    }
     private var queue: [Input] = []
     private var pending: (id: String, action: AndroidTVAction)?
 
@@ -175,7 +186,7 @@ final class AndroidTVController: ObservableObject {
                 cancelReconnect()
                 updateNotice()
                 startHeartbeat()
-            case .ack(let id, let ok, let newStatus, _):
+            case .ack(let id, let ok, let newStatus, let error):
                 guard phase == .ready, let pending, pending.id == id else { throw AndroidTVError.malformedMessage }
                 if pending.action == .ping, newStatus == nil { throw AndroidTVError.malformedMessage }
                 deadline?.cancel(); deadline = nil; self.pending = nil
@@ -183,14 +194,43 @@ final class AndroidTVController: ObservableObject {
                     status = newStatus
                     if !newStatus.available { queue.removeAll() }
                 }
-                if ok { updateNotice() }
+                if ok {
+                    // Motion and heartbeat acknowledgements must not immediately hide a rejected click.
+                    switch pending.action {
+                    case .click, .key: inputFeedback = nil
+                    default: break
+                    }
+                    updateNotice()
+                }
                 else {
-                    queue.removeAll()
-                    notice = String(localized: "电视未接受这次操作。请查看电视；此应用或控件可能不支持遥控。")
+                    // A rejected scroll/click must not swallow a Back/Home the user
+                    // already pressed to leave that page. All other queued input is stale.
+                    queue.removeAll { $0.action != .key(.back) && $0.action != .key(.home) }
+                    inputFeedback = Self.inputFailureMessage(error, action: pending.action)
+                    notice = inputFeedback!
                 }
                 drain()
             }
         } catch { fail(String(localized: "电视连接或配对未确认。请在电视上生成新二维码后重新连接。")) }
+    }
+    private static func inputFailureMessage(_ error: String?, action: AndroidTVAction) -> String {
+        switch error {
+        case "protected_window", "protected_target":
+            return String(localized: "此界面受系统保护，无法遥控。")
+        case "no_focused_target", "no_focus_target":
+            return String(localized: "当前没有可确认的高亮项，请先用电视方向键选择。")
+        case "no_accessible_target", "action_rejected":
+            if action == .click {
+                return String(localized: "此位置无法点击。请移动到可点击控件，或使用确认高亮项。")
+            }
+            if case .scroll = action {
+                return String(localized: "此区域无法滚动。请把光标移到可滚动区域。")
+            }
+            fallthrough
+        default:
+            // Do not display untrusted receiver strings verbatim.
+            return String(localized: "电视未接受这次操作。请查看电视；此应用或控件可能不支持遥控。")
+        }
     }
     private func updateNotice() {
         switch status?.inputStatus {
@@ -226,10 +266,15 @@ final class AndroidTVController: ObservableObject {
     private func enqueue(_ action: AndroidTVAction) {
         guard canControl, (try? AndroidTVProtocol.encode(action, id: UUID().uuidString)) != nil else { return }
         let now = Date.timeIntervalSinceReferenceDate
-        queue.removeAll { now - $0.time > 0.5 }
-        // Coalesce adjacent motion only. Never merge movement across a click/key boundary.
-        if case .move(let dx, let dy) = action, let last = queue.last, case .move(let x, let y) = last.action {
-            let merged = AndroidTVAction.move(dx: max(-500, min(500, dx + x)), dy: max(-500, min(500, dy + y)))
+        queue.removeAll { $0.isExpired(at: now) }
+        if action == .key(.back) || action == .key(.home) {
+            // Leaving the current page cancels gestures that have not reached the TV.
+            // Still wait for the one outstanding ACK; never replay or reorder sent input.
+            queue.removeAll()
+        }
+        // Both pointer movement and wheel gestures can arrive faster than TV ACKs.
+        // Coalesce only adjacent actions of the same kind, preserving click/key ordering.
+        if let last = queue.last, let merged = Self.coalescing(last.action, with: action) {
             queue[queue.count - 1] = Input(action: merged, time: now)
         } else {
             guard queue.count < 24 else { fail(String(localized: "电视响应过慢，已停止发送。请查看电视后手动重新连接。")); return }
@@ -237,10 +282,20 @@ final class AndroidTVController: ObservableObject {
         }
         drain()
     }
+    private static func coalescing(_ previous: AndroidTVAction, with next: AndroidTVAction) -> AndroidTVAction? {
+        func bounded(_ value: Double) -> Double { max(-500, min(500, value)) }
+        switch (previous, next) {
+        case let (.move(x, y), .move(dx, dy)):
+            return .move(dx: bounded(x + dx), dy: bounded(y + dy))
+        case let (.scroll(x, y), .scroll(dx, dy)):
+            return .scroll(dx: bounded(x + dx), dy: bounded(y + dy))
+        default: return nil
+        }
+    }
     private func drain() {
         guard phase == .ready, pending == nil, !paused, status?.available == true else { return }
         let now = Date.timeIntervalSinceReferenceDate
-        queue.removeAll { now - $0.time > 0.5 }
+        queue.removeAll { $0.isExpired(at: now) }
         guard !queue.isEmpty else { return }
         send(queue.removeFirst().action)
     }
@@ -326,7 +381,7 @@ final class AndroidTVController: ObservableObject {
         epoch = UUID()
         deadline?.cancel(); deadline = nil; heartbeat?.cancel(); heartbeat = nil
         socket?.close(); socket = nil; pairing = nil; pending = nil; queue.removeAll()
-        status = nil; phase = .idle
+        status = nil; inputFeedback = nil; phase = .idle
     }
     func forget() {
         guard enabled else { return }

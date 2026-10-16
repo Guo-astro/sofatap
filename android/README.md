@@ -4,7 +4,7 @@ This is the Android/Google TV experimental receiver for **free manual control**.
 
 **No physical TV model or third-party TV app is qualified yet.** A successful build, network connection, or visible cursor does not establish that a television accepts clicks. This is not a Google Play release.
 
-The [0.1.2 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) (version code 3) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Both household Sony and Xiaomi TVs remain **not field-tested**.
+The [0.1.2 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) (version code 3) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Physical testing has started on a Sony XRJ-85X95L running Android 12; the Xiaomi TV is still untested. Neither has completed model acceptance.
 
 ## Build
 
@@ -64,6 +64,8 @@ The APK is development-signed. `adb install -r` preserves app data only when the
 | Drag / right-click / raw mouse events | Not implemented |
 
 Clicks refresh and recheck nodes before acting. Overlapping ambiguous controls, password/sensitive nodes, known protected system surfaces, and the receiver's permission/pairing approval controls are rejected. Screen lock, screen-off, interruption and disconnect cancel control and hide/reset the pointer. The service does not request touchscreen gesture injection and does not depend on a touch-screen feature.
+
+The first Sony test confirmed installation, user-granted accessibility access, pairing, clicks and some scrolling. The user clarified that clicks do work; the earlier apparent failure may have been a delay behind scrolling. Rapid scrolling disconnected the iPhone client, and Back still needs a successful field retest. A separate read-only snapshot of one transient YouTube TV screen exposed no `ACTION_CLICK` nodes. That snapshot does not identify the cause of the user's earlier observation or establish that YouTube clicks are unsupported. Clickable controls vary by screen; focus confirmation also requires an exposed click action and is not a universal fallback. The rapid-scroll client queue issue is being addressed separately.
 
 The accessibility API does not expose a universal guarantee for every protected OEM screen or app. The implementation deliberately avoids reading or recording control text and does not transfer UI trees. Its `framework_accepted` response means Android/the target app accepted an action request; it does not prove that the intended screen change occurred.
 

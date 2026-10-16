@@ -64,7 +64,8 @@ struct RemoteView: View {
     private var gestureTarget: GestureTarget { televisionSelected ? .television : .computer }
     private var gestureConfiguration: GestureConfiguration { gesturePreferences[gestureTarget] }
     private var gestureAvailableActions: Set<GestureAction>? {
-        guard androidTVSelected, let capabilities = androidTV.status?.capabilities else { return nil }
+        guard androidTVSelected else { return nil }
+        guard let capabilities = androidTV.status?.capabilities else { return [.none] }
         var actions: Set<GestureAction> = [.none]
         if capabilities.overlayCursor { actions.insert(.movePointer) }
         if capabilities.nodeClick { actions.insert(.leftClick) }
@@ -73,6 +74,24 @@ struct RemoteView: View {
         if capabilities.back { actions.insert(.back) }
         if capabilities.home { actions.insert(.home) }
         return actions
+    }
+
+    private var guideContext: DeviceGuideContext {
+        if androidTVSelected {
+            return DeviceGuideContext(kind: .androidTV, deviceName: currentDeviceName,
+                                      connected: androidTV.phase == .ready,
+                                      availableActions: androidTV.status == nil ? nil : gestureAvailableActions)
+        }
+        if televisionSelected {
+            return DeviceGuideContext(kind: .webOS, deviceName: currentDeviceName,
+                                      connected: tv.phase == .ready,
+                                      availableActions: tv.phase == .ready ? [.movePointer, .leftClick, .scroll, .confirm, .back, .home] : nil)
+        }
+        let platform = model.connected ? model.receiverState.platform.rawValue :
+            model.savedDevices.first(where: { $0.id == model.selectedDeviceID })?.platform
+        return DeviceGuideContext(kind: .computer(platform: platform), deviceName: currentDeviceName,
+                                  connected: model.connected,
+                                  availableActions: model.connected ? (model.inputAvailable ? Set(GestureAction.allCases) : []) : nil)
     }
 
     var body: some View { dictationEvents }
@@ -84,6 +103,14 @@ struct RemoteView: View {
             VStack(spacing: 10) {
                 touchpad
                     .frame(maxWidth: .infinity, minHeight: min(170, geometry.size.height * 0.4), maxHeight: .infinity)
+                if androidTVSelected, let feedback = androidTV.inputFeedback {
+                    Text(feedback)
+                        .font(.footnote).foregroundStyle(Palette.muted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .padding(.horizontal, 8)
+                        .accessibilityIdentifier("androidTVInputFeedback")
+                }
                 if composerVisible && !televisionSelected {
                     composer(height: geometry.size.height < 500 ? 76 : 92)
                         .fixedSize(horizontal: false, vertical: true)
@@ -106,12 +133,13 @@ struct RemoteView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $guideSheet) { RemoteGuideView(configuration: gestureConfiguration, target: gestureTarget) }
+        .sheet(isPresented: $guideSheet) { RemoteGuideView(configuration: gestureConfiguration, context: guideContext) }
         .sheet(isPresented: $gestureSettingsSheet) {
             GestureSettingsView(configuration: Binding(
                 get: { gesturePreferences[gestureSettingsTarget] },
                 set: { gesturePreferences[gestureSettingsTarget] = $0.sanitized(for: gestureSettingsTarget) }
-            ), target: gestureSettingsTarget, availableActions: gestureSettingsTarget == gestureTarget ? gestureAvailableActions : nil)
+            ), target: gestureSettingsTarget, availableActions: gestureSettingsTarget == gestureTarget ? gestureAvailableActions : nil,
+                                guideContext: gestureSettingsTarget == gestureTarget ? guideContext : nil)
         }
         .alert(String(localized: "语音输入暂不可用"), isPresented: $showingSpeechError) {
             Button(String(localized: "使用键盘")) { toggleKeyboard() }
@@ -393,18 +421,36 @@ struct RemoteView: View {
         Group {
             if televisionSelected {
                 HStack {
-                    Button { touchControl.cancel(); if androidTVSelected { androidTV.key(.back) } else { tv.button(.back) } } label: {
+                    Button {
+                        touchControl.cancel()
+                        edgeScrollControl.cancel()
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if androidTVSelected { androidTV.key(.back) } else { tv.button(.back) }
+                    } label: {
                         Image(systemName: "chevron.backward").frame(width: 52, height: 52)
-                    }.accessibilityLabel(String(localized: "返回"))
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(String(localized: "返回"))
+                    .accessibilityIdentifier("tvBackButton")
+                    .disabled(!inputEnabled || (androidTVSelected && androidTV.status?.capabilities.back != true))
                     Spacer()
-                    Button { touchControl.cancel(); if androidTVSelected { androidTV.key(.home) } else { tv.button(.home) } } label: {
+                    Button {
+                        touchControl.cancel()
+                        edgeScrollControl.cancel()
+                        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                        if androidTVSelected { androidTV.key(.home) } else { tv.button(.home) }
+                    } label: {
                         Image(systemName: "house").frame(width: 64, height: 64)
-                    }.accessibilityLabel(String(localized: "电视主页"))
+                            .contentShape(Rectangle())
+                    }
+                    .accessibilityLabel(String(localized: "电视主页"))
+                    .accessibilityIdentifier("tvHomeButton")
+                    .disabled(!inputEnabled || (androidTVSelected && androidTV.status?.capabilities.home != true))
                     Spacer()
                     Color.clear.frame(width: 52, height: 52)
                 }
                 .font(.title2).foregroundStyle(Palette.mint)
-                .buttonStyle(.plain).disabled(!inputEnabled)
+                .buttonStyle(RemoteIconButtonStyle())
             } else { computerBottomBar }
         }
     }

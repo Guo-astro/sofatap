@@ -32,7 +32,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。见[语言覆盖](docs/APP-LANGUAGES.md)与[验证记录](docs/verification/device-library-2026-10-14.md)。
 
-**当前公开测试版：**iPhone **1.0 (18)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.7.3 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.3-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1)。**电视自动重连需要手机构建 17 及以上和电视接收器 0.1.1 beta.1 配合。**参见[构建 18 分发记录](docs/verification/testflight-1.0-18.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。家里的索尼、小米电视仍未现场测试。正式 App Store 构建 15 的提交是独立流程。
+**当前公开测试版：**iPhone **1.0 (18)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.7.3 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.3-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1)。**电视自动重连需要手机构建 17 及以上和电视接收器 0.1.1 beta.1 配合。**参见[构建 18 分发记录](docs/verification/testflight-1.0-18.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。索尼 XRJ-85X95L 已开始现场测试，尚未完成验收；小米仍未现场测试。正式 App Store 构建 15 的提交是独立流程。
 
 **重连更新：**iPhone **1.0 (16)** 与接收器 **0.7.2 beta.1** 修复电脑接收器重启后的连接恢复。手机 App 在前台时，会重试当前已保存的电脑，无需重新扫码；接收器新增无关网卡时会保留原有配对。待确认的文字和鼠标操作不会自动重放。证书更换仍需重新配对，已有的重复设备不会自动合并。参见[自动重连回归检查](docs/verification/reconnect-2026-10-15.md)；真实 iPhone 到 Windows 的关闭／重开验收仍待完成。
 
@@ -50,7 +50,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 **电视开发预览：**源码现已加入 LG webOS 的原生 IP 配对，以及移动、单击、滚动、返回和主页适配器。已通过本地协议与 TLS 测试，尚无通过真机验收的电视型号；自动发现、电视打字与听写仍待实现。参见[详细技术方案](docs/research/tv-implementation-plan.zh-CN.md)和[验证范围](docs/verification/webos-pointer-preview.md)。
 
-**Android/Google TV 测试版：**[接收器 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) 提供开发签名 APK。配合 iPhone 构建 17 或更高版本，App 在前台时会自动重连当前保存的电视；重启接收器和无关网卡变化会保留有效配对。原生接收器提供无障碍叠加光标、依赖目标控件的点击与滚动，以及独立的返回、主页和焦点导航；电视打字、听写、拖动和右键仍未支持。**家里的索尼和小米电视尚未现场测试。**参见[安装指南](android/README.md)、[重连软件测试](docs/verification/android-tv-reconnect-2026-10-16.md)与[待完成的硬件验收](docs/ACCEPTANCE.md)。
+**Android/Google TV 测试版：**[接收器 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) 提供开发签名 APK。配合 iPhone 构建 17 或更高版本，App 在前台时会自动重连当前保存的电视；重启接收器和无关网卡变化会保留有效配对。原生接收器提供无障碍叠加光标、依赖目标控件的点击与滚动，以及独立的返回、主页和焦点导航；电视打字、听写、拖动和右键仍未支持。**索尼 XRJ-85X95L 已开始现场测试：用户确认单击和滚动可用，快速滚动的稳定性和返回仍需修复后复测；小米仍未现场测试。**参见[安装指南](android/README.md)、[重连软件测试](docs/verification/android-tv-reconnect-2026-10-16.md)与[待完成的硬件验收](docs/ACCEPTANCE.md)。
 
 兼容接收端识别到提供辅助功能元数据的新可编辑输入框时，手机会自动弹出键盘。后台检测不读取框内内容；随后打开实时编辑会话时，会把受支持字段的完整文字和选区传到配对手机，因此退格、全选后删除也能修改电脑上的已有文字。焦点检测与实时编辑的支持范围不同：Windows 实时编辑当前限原生 Edit/RichEdit 控件；Mac 要求辅助功能提供可写的选中文字及选区。缺少相应能力的浏览器、自绘控件、Linux 及旧接收端采用检查草稿后发送。密码和只读字段不能开启实时编辑。参见[焦点检测、数据处理及平台限制](docs/TEXT-FOCUS.md)。
 

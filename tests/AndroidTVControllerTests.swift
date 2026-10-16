@@ -145,6 +145,96 @@ private final class MemoryStore: AndroidTVPairingStorage {
             check("forget removes credential", rig.store.deletes == 1 && rig.controller.saved == nil)
         }
         do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.scroll(dy: -12)
+            for _ in 0..<120 { rig.controller.scroll(dy: -12) }
+            check("fast scroll while an ACK is delayed keeps the connection", rig.controller.canControl && socket.sent.count == 1)
+            socket.ack(0)
+            check("fast scroll coalesces to one bounded pending wheel action", socket.sent.count == 2 && socket.sent[1]["type"] as? String == "scroll" && socket.sent[1]["dy"] as? Double == 500)
+            socket.ack(1)
+            check("scroll burst does not leave a long action backlog", socket.sent.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.move(dx: 1, dy: 1)
+            rig.controller.scroll(dy: -20); rig.controller.scroll(dy: -30)
+            rig.controller.click()
+            rig.controller.scroll(dy: 7); rig.controller.scroll(dy: 9)
+            socket.ack(0)
+            check("scroll before a click preserves direction and magnitude", socket.sent[1]["type"] as? String == "scroll" && socket.sent[1]["dy"] as? Double == 50)
+            socket.ack(1)
+            check("coalescing cannot cross a click boundary", socket.sent[2]["type"] as? String == "click")
+            socket.ack(2)
+            check("scroll after a click stays ordered and separate", socket.sent[3]["type"] as? String == "scroll" && socket.sent[3]["dy"] as? Double == -16)
+            socket.ack(3)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.click()
+            socket.ack(0, ok: false, extra: ["error": "no_accessible_target"])
+            let feedback = rig.controller.inputFeedback
+            check("rejected pointer click exposes an actionable message", feedback == String(localized: "此位置无法点击。请移动到可点击控件，或使用确认高亮项。") && rig.controller.canControl)
+            rig.controller.move(dx: 1, dy: 1); socket.ack(1)
+            check("pointer motion does not erase click feedback", rig.controller.inputFeedback == feedback)
+            rig.controller.scroll(dy: -10); socket.ack(2)
+            check("successful scrolling does not erase click feedback", rig.controller.inputFeedback == feedback)
+            rig.controller.key(.confirm); socket.ack(3)
+            check("successful deliberate confirmation clears input feedback", rig.controller.inputFeedback == nil)
+            rig.controller.scroll(dy: -10); socket.ack(4, ok: false, extra: ["error": "no_accessible_target"])
+            check("rejected scroll does not suggest clicking", rig.controller.inputFeedback == String(localized: "此区域无法滚动。请把光标移到可滚动区域。"))
+            rig.controller.click(); socket.ack(5, ok: false, extra: ["error": "arbitrary_server_message"])
+            check("unknown rejection never displays raw server text", rig.controller.inputFeedback == String(localized: "电视未接受这次操作。请查看电视；此应用或控件可能不支持遥控。"))
+            rig.controller.disconnect()
+            check("disconnect removes feedback for the old device", rig.controller.inputFeedback == nil)
+        }
+        for navigation in [AndroidTVKey.back, .home] {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.scroll(dy: -12)
+            for _ in 0..<120 { rig.controller.scroll(dy: -12) }
+            rig.controller.click()
+            rig.controller.key(navigation)
+            check("navigation waits for the single in-flight action", rig.controller.canControl && socket.sent.count == 1)
+            socket.ack(0)
+            check("navigation follows the ACK without replaying queued gestures", socket.sent.count == 2 && socket.sent[1]["type"] as? String == "key" && socket.sent[1]["key"] as? String == navigation.rawValue)
+            socket.ack(1)
+            check("leaving a page cannot replay stale clicks or scrolling", socket.sent.count == 2)
+            rig.controller.disconnect()
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.scroll(dy: -12)
+            rig.controller.key(.back)
+            socket.ack(0, ok: false, extra: ["error": "no_accessible_target"])
+            check("a rejected scroll cannot swallow an explicit queued Back", socket.sent.count == 2 && socket.sent[1]["key"] as? String == "back" && rig.controller.canControl)
+            socket.ack(1)
+            check("accepted Back clears the failed-scroll message", rig.controller.inputFeedback == nil)
+            rig.controller.disconnect()
+        }
+        for navigation in [AndroidTVKey.back, .home] {
+            for accepted in [true, false] {
+                let rig = Rig(), socket = rig.ready()
+                rig.controller.scroll(dy: -12)
+                rig.controller.key(navigation)
+                try await Task.sleep(nanoseconds: 600_000_000)
+                // New gestures also run queue expiry before the delayed ACK.
+                rig.controller.move(dx: 1, dy: 0)
+                socket.ack(0, ok: accepted, extra: accepted ? [:] : ["error": "action_rejected"])
+                check("navigation survives a slow scroll ACK and gesture expiry", socket.sent.count == 2 && socket.sent[1]["key"] as? String == navigation.rawValue)
+                rig.controller.disconnect()
+            }
+        }
+        do {
+            let rig = Rig(), socket = rig.ready()
+            rig.controller.scroll(dy: -12); rig.controller.key(.back)
+            socket.onFailure?(.transient)
+            rig.controller.reconnect(); let resumed = rig.sockets.last!
+            resumed.reply(Rig.hello(token: nil))
+            check("navigation is never replayed after a connection failure", resumed.sent.isEmpty)
+            rig.controller.disconnect()
+        }
+        do {
             let rig = Rig(), socket = rig.pair()
             socket.reply(Rig.hello(token: nil))
             check("bootstrap requires replacement", rig.controller.phase == .failed && rig.store.writes == 0)

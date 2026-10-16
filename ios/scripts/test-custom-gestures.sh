@@ -15,3 +15,9 @@ xcrun swiftc -warnings-as-errors \
     "$REPO_ROOT/tests/CustomTouchGestureTests.swift" \
     -o "$GESTURE_STAGE/touch"
 "$GESTURE_STAGE/touch"
+xcrun swiftc -warnings-as-errors \
+    "$REPO_ROOT/ios/SofaTap/Core/GestureConfiguration.swift" \
+    "$REPO_ROOT/ios/SofaTap/Core/DeviceGuideContext.swift" \
+    "$REPO_ROOT/tests/DeviceGuideContextTests.swift" \
+    -o "$GESTURE_STAGE/guide"
+"$GESTURE_STAGE/guide"

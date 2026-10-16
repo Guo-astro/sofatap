@@ -111,6 +111,73 @@ public class ReceiverServerTest {
         await(() -> !server.connected());
     }
 
+    @Test public void inaccessibleClickReportsItsActualReasonAndLeavesOtherControlsConnected() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message();
+        input.rejectedCode = "no_accessible_target";
+        String click = action(UUID.randomUUID().toString(), "click");
+        peer.socket.send(click);
+        JSONObject rejected = peer.message();
+        assertFalse(rejected.getBoolean("ok"));
+        assertEquals("no_accessible_target", rejected.getString("error"));
+        assertEquals(1, input.applied.get());
+        assertTrue(server.connected());
+
+        // Receiving the same negative ACK again must not turn a pointer click
+        // into another action, such as confirmation of the currently focused item.
+        peer.socket.send(click);
+        assertEquals(rejected.toString(), peer.message().toString());
+        assertEquals(1, input.applied.get());
+        input.rejectedCode = null;
+        peer.socket.send(scroll(UUID.randomUUID().toString(), 0, 1200));
+        assertTrue(peer.message().getBoolean("ok"));
+        peer.socket.send(new JSONObject(action(UUID.randomUUID().toString(), "key"))
+            .put("key", "back").toString());
+        assertTrue(peer.message().getBoolean("ok"));
+        assertTrue(server.connected());
+        assertEquals(3, input.applied.get());
+    }
+
+    @Test public void orderedScrollBurstWithDelayedInputAcknowledgesEveryActionWithoutDisconnecting() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); input.delayMillis = 20;
+        List<String> ids = new ArrayList<>();
+        for (int i = 0; i < 60; i++) {
+            String id = UUID.randomUUID().toString(); ids.add(id);
+            assertTrue(peer.socket.send(scroll(id, 0, i < 30 ? 1200 : -1200)));
+        }
+        for (String id : ids) {
+            JSONObject ack = peer.message();
+            assertEquals(id, ack.getString("id")); assertTrue(ack.getBoolean("ok"));
+        }
+        assertEquals(ids.size(), input.applied.get());
+        assertTrue(server.connected());
+    }
+
+    @Test public void backAfterPendingScrollPreservesItsWireMeaningAndReportsARejectedGlobalAction() throws Exception {
+        SocketPeer peer = connect(bootstrap); peer.message(); input.block = true;
+        String scrollId = UUID.randomUUID().toString();
+        peer.socket.send(scroll(scrollId, 0, 1200));
+        assertTrue(input.entered.await(2, TimeUnit.SECONDS));
+        String backId = UUID.randomUUID().toString();
+        peer.socket.send(new JSONObject(action(backId, "key")).put("key", "back").toString());
+        input.rejectedKey = "back"; input.release.countDown();
+        JSONObject scrollAck = peer.message();
+        assertEquals(scrollId, scrollAck.getString("id")); assertTrue(scrollAck.getBoolean("ok"));
+        JSONObject backAck = peer.message();
+        assertEquals(backId, backAck.getString("id")); assertFalse(backAck.getBoolean("ok"));
+        assertEquals("action_rejected", backAck.getString("error"));
+        assertEquals(2, input.received.size());
+        TVProtocol.Action back = input.received.get(1);
+        assertEquals("key", back.type()); assertEquals("back", back.key());
+        assertEquals(0, back.dx(), 0); assertEquals(0, back.dy(), 0);
+        assertTrue(server.connected());
+        peer.socket.send(action(UUID.randomUUID().toString(), "ping"));
+        assertTrue(peer.message().getBoolean("ok"));
+    }
+
+    private static String scroll(String id, double dx, double dy) throws Exception {
+        return new JSONObject(action(id, "scroll")).put("dx", dx).put("dy", dy).toString();
+    }
+
     @Test public void binaryAndOversizedTextNeverReachInput() throws Exception {
         SocketPeer binary = connect(bootstrap); String token = binary.message().getString("pairingToken");
         binary.socket.send(okio.ByteString.encodeUtf8(action(UUID.randomUUID().toString(), "click")));
@@ -178,11 +245,20 @@ public class ReceiverServerTest {
     private static final class FakeInput implements ReceiverServer.Input {
         final AtomicInteger applied = new AtomicInteger(); final CountDownLatch entered = new CountDownLatch(1), release = new CountDownLatch(1);
         volatile boolean block;
+        volatile String rejectedCode;
+        volatile String rejectedKey;
+        volatile long delayMillis;
+        final List<TVProtocol.Action> received = new CopyOnWriteArrayList<>();
         public JSONObject snapshot() throws Exception { return new JSONObject().put("ready", true); }
         public JSONObject apply(TVProtocol.Action action, BooleanSupplier current) throws Exception {
             entered.countDown(); if (block) release.await(3, TimeUnit.SECONDS);
+            if (delayMillis > 0) Thread.sleep(delayMillis);
             if (!current.getAsBoolean()) return new JSONObject().put("ok", false).put("code", "cancelled");
-            applied.incrementAndGet(); return new JSONObject().put("ok", true);
+            applied.incrementAndGet(); received.add(action);
+            if (action.key() != null && action.key().equals(rejectedKey))
+                return new JSONObject().put("ok", false).put("code", "action_rejected");
+            if (rejectedCode != null) return new JSONObject().put("ok", false).put("code", rejectedCode);
+            return new JSONObject().put("ok", true);
         }
         public void disconnected() { }
     }
