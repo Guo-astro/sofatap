@@ -6,6 +6,7 @@ struct GestureSettingsView: View {
     @Binding var configuration: GestureConfiguration
     let target: GestureTarget
     var availableActions: Set<GestureAction>? = nil
+    var guideContext: DeviceGuideContext? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var pendingPreset: GesturePreset?
     @State private var showPresetConfirmation = false
@@ -56,7 +57,7 @@ struct GestureSettingsView: View {
                 Text(String(localized: "这会替换当前设备类型的手势和时间设置。"))
             }
             .sheet(isPresented: $showPractice) {
-                GesturePracticeView(configuration: configuration, target: target)
+                GesturePracticeView(configuration: configuration, target: target, availableActions: availableActions, guideContext: guideContext)
             }
         }
         .tint(Palette.mint)
@@ -209,9 +210,11 @@ struct GestureSettingsView: View {
 }
 
 /// Uses the production recognizer, with local feedback instead of remote callbacks.
-private struct GesturePracticeView: View {
+struct GesturePracticeView: View {
     let configuration: GestureConfiguration
     let target: GestureTarget
+    var availableActions: Set<GestureAction>? = nil
+    var guideContext: DeviceGuideContext? = nil
     @Environment(\.dismiss) private var dismiss
     @State private var result = String(localized: "在下方触控区试一试")
     @State private var control = TouchSurface.Control()
@@ -237,7 +240,8 @@ private struct GesturePracticeView: View {
                              onRightTap: { showClick(.rightClick) },
                              onDraggingChanged: { active in
                                  dragging = active
-                                 result = active ? GestureAction.drag.title(for: target) : String(localized: "已松开")
+                                 if active { show(.drag) }
+                                 else { result = String(localized: "已松开") }
                              },
                              onScroll: { _ in show(.scroll) },
                              onShortcut: { show($0) })
@@ -262,7 +266,15 @@ private struct GesturePracticeView: View {
         }.tint(Palette.mint).preferredColorScheme(.dark)
     }
 
-    private func show(_ action: GestureAction) { result = action.title(for: target) }
+    private func show(_ action: GestureAction) {
+        if guideContext?.availability(of: action) == .unknown {
+            result = action.title(for: target) + "\n" + String(localized: "等待设备报告")
+        } else if guideContext?.availability(of: action) == .unsupported || availableActions?.contains(action) == false {
+            result = action.title(for: target) + "\n" + String(localized: "当前设备暂不支持此操作")
+        } else {
+            result = action.title(for: target)
+        }
+    }
 
     private func showClick(_ action: GestureAction) {
         let now = ProcessInfo.processInfo.systemUptime
