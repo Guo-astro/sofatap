@@ -4,6 +4,14 @@ using SofaTap;
 
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
+ReceiverDistributionChecks.Run(Check);
+// A focused non-interactive mode for the shared Mac: no server, native AX calls,
+// permission requests or real input. Default runs still include the full suite.
+if (args.Contains("--distribution-only", StringComparer.Ordinal))
+{
+    Console.WriteLine($"PASS: {passed} distribution checks (no network or desktop input).");
+    return;
+}
 PairingUriChecks.Run(Check);
 CredentialPersistenceChecks.Run(Check);
 LinuxInputChecks.Run(Check);
@@ -12,7 +20,9 @@ UnlockCapabilityChecks.Run(Check);
 WindowsTextInputChecks.Run(Check);
 LiveTextChecks.Run(Check);
 WindowsLiveTextChecks.Run(Check);
+#if !SOFATAP_MAC_APP_STORE
 MacTextEditorChecks.Run(Check);
+#endif
 await LiveTextWireChecks.Run(Check);
 
 var focusTracker = new TextFocusTracker();

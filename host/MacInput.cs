@@ -301,7 +301,11 @@ internal sealed class QuartzEventSink : IMacEventSink
         get
         {
             if (!OperatingSystem.IsMacOS() || !HasConsoleSession()) return "desktop_unavailable";
-            return QuartzNative.AXIsProcessTrusted() && QuartzNative.CGPreflightPostEventAccess()
+            return
+#if !SOFATAP_MAC_APP_STORE
+                QuartzNative.AXIsProcessTrusted() &&
+#endif
+                QuartzNative.CGPreflightPostEventAccess()
                 ? "ready" : "accessibility_required";
         }
     }
@@ -409,7 +413,9 @@ internal static class QuartzNative
 {
     private const string CG = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics";
     private const string CF = "/System/Library/Frameworks/CoreFoundation.framework/CoreFoundation";
+#if !SOFATAP_MAC_APP_STORE
     private const string AX = "/System/Library/Frameworks/ApplicationServices.framework/ApplicationServices";
+#endif
     // AppKit must remain loaded while its Objective-C classes are in use.
     private static readonly Lazy<IntPtr> AppKit = new(() => NativeLibrary.Load("/System/Library/Frameworks/AppKit.framework/AppKit"));
     internal static double ReadDoubleClickInterval()
@@ -431,7 +437,9 @@ internal static class QuartzNative
     [StructLayout(LayoutKind.Sequential)] internal struct Point { public double X, Y; }
     [StructLayout(LayoutKind.Sequential)] internal struct Size { public double Width, Height; }
     [StructLayout(LayoutKind.Sequential)] internal struct Rect { public Point Origin; public Size Size; }
+#if !SOFATAP_MAC_APP_STORE
     [DllImport(AX)] [return: MarshalAs(UnmanagedType.I1)] internal static extern bool AXIsProcessTrusted();
+#endif
     [DllImport(CG)] [return: MarshalAs(UnmanagedType.I1)] internal static extern bool CGPreflightPostEventAccess();
     [DllImport(CG)] [return: MarshalAs(UnmanagedType.I1)] internal static extern bool CGRequestPostEventAccess();
     [DllImport(CG)] internal static extern IntPtr CGSessionCopyCurrentDictionary();

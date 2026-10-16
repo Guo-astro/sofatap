@@ -30,6 +30,11 @@ jobs:
         run: python3 -m pip install websockets==16.0
       - name: Host checks with fake input
         run: dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+      - name: Mac App Store host and wire checks with fake input
+        run: >-
+          dotnet run --project tests/host/SofaTap.Host.Tests.csproj -c Release
+          --artifacts-path "$RUNNER_TEMP/sofatap-store-host-checks"
+          -p:SofatapMacAppStore=true
       - name: Windows login broker state and credential lifetime checks
         run: dotnet run --project desktop/windows-login/Tests/Sofatap.Login.Tests.csproj -c Release
       - name: iPhone unlock identity and challenge checks
@@ -62,6 +67,12 @@ jobs:
         run: |
           swiftc -parse-as-library -swift-version 5 desktop/macos/ReceiverLoginItem.swift desktop/macos/tests/ReceiverLoginItemTests.swift -o "$RUNNER_TEMP/sofatap-login-tests"
           "$RUNNER_TEMP/sofatap-login-tests"
+      - name: Mac App Store startup consent and container boundaries
+        run: |
+          swiftc -parse-as-library -swift-version 5 -D SOFATAP_MAC_APP_STORE desktop/macos/ReceiverLoginItem.swift desktop/macos/tests/ReceiverLoginItemTests.swift -o "$RUNNER_TEMP/sofatap-store-login-tests"
+          "$RUNNER_TEMP/sofatap-store-login-tests"
+          swiftc -parse-as-library -swift-version 5 desktop/macos/ReceiverStoreEnvironment.swift desktop/macos/tests/ReceiverStoreEnvironmentTests.swift -o "$RUNNER_TEMP/sofatap-store-container-tests"
+          "$RUNNER_TEMP/sofatap-store-container-tests"
       - name: Native pairing parser checks
         shell: bash
         run: |

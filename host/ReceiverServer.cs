@@ -71,8 +71,9 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         string status, TextFocusMetadata focus, bool liveTextSupported = false) => new
     {
         type = "hello", version = 1, name, platform, dryRun,
-        inputAvailable = status == "ready", inputStatus = status, textFocus = focus,
-        liveText = liveTextSupported && !dryRun ? new { version = 1 } : null
+        inputAvailable = status == "ready", inputStatus = status,
+        textFocus = ReceiverDistribution.SupportsTextInspection ? focus : new TextFocusMetadata("unknown", 0),
+        liveText = ReceiverDistribution.SupportsTextInspection && liveTextSupported && !dryRun ? new { version = 1 } : null
     };
 
     private async Task RunController(WebSocket socket, CancellationToken requestAborted)
@@ -80,10 +81,10 @@ public sealed class ReceiverServer(ReceiverOptions options, Credentials credenti
         using var lifetime = CancellationTokenSource.CreateLinkedTokenSource(requestAborted, _applicationStopping);
         var focusTracker = new TextFocusTracker();
         TextFocusMetadata Focus(string code) => focusTracker.Update(
-            code == "ready" && !options.DryRun && textFocus is not null
+            ReceiverDistribution.SupportsTextInspection && code == "ready" && !options.DryRun && textFocus is not null
                 ? textFocus.Read() : new(TextFocusKind.Unknown), code == "ready" && !options.DryRun);
         var status = ReceiverPlatform.StatusCode(input, options.DryRun);
-        using var liveText = !options.DryRun && textEditorFactory is not null
+        using var liveText = ReceiverDistribution.SupportsTextInspection && !options.DryRun && textEditorFactory is not null
             ? new LiveTextSession(textEditorFactory(), () => ReceiverPlatform.StatusCode(input, options.DryRun) == "ready") : null;
         await Send(socket, CreateHello(Environment.MachineName, ReceiverPlatform.Id,
             options.DryRun, status, Focus(status), liveText is not null), lifetime.Token);

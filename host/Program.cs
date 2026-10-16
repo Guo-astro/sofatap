@@ -27,15 +27,14 @@ try
     var dryRun = args.Contains("--dry-run", StringComparer.Ordinal);
     if (!OperatingSystem.IsWindows() && !OperatingSystem.IsMacOS() && !OperatingSystem.IsLinux() && !dryRun)
         throw new InvalidOperationException("Sofatap requires Windows, macOS or a supported Linux desktop.");
-    var options = new ReceiverOptions(dryRun, Value("--data-dir") ?? Credentials.DefaultDirectory,
+    var options = new ReceiverOptions(dryRun, ReceiverDistribution.DataDirectory(Value("--data-dir")),
         Port("--port", Port("--control-port", 53319)));
     using var credentials = Credentials.LoadOrCreate(Path.GetFullPath(options.DataDirectory));
     IInputInjector input = dryRun ? new DryRunInput() : OperatingSystem.IsMacOS() ? new MacInput()
         : OperatingSystem.IsLinux() ? new LinuxInput() : new WindowsInput();
     using var inputLifetime = input as IDisposable;
-    using var textFocus = dryRun ? null : TextFocusProbe.Create();
-    Func<ILiveTextEditor>? textEditorFactory = !dryRun && OperatingSystem.IsWindows() ? () => OperatingSystem.IsWindows() ? new WindowsTextEditor() : throw new PlatformNotSupportedException()
-        : !dryRun && OperatingSystem.IsMacOS() ? () => new MacTextEditor() : null;
+    using var textFocus = ReceiverDistribution.CreateTextFocus(dryRun);
+    var textEditorFactory = ReceiverDistribution.CreateTextEditorFactory(dryRun);
     var server = new ReceiverServer(options, credentials, input, textFocus, textEditorFactory);
     await using var app = server.Build();
     try { await NativeDesktopBridge.RunAsync(app, server, dryRun); }

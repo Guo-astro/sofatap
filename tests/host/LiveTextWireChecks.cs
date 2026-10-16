@@ -21,8 +21,9 @@ internal static class LiveTextWireChecks
             using var credentials = Credentials.LoadOrCreate(directory);
             var input = new WireInput();
             var editor = new WireEditor();
+            var editorCreations = 0;
             var server = new ReceiverServer(new(false, directory, 0), credentials, input,
-                textEditorFactory: () => editor);
+                textEditorFactory: () => { editorCreations++; return editor; });
             await using var app = server.Build();
             using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(30));
             try
@@ -44,6 +45,27 @@ internal static class LiveTextWireChecks
                 socket.Options.SetRequestHeader("Authorization", "Bearer " + credentials.Token);
                 await socket.ConnectAsync(uri, deadline.Token);
                 var hello = await Receive(socket, deadline.Token);
+                if (ReceiverDistribution.IsMacAppStore)
+                {
+                    check(matchedPin && hello.Json.GetProperty("inputAvailable").GetBoolean() &&
+                        !hello.Json.TryGetProperty("liveText", out _) &&
+                        hello.Json.GetProperty("textFocus").GetProperty("state").GetString() == "unknown" &&
+                        editorCreations == 0,
+                        "store wire hello never advertises inspection or creates an injected live editor");
+                    await Send(socket, new { id = Guid.NewGuid().ToString("D"), type = "textBegin" }, deadline.Token);
+                    var refused = await Receive(socket, deadline.Token);
+                    check(!refused.Json.GetProperty("ok").GetBoolean() && editorCreations == 0 && input.Applied == 0,
+                        "store wire rejects live editing without creating a provider or injecting input");
+                    await Send(socket, new { id = Guid.NewGuid().ToString("D"), type = "text", text = "中文 👋" }, deadline.Token);
+                    var textAck = await Receive(socket, deadline.Token);
+                    await Send(socket, new { id = Guid.NewGuid().ToString("D"), type = "key", key = "backspace", modifiers = Array.Empty<string>() }, deadline.Token);
+                    var keyAck = await Receive(socket, deadline.Token);
+                    check(textAck.Json.GetProperty("ok").GetBoolean() && keyAck.Json.GetProperty("ok").GetBoolean() &&
+                        input.Applied == 2 && editorCreations == 0,
+                        "store wire still delivers ordinary text and backspace to the fake input backend");
+                    await socket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Fixture complete.", deadline.Token);
+                    return;
+                }
                 check(matchedPin && hello.Json.GetProperty("type").GetString() == "hello" &&
                     hello.Json.GetProperty("inputAvailable").GetBoolean() &&
                     !hello.Json.GetProperty("dryRun").GetBoolean() &&

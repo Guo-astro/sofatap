@@ -1,0 +1,62 @@
+name: SofatapReceiver
+options:
+  minimumXcodeGenVersion: 2.43.0
+  deploymentTarget:
+    macOS: '15.0'
+settings:
+  base:
+    MACOSX_DEPLOYMENT_TARGET: '15.0'
+    SWIFT_VERSION: '5.0'
+    SWIFT_ACTIVE_COMPILATION_CONDITIONS: '$(inherited) SOFATAP_MAC_APP_STORE'
+    ARCHS: 'arm64 x86_64'
+    ONLY_ACTIVE_ARCH: NO
+    ENABLE_HARDENED_RUNTIME: YES
+    ENABLE_APP_SANDBOX: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: FKSR2JD63B
+    MARKETING_VERSION: '1.0'
+    CURRENT_PROJECT_VERSION: '1'
+    SOFATAP_STORE_INPUTS: '$(SRCROOT)/../../artifacts/macos-store/inputs'
+targets:
+  SofatapReceiver:
+    type: application
+    platform: macOS
+    sources:
+      - path: ../../desktop/macos
+        excludes: [tests, README.md]
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Sofatap Receiver
+        CFBundleName: Sofatap Receiver
+        CFBundleIconFile: SofaTap.icns
+        LSApplicationCategoryType: public.app-category.utilities
+        LSMinimumSystemVersion: '15.0'
+        LSUIElement: false
+        NSHighResolutionCapable: true
+        NSPrincipalClass: NSApplication
+        NSLocalNetworkUsageDescription: Sofatap receives mouse and keyboard commands from your paired iPhone over your local network.
+        NSHumanReadableCopyright: Copyright © CHEKUSU INC. Sofatap is available under the MIT license.
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.chekusu.sofatap.receiver
+        PRODUCT_NAME: SofatapReceiver
+        CODE_SIGN_ENTITLEMENTS: ../../scripts/macos-store/Receiver.entitlements.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SKIP_INSTALL: NO
+        COMBINE_HIDPI_IMAGES: YES
+    postBuildScripts:
+      - name: Embed signed architecture helpers and resources
+        script: 'bash "$SRCROOT/../../scripts/macos-store/embed-content.sh"'
+        basedOnDependencyAnalysis: false
+schemes:
+  SofatapReceiver:
+    build:
+      targets:
+        SofatapReceiver: all
+    run:
+      config: Debug
+    archive:
+      config: Release

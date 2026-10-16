@@ -39,6 +39,8 @@ struct ReceiverAppearanceFixtures {
             Fixture(name: "login-failure", width: 440, height: 700,
                     state: state("ready", pairings: [pairing]), loginStatus: .notRegistered,
                     loginFailure: "无法启用登录时启动，请检查系统设置。"),
+            Fixture(name: "login-consent", width: 440, height: 700,
+                    state: state("ready", pairings: [pairing]), loginConsent: true),
             Fixture(name: "starting", width: 470, height: 700, isStarting: true),
             Fixture(name: "stopping", width: 470, height: 700, state: state("ready", pairings: [pairing]), isStopping: true),
         ]
@@ -54,7 +56,12 @@ struct ReceiverAppearanceFixtures {
                 accessNotice: fixture.accessNotice,
                 refresh: {}, requestAccess: {}, openAccessibilitySettings: {}, copyPairing: {}, quit: {}
                 )
-                if let loginStatus = fixture.loginStatus {
+                if fixture.loginConsent {
+                    ReceiverLoginConsentContent(requested: .constant(true), confirm: {})
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, 20)
+                        .frame(maxWidth: 530)
+                } else if let loginStatus = fixture.loginStatus {
                     ReceiverLoginContent(requested: .constant(loginStatus == .enabled || loginStatus == .requiresApproval),
                                          status: loginStatus, failure: fixture.loginFailure, openSettings: {})
                         .padding(.horizontal, 28)
@@ -187,6 +194,7 @@ private struct Fixture {
     var accessNotice: String? = nil
     var loginStatus: ReceiverLoginStatus? = .enabled
     var loginFailure: String? = nil
+    var loginConsent = false
 }
 
 private enum FixtureError: Error {

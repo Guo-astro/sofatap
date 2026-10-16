@@ -225,11 +225,18 @@ struct ReceiverView: View {
                     quit: { NSApp.terminate(nil) }
                 )
                 if loginItem.isAvailable {
-                    ReceiverLoginContent(
-                        requested: Binding(get: { loginItem.isRequested }, set: loginItem.setRequested),
-                        status: loginItem.status, failure: loginItem.failure,
-                        openSettings: loginItem.openSystemSettings
-                    )
+                    Group {
+                        if loginItem.needsFirstLaunchConsent {
+                            ReceiverLoginConsentContent(requested: $loginItem.firstLaunchRequested,
+                                                        confirm: loginItem.confirmFirstLaunch)
+                        } else {
+                            ReceiverLoginContent(
+                                requested: Binding(get: { loginItem.isRequested }, set: loginItem.setRequested),
+                                status: loginItem.status, failure: loginItem.failure,
+                                openSettings: loginItem.openSystemSettings
+                            )
+                        }
+                    }
                     .padding(.horizontal, 28)
                     .padding(.bottom, 20)
                     .frame(maxWidth: 530)
@@ -237,6 +244,28 @@ struct ReceiverView: View {
             }
         }
         .background(Palette.background)
+    }
+}
+
+struct ReceiverLoginConsentContent: View {
+    @Binding var requested: Bool
+    let confirm: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Toggle("登录时自动启动", isOn: $requested)
+                .toggleStyle(.checkbox)
+            Text("确认后，Sofatap 可在你登录 Mac 时自动准备好接收手机操作。可随时在这里关闭。")
+                .foregroundStyle(Palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("确认设置", action: confirm)
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+        }
+        .font(.system(size: 12))
+        .foregroundStyle(Palette.text)
+        .tint(Palette.mint)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -299,6 +328,13 @@ struct ReceiverContent: View {
             statusPill
             heading
             notices
+            #if SOFATAP_MAC_APP_STORE
+            Text("商店基础版支持鼠标、滚动和文字发送；不支持自动识别输入框或实时编辑。")
+                .font(.system(size: 12))
+                .foregroundStyle(Palette.muted)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+            #endif
             if let state, failure == nil, !isStarting, !isStopping {
                 pairingCard(state)
             }
