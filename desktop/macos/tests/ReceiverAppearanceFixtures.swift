@@ -28,26 +28,40 @@ struct ReceiverAppearanceFixtures {
             Fixture(name: "permission-narrow", width: 440, height: 700,
                     state: state("accessibility_required", pairings: [pairing]),
                     accessNotice: "请在系统提示中打开设置，并允许 Sofatap Receiver。若没有出现提示，可点“打开系统设置”；列表中没有应用时，点 + 选择已安装的 Sofatap Receiver.app。系统可能要求密码或 Touch ID。授权后请回到这里重新检查。"),
-            Fixture(name: "dry-run", width: 470, height: 700, state: state("dry_run", dryRun: true, pairings: [pairing])),
+            Fixture(name: "dry-run", width: 470, height: 700, state: state("dry_run", dryRun: true, pairings: [pairing]), loginStatus: nil),
             Fixture(name: "desktop-unavailable", width: 440, height: 700, state: state("desktop_unavailable", connected: true, pairings: [pairing])),
             Fixture(name: "long-device-network", width: 440, height: 700,
                     state: state("ready", name: "客厅工作站 — 一台名称很长的 Mac 电脑", pairings: [secondPairing, pairing])),
             Fixture(name: "no-network", width: 470, height: 700, state: state("ready", pairings: [])),
             Fixture(name: "failure", width: 440, height: 700, state: state("ready", pairings: [pairing]), failure: "与 Mac 接收组件的连接已中断。请重新打开 Sofatap。"),
+            Fixture(name: "login-approval", width: 440, height: 700,
+                    state: state("ready", pairings: [pairing]), loginStatus: .requiresApproval),
+            Fixture(name: "login-failure", width: 440, height: 700,
+                    state: state("ready", pairings: [pairing]), loginStatus: .notRegistered,
+                    loginFailure: "无法启用登录时启动，请检查系统设置。"),
             Fixture(name: "starting", width: 470, height: 700, isStarting: true),
             Fixture(name: "stopping", width: 470, height: 700, state: state("ready", pairings: [pairing]), isStopping: true),
         ]
         var manifest: [[String: Any]] = []
         for fixture in states {
             let selected = fixture.state?.pairings.first
-            let content = ReceiverContent(
+            let content = VStack(spacing: 0) {
+                ReceiverContent(
                 state: fixture.state, selectedPairing: selected,
                 selectedHost: .constant(selected?.host), failure: fixture.failure,
                 isStarting: fixture.isStarting, isStopping: fixture.isStopping,
                 copied: false, accessRequested: fixture.accessNotice != nil,
                 accessNotice: fixture.accessNotice,
                 refresh: {}, requestAccess: {}, openAccessibilitySettings: {}, copyPairing: {}, quit: {}
-            )
+                )
+                if let loginStatus = fixture.loginStatus {
+                    ReceiverLoginContent(requested: .constant(loginStatus == .enabled || loginStatus == .requiresApproval),
+                                         status: loginStatus, failure: fixture.loginFailure, openSettings: {})
+                        .padding(.horizontal, 28)
+                        .padding(.bottom, 20)
+                        .frame(maxWidth: 530)
+                }
+            }
             // Measure the shared content at the requested width. Extra height in
             // permission fixtures records wrapped content, not a tested scroll view.
             let measurement = ImageRenderer(content: content)
@@ -171,6 +185,8 @@ private struct Fixture {
     var isStarting = false
     var isStopping = false
     var accessNotice: String? = nil
+    var loginStatus: ReceiverLoginStatus? = .enabled
+    var loginFailure: String? = nil
 }
 
 private enum FixtureError: Error {

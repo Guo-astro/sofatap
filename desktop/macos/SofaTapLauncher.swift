@@ -1,4 +1,5 @@
 import AppKit
+import CoreServices
 import ImageIO
 import SwiftUI
 
@@ -39,11 +40,13 @@ enum SofaTapLauncher {
 final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let receiver = ReceiverController()
     private let options: ReceiverLaunchOptions
+    private let loginItem: ReceiverLoginItem
     private var window: NSWindow?
     private var isTerminating = false
 
     init(options: ReceiverLaunchOptions) {
         self.options = options
+        self.loginItem = ReceiverLoginItem.production(arguments: Array(CommandLine.arguments.dropFirst()))
         super.init()
     }
 
@@ -87,7 +90,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         window.contentMinSize = NSSize(width: 380, height: 440)
         window.isReleasedWhenClosed = false
         window.delegate = self
-        window.contentView = NSHostingView(rootView: ReceiverView(receiver: receiver))
+        window.contentView = NSHostingView(rootView: ReceiverView(receiver: receiver, loginItem: loginItem))
         self.window = window
         if let testFrame {
             window.setFrame(testFrame, display: false)
@@ -96,10 +99,18 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
                 name: NSApplication.didChangeScreenParametersNotification, object: nil)
         } else {
             window.center()
-            window.makeKeyAndOrderFront(nil)
-            NSApp.activate(ignoringOtherApps: true)
+            // Login items should prepare the receiver without stealing focus or
+            // opening a pairing window over the user's restored applications.
+            let launchEvent = NSAppleEventManager.shared().currentAppleEvent
+            let launchedAtLogin = launchEvent?.eventID == kAEOpenApplication
+                && launchEvent?.paramDescriptor(forKeyword: keyAEPropData)?.enumCodeValue == keyAELaunchedAsLogInItem
+            if !launchedAtLogin {
+                window.makeKeyAndOrderFront(nil)
+                NSApp.activate(ignoringOtherApps: true)
+            }
         }
         receiver.start()
+        loginItem.configureFirstLaunch()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -108,6 +119,10 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
             else { window?.makeKeyAndOrderFront(nil) }
         }
         return true
+    }
+
+    func applicationDidBecomeActive(_ notification: Notification) {
+        loginItem.refresh()
     }
 
     @objc private func testDisplayChanged() {
@@ -124,11 +139,17 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
     }
 
     func windowShouldClose(_ sender: NSWindow) -> Bool {
-        NSApp.terminate(nil)
+        if options.testDisplayID != nil || CommandLine.arguments.contains("--dry-run") {
+            NSApp.terminate(nil)
+        } else {
+            // Closing the pairing window must not disconnect a paired phone.
+            // Dock reopening restores it; the native Quit command stops the app.
+            sender.orderOut(nil)
+        }
         return false
     }
 
-    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { true }
+    func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         isTerminating = true
@@ -182,27 +203,75 @@ private enum Palette {
 /// rendered offscreen with explicit, non-sensitive fixture values for layout QA.
 struct ReceiverView: View {
     @ObservedObject var receiver: ReceiverController
+    @ObservedObject var loginItem: ReceiverLoginItem
 
     var body: some View {
         ScrollView {
-            ReceiverContent(
-                state: receiver.state,
-                selectedPairing: receiver.selectedPairing,
-                selectedHost: $receiver.selectedHost,
-                failure: receiver.failure,
-                isStarting: receiver.isStarting,
-                isStopping: receiver.isStopping,
-                copied: receiver.copied,
-                accessRequested: receiver.accessRequested,
-                accessNotice: receiver.accessNotice,
-                refresh: receiver.refresh,
-                requestAccess: receiver.requestAccess,
-                openAccessibilitySettings: receiver.openAccessibilitySettings,
-                copyPairing: receiver.copyPairing,
-                quit: { NSApp.terminate(nil) }
-            )
+            VStack(spacing: 0) {
+                ReceiverContent(
+                    state: receiver.state,
+                    selectedPairing: receiver.selectedPairing,
+                    selectedHost: $receiver.selectedHost,
+                    failure: receiver.failure,
+                    isStarting: receiver.isStarting,
+                    isStopping: receiver.isStopping,
+                    copied: receiver.copied,
+                    accessRequested: receiver.accessRequested,
+                    accessNotice: receiver.accessNotice,
+                    refresh: receiver.refresh,
+                    requestAccess: receiver.requestAccess,
+                    openAccessibilitySettings: receiver.openAccessibilitySettings,
+                    copyPairing: receiver.copyPairing,
+                    quit: { NSApp.terminate(nil) }
+                )
+                if loginItem.isAvailable {
+                    ReceiverLoginContent(
+                        requested: Binding(get: { loginItem.isRequested }, set: loginItem.setRequested),
+                        status: loginItem.status, failure: loginItem.failure,
+                        openSettings: loginItem.openSystemSettings
+                    )
+                    .padding(.horizontal, 28)
+                    .padding(.bottom, 20)
+                    .frame(maxWidth: 530)
+                }
+            }
         }
         .background(Palette.background)
+    }
+}
+
+struct ReceiverLoginContent: View {
+    @Binding var requested: Bool
+    let status: ReceiverLoginStatus
+    let failure: String?
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Toggle("登录时自动启动", isOn: $requested)
+                .toggleStyle(.checkbox)
+                .help("登录这台 Mac 后自动运行。关闭窗口后，Sofatap 仍可接收手机操作；选择退出才会停止。")
+            if status == .requiresApproval {
+                Text("等待系统允许；目前不会自动启动。")
+                    .foregroundStyle(Palette.warning)
+            } else if status == .unavailable {
+                Text("登录项不可用，请将 Sofatap 放入应用程序后重新启用。")
+                    .foregroundStyle(Palette.warning)
+            }
+            if let failure { Text(failure).foregroundStyle(Palette.warning) }
+            if status == .requiresApproval || status == .unavailable || failure != nil {
+                Button(action: openSettings) {
+                    Text("打开登录项设置").underline()
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(Palette.mint)
+            }
+        }
+        .font(.system(size: 12))
+        .fixedSize(horizontal: false, vertical: true)
+        .foregroundStyle(Palette.text)
+        .tint(Palette.mint)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 

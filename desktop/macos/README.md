@@ -52,7 +52,7 @@ The Mac authorization button calls Apple's [AXIsProcessTrustedWithOptions](https
 
 The UI model is main-actor isolated. Independent `DispatchSourceRead` readers consume stdout and drain stderr using nonblocking reads; the command writer operates away from the UI thread. Do not replace these with two `FileHandle.bytes` loops: Foundation's shared serial async IO actor can block stdout behind a quiet stderr. Frame sizes and PNG dimensions are bounded before decoding, and the UI stream buffers only the latest state. A missing update for eight seconds clears visible pairing state. Process exit, malformed frames and pipe failure show a generic error and clear the QR. Raw stderr is discarded. The QR and URI are held in memory, are never logged or saved by the launcher, and only reach the clipboard after an explicit Copy action. The helper separately owns the persistent pairing profile.
 
-Closing the window or choosing Quit first sends `quit`. After 800 ms the launcher may call `terminate()` on its own child. It never looks up or kills other processes. If that child still has not exited after another four seconds, the app cancels its own exit and shows an error so it cannot silently leave an orphaned receiver.
+Closing the normal pairing window hides it and keeps the receiver running; click the Dock icon to reopen it. The dry-run QA window still stops its helper when closed. Choosing Quit first sends `quit`. After 800 ms the launcher may call `terminate()` on its own child. It never looks up or kills other processes. If that child still has not exited after another four seconds, the app cancels its own exit and shows an error so it cannot silently leave an orphaned receiver.
 
 This follows Apple's [Process](https://developer.apple.com/documentation/foundation/process), [terminationHandler](https://developer.apple.com/documentation/foundation/process/terminationhandler), [DispatchSourceRead](https://developer.apple.com/documentation/dispatch/dispatchsource/makereadsource(filedescriptor:queue:)) and [Pipe](https://developer.apple.com/documentation/foundation/pipe) APIs. Each dispatch source owns a duplicated file descriptor, closed only in its cancellation handler after in-flight handlers finish. Callbacks hop to the main actor before changing view state. The source also compiles in Swift 6 mode.
 
@@ -74,3 +74,20 @@ xcrun swiftc -parse-as-library -swift-version 6 -target arm64-apple-macosx15.0 \
 ```
 
 The checks cover fragmented UTF-8 frames, periodic permission/connection changes, network selection and removal, bounded framing, malformed messages/images, and command serialization. Real anonymous-pipe checks additionally cover a permanently quiet stderr, stderr output larger than pipe capacity, stdout EOF and malformed JSON. They do not launch `NSApplication`, a receiver, a socket, or any input injection. Native window rendering, closing/quit behavior with a real helper, and phone-to-desktop input need separate live acceptance.
+
+## Start at login
+
+The native **登录时自动启动** checkbox controls Apple's [`SMAppService.mainApp`](https://developer.apple.com/documentation/servicemanagement/smappservice/mainapp). On the first normal launch of the packaged app, Sofatap requests registration once. It starts **after this user logs in**, not before login or while the Mac is powered off. A login launch prepares the receiver without opening its window or taking focus; reopen from the Dock when needed.
+
+The app reads the actual system registration state. Pending authorization (including consent revoked in System Settings) is explicitly labeled and links to Login Items settings; it never claims the receiver will start until the system allows it. Disabling the checkbox unregisters the app, and closing/reopening or upgrading does not silently re-enable it. A failed initial registration is not retried automatically; the checkbox lets the user retry. The one-time marker is stored in the receiver's own user preferences. An already enabled or pending system registration is preserved.
+
+Raw executables, `--dry-run`, isolated test-display launches and fixture builds do not register login items or mark first-run preferences. Unit checks inject an in-memory registration service and preferences:
+
+```sh
+xcrun swiftc -parse-as-library -swift-version 5 -target arm64-apple-macosx15.0 \
+  desktop/macos/ReceiverLoginItem.swift desktop/macos/tests/ReceiverLoginItemTests.swift \
+  -o /tmp/SofaTap-LoginTests
+/tmp/SofaTap-LoginTests
+```
+
+No actual login-item registration, logout/reboot or shared-desktop input is performed by these checks. A display connection change does not terminate a normal receiver; only the explicitly isolated QA launch exits if its assigned display disappears or ceases to be isolated. This change does not establish a cause for any household display-switch failure.

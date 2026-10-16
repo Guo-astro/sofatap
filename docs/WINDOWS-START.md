@@ -1,8 +1,8 @@
 # Sofatap Windows 接收端
 
-本说明对应 **0.7.1 beta.1 Windows x64 接收器**。下载 [SofaTap-Windows-x64.zip](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Windows-x64.zip) 和 [SHA256 校验文件](https://github.com/chekusu/sofatap/releases/download/v0.7.1-beta.1/SofaTap-Windows-x64.zip.sha256)；校验值对应 ZIP，而非解压后单个 EXE。发布与实测范围见[版本验收记录](verification/receiver-0.7.1.md)。
+本说明对应 **0.7.3 beta.1 Windows x64 接收器**。下载 [SofaTap-Windows-x64.zip](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Windows-x64.zip) 和 [SHA256 校验文件](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Windows-x64.zip.sha256)；校验值对应 ZIP，而非解压后单个 EXE。本版自启行为及测试范围见[版本验证记录](verification/receiver-autostart-2026-10-16.md)。
 
-**请先将 iPhone 更新至 1.0（15）或更新版本。** 新二维码包含电脑类型和名称，早期手机版无法读取；暂时无法更新手机时，请保留 [0.7.0 beta.1 接收器](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。Build 15 也兼容旧二维码；手机分发状态见 [TestFlight 记录](verification/testflight-1.0-15.md)。
+**请先将 iPhone 更新至 1.0（15）或更新版本。** 新二维码包含电脑类型和名称，早期手机版无法读取；暂时无法更新手机时，请保留 [0.7.0 beta.1 接收器](https://github.com/chekusu/sofatap/releases/tag/v0.7.0-beta.1)。Build 15 也兼容旧二维码；当前公开和内部 TestFlight 均为 1.0（18），见 [TestFlight 记录](verification/testflight-1.0-18.md)。
 
 当前接收器已包含实时编辑：支持的原生 Edit/RichEdit 字段会把全文及选区导入手机，自动同步打字、删除和听写修正。不支持的字段（包括许多浏览器和自绘控件）仍需检查草稿后发送。焦点检测与实时编辑的支持范围不同，自动弹出键盘不代表该字段可以实时编辑，详见[数据处理与限制](TEXT-FOCUS.md)。
 
@@ -17,7 +17,7 @@
 
 左上角“我的设备”可切换、重命名、断开或移除配对。名称只在当前 iPhone 保存，移除配对不会撤销其他手机的权限。右上角问号打开独立使用指南。iPhone 界面和权限说明支持[十二种语言](APP-LANGUAGES.md)；这不代表十二种语言都能在每台 iPhone 上进行设备端语音识别。
 
-关闭电脑端原生窗口或点击退出会停止接收并释放由程序按住的鼠标键。手机进入后台会停止移动、结束拖动并断开连接；返回时保留草稿，重连不会自动重发文字。
+关闭电脑端原生窗口（×）会隐藏到 Windows 通知区域，手机仍能控制电脑。双击通知区域的 Sofatap 图标或重新打开程序，可恢复窗口；点击窗口或托盘菜单中的“退出”才会停止接收并释放由程序按住的鼠标键。演练模式关闭窗口仍会停止演练。手机进入后台会停止移动、结束拖动并断开连接；返回时保留草稿，重连不会自动重发文字。
 
 二维码包含控制凭据，只用你自己的手机扫描，不要发布截图。连接使用 TLS，iPhone 只接受二维码中记录的电脑证书指纹。更换证书或撤销凭据后需重新配对。
 
@@ -31,13 +31,23 @@ Sofatap 使用 `%LOCALAPPDATA%\SofaTap` 配对目录、`sofatap://` 配对链接
 
 升级至原生窗口不代表所有设备都已通过实机联合验收；下列限制仍适用。
 
-## 登录后自动启动（可选）
+## 登录后自动启动
 
-在 PowerShell 中运行本文件夹的 `Enable-Autostart.ps1`；关闭自动启动运行 `Disable-Autostart.ps1`。脚本仅创建/移除当前用户的启动快捷方式。若系统不允许运行脚本，可手动把程序快捷方式放入 `shell:startup`，无需修改执行策略。不要移动已设置自动启动的程序文件夹。
+首次正常打开新版接收器，会默认启用窗口内的原生“登录后启动”选项，之后登录 Windows 时在通知区域后台启动，不抢占当前窗口。取消选项可关闭，后续重启或升级会保留关闭选择；`--dry-run` 演练和 UI 测试不会注册自动启动。此功能使用当前用户的 `shell:startup/SofaTap.lnk`，无需管理员权限，也不安装登录服务。它在用户登录之后运行，不负责解锁、从关机状态唤醒电脑或切换电视 HDMI 输入。
+
+Windows 的“设置 → 应用 → 启动”或任务管理器仍可禁止 Sofatap 自启；应用不会绕过系统禁用设置。应用中的勾选表示已配置启动快捷方式，系统是否允许运行请以 Windows 启动设置为准。手动删除该快捷方式后，重新打开应用也不会擅自创建；需要再次勾选。
+
+从旧版升级时请先从“退出”停止旧接收器，再打开新版。已有的 `SofaTap.lnk` 会保持同一个名称并更新为当前安装位置，不会生成第二份启动项。请将完整安装目录放在固定位置；移动后需手动打开一次新版，让仍启用的快捷方式更新路径。登录项偏好单独保存在 `%LOCALAPPDATA%\SofaTap\desktop-startup.json`，不会覆盖配对或证书。
+
+安装包保留 `Enable-Autostart.ps1` 和 `Disable-Autostart.ps1`，二者与原生开关使用相同快捷方式和偏好。若系统禁止运行脚本，直接使用原生开关，无需修改执行策略。
+
+接收器不会因显示屏切换而主动退出。接收器运行时，即使配对窗口隐藏，手机仍可重连；显式退出、注销或关机会结束当前接收进程。重新打开窗口时会把已不在任何显示屏工作区域内的窗口移回可见位置，不改变显示器布局。真正的 HDMI 切换和重启登录验收仍需在实际 Windows 设备上进行。
+
+实现依据：[Microsoft 的 Windows 启动应用说明](https://support.microsoft.com/en-gb/windows/experience/startup-boot/configure-startup-applications-in-windows)。
 
 ## 当前限制
 
-- 0.7.1 已验证 Windows 安装包摘要、版本及现有配对配置保留；本轮 Windows 真机扫码、识别和重命名仍待验收。[0.7.0 输入记录](verification/realtime-input-0.7.0.md)仅验证了指定 RichEdit 测试窗口的实时编辑，不代表所有 Windows 软件都支持。
+- 历史 [0.7.1 验收](verification/receiver-0.7.1.md)验证了 Windows 安装包摘要、版本及现有配对配置保留；本版登录自启、真实 HDMI 切换及手机联合验收仍待实际设备测试。[0.7.0 输入记录](verification/realtime-input-0.7.0.md)仅验证了指定 RichEdit 测试窗口的实时编辑，不代表所有 Windows 软件都支持。
 - 需要 Windows 登录后的交互桌面；系统权限确认窗口、锁屏/登录界面、部分游戏及阻止模拟输入的程序不保证可用。
 - 手机显示“已发送”表示 Windows 接受了输入事件，不代表某个软件已经保存、搜索或提交文字。
 - 传输超时可能表示结果未知。请先查看电脑中的文字，再决定是否重新发送，避免重复输入。

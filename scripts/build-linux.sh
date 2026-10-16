@@ -44,7 +44,7 @@ if len(header) != 20 or header[:6] != b"\x7fELF\x02\x01" or struct.unpack("<H", 
     raise SystemExit("Published receiver is not a 64-bit Linux ELF for the requested architecture")
 PY
 cp "$publish_dir/SofaTap" "$release_dir/lib/SofaTapHost"
-cp desktop/linux/sofatap.py desktop/linux/input_worker.py desktop/linux/input_common.py \
+cp desktop/linux/sofatap.py desktop/linux/autostart.py desktop/linux/receiver_instance.py desktop/linux/input_worker.py desktop/linux/input_common.py \
   desktop/linux/wayland_input.py desktop/linux/x11_input.py desktop/linux/text_focus_worker.py "$release_dir/lib/linux/"
 cp scripts/linux/sofatap "$release_dir/sofatap"
 cp scripts/linux/sofatap.desktop "$release_dir/sofatap.desktop"
@@ -80,6 +80,8 @@ manifest = {
     "builtAt": datetime.now(timezone.utc).isoformat(),
     "backendSHA256": hashlib.sha256((release / "lib/SofaTapHost").read_bytes()).hexdigest(),
     "frontendSHA256": hashlib.sha256((release / "lib/linux/sofatap.py").read_bytes()).hexdigest(),
+    "autostartSHA256": hashlib.sha256((release / "lib/linux/autostart.py").read_bytes()).hexdigest(),
+    "instanceSHA256": hashlib.sha256((release / "lib/linux/receiver_instance.py").read_bytes()).hexdigest(),
     "inputWorkerSHA256": hashlib.sha256((release / "lib/linux/input_worker.py").read_bytes()).hexdigest(),
     "textFocusWorkerSHA256": hashlib.sha256((release / "lib/linux/text_focus_worker.py").read_bytes()).hexdigest(),
     "pairingUI": "native GTK 3",

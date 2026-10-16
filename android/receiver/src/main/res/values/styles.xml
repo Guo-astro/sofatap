@@ -7,4 +7,5 @@
     </style>
     <item name="accessibility_setup" type="id" />
     <item name="pairing_approve" type="id" />
+    <item name="auto_start" type="id" />
 </resources>

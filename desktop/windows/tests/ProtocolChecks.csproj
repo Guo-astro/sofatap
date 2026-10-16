@@ -7,6 +7,8 @@
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../WindowsStartupStore.cs" Link="WindowsStartupStore.cs" />
+    <Compile Include="../StartupRegistration.cs" Link="StartupRegistration.cs" />
     <Compile Include="../NativeProtocol.cs" Link="NativeProtocol.cs" />
     <Compile Include="../BackendProcess.cs" Link="BackendProcess.cs" />
   </ItemGroup>

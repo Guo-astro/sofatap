@@ -4,7 +4,7 @@ This is the Android/Google TV experimental receiver for **free manual control**.
 
 **No physical TV model or third-party TV app is qualified yet.** A successful build, network connection, or visible cursor does not establish that a television accepts clicks. This is not a Google Play release.
 
-The [0.1.1 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) (version code 2) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. See the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Both household Sony and Xiaomi TVs remain **not field-tested**.
+The [0.1.2 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) (version code 3) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Both household Sony and Xiaomi TVs remain **not field-tested**.
 
 ## Build
 
@@ -30,10 +30,18 @@ ADB is only an optional development installation tool. It is not the control tra
 
 1. Open Sofatap from the television's app launcher. Connect the TV and iPhone to the same trusted home network.
 2. Using the physical TV remote, open Accessibility settings from Sofatap, read the explanation, and enable its service. Menu names and availability vary by manufacturer and firmware.
-3. Start the receiver. On the iPhone, open **My Devices → Add Device → Scan QR Code**, then scan the TV’s native pairing QR code. Its device type and suggested name are recognized automatically.
+3. The receiver starts automatically on first launch. On the iPhone, open **My Devices → Add Device → Scan QR Code**, then scan the TV’s native pairing QR code. Its device type and suggested name are recognized automatically.
 4. Try a known harmless control first. Pointer movement and successful activation are separate observations; verify the visible result of each click and scroll.
 
 The QR code expires after five minutes and carries private pairing credentials. Do not share or publish it. Pairing another iPhone replaces the previous pairing. The receiver uses a pinned TLS WebSocket on the local network; no browser or cloud relay is needed. Stop the receiver to end the network session, and disable Sofatap in Accessibility settings to remove its control access.
+
+## Start with TV
+
+The native **Start with TV** switch is on by default after opening this version once. It starts the foreground receiver after the TV boots without opening the pairing screen or interrupting the current app. You can switch it off at any time; that choice survives app launches and updates. Turning it off does not end the current connection. **Stop receiver** ends the current run; when startup remains enabled, the next TV reboot starts it again. An app update only restores a receiver that was running, so it does not undo Stop.
+
+The listener can recover after Android reclaims its process, and it waits for Wi-Fi or Ethernet to return. Neither this setting nor Android's service recovery can bypass Force stop, manufacturer background restrictions, a powered-off TV, or accessibility permission. After Force stop, open Sofatap again. Boot startup is after the Android user is available; it does not run against locked encrypted storage. Sony and Xiaomi startup/standby behavior still requires physical-TV testing.
+
+This uses Android's [boot/package-update foreground-service exemptions](https://developer.android.com/develop/background-work/services/fgs/restrictions-bg-start) with the [connected-device service type](https://developer.android.com/develop/background-work/services/fgs/service-types#connected-device). It requests no alarm, wake lock, or battery-policy bypass.
 
 ## Reconnection
 

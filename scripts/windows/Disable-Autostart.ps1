@@ -1,4 +1,6 @@
 $ErrorActionPreference = 'Stop'
-$linkPath = Join-Path ([Environment]::GetFolderPath('Startup')) 'SofaTap.lnk'
-if (Test-Path -LiteralPath $linkPath) { Remove-Item -LiteralPath $linkPath }
+$exe = Join-Path $PSScriptRoot 'SofaTap.exe'
+if (-not (Test-Path -LiteralPath $exe)) { throw 'Keep this script next to SofaTap.exe.' }
+$process = Start-Process -FilePath $exe -ArgumentList '--disable-autostart' -Wait -PassThru
+if ($process.ExitCode -ne 0) { throw 'Sofatap could not disable startup. Check startup folder permissions and the existing SofaTap.lnk target.' }
 Write-Output 'Sofatap automatic startup is disabled.'

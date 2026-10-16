@@ -14,5 +14,5 @@ if [ ! -x /usr/bin/python3 ]; then
   echo "Install Python 3, PyGObject and GTK 3 through your Linux package manager. See README.md." >&2
   exit 1
 fi
-# Launching requires no root access, services, firewall edits or desktop changes.
+# Login startup is managed per user by the native window; root is never required.
 exec /usr/bin/python3 -E -s -B "$package_dir/lib/linux/sofatap.py" --backend "$package_dir/lib/SofaTapHost" "$@"

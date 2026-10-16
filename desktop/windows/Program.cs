@@ -3,20 +3,38 @@ namespace SofaTap.Desktop;
 internal static class Program
 {
     [STAThread]
-    private static void Main(string[] args)
+    private static int Main(string[] args)
     {
-        ApplicationConfiguration.Initialize();
-        if (args.Any(argument => argument != "--dry-run"))
+        var options = ReceiverLaunchOptions.Parse(args);
+        if (options is null)
         {
-            MessageBox.Show("此启动器仅支持可选的 --dry-run 演练参数。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            ApplicationConfiguration.Initialize();
+            MessageBox.Show("此启动器仅支持 --dry-run 演练或 --startup 后台启动参数。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return 1;
         }
+        if (options.StartupPreference is bool enabled)
+        {
+            try
+            {
+                new StartupRegistration(new WindowsStartupStore()).SetEnabled(enabled);
+                return 0;
+            }
+            catch (Exception error) when (StartupRegistration.IsRecoverableError(error)) { return 1; }
+        }
+        ApplicationConfiguration.Initialize();
         using var instance = new Mutex(true, @"Local\Chekusu.SofaTap.Receiver", out var created);
+        using var showWindow = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\Chekusu.SofaTap.ShowWindow");
         if (!created)
         {
-            MessageBox.Show("Sofatap 已经打开。请切换到现有的 Sofatap 窗口。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            return;
+            // A login race must not open a window over the user's current work.
+            if (!options.Startup) showWindow.Set();
+            return 0;
         }
-        Application.Run(new PairingWindow(args));
+        using var window = new PairingWindow(options);
+        _ = window.Handle; // Receive a concurrent manual reopen before Application.Run shows it.
+        var registration = ThreadPool.RegisterWaitForSingleObject(showWindow, (_, _) => window.RequestShow(), null, Timeout.Infinite, executeOnlyOnce: false);
+        try { Application.Run(window); }
+        finally { registration.Unregister(null); }
+        return 0;
     }
 }

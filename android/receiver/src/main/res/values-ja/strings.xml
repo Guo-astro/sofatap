@@ -4,6 +4,9 @@
     <string name="notification_active">ペアリング済みの iPhone を待っています</string>
     <string name="start">レシーバーを起動</string>
     <string name="stop">レシーバーを停止</string>
+    <string name="auto_start">テレビの起動時に開始</string>
+    <string name="auto_start_help">テレビを再起動した後も、バックグラウンドで接続を待ち受けます。停止した場合は、手動で開始するかテレビを再起動するまで停止します。</string>
+    <string name="auto_start_blocked">テレビによってバックグラウンド起動が制限されました。「レシーバーを起動」を選択してください。繰り返す場合は、テレビのアプリ起動設定をご確認ください。</string>
     <string name="stopped">いつでも始められます</string>
     <string name="start_help">iPhone とテレビを同じホームネットワークに接続し、レシーバーを起動してください。</string>
     <string name="starting">安全な接続を準備しています…</string>

@@ -12,6 +12,9 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 [リリース](https://github.com/chekusu/sofatap/releases) · [Issue](https://github.com/chekusu/sofatap/issues) · [MIT ライセンス](LICENSE)
 
+
+**レシーバーの自動起動：**デスクトップ 0.7.3 beta.1 と Android/Google TV 0.1.2 beta.1 に、初回の通常起動で有効になるネイティブ設定を追加しました。パソコンではログイン後に起動し、ウィンドウを閉じても受信を続け、明示的な終了で停止します。テレビでは Android とメーカーの制限が適用されます。[動作と検証範囲](docs/verification/receiver-autostart-2026-10-16.md)をご覧ください。
+
 ## 紹介動画
 
 [![Sofatap の紹介動画を見る：ジェスチャー、キーボード入力、音声入力で、テレビにつないだパソコンを iPhone から操作](https://sofatap.app/media/sofatap-demo-poster-ja.jpg)](https://sofatap.app/ja/#video)
@@ -29,7 +32,7 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 言語（英語、簡体字中国語、日本語、韓国語、ドイツ語、フランス語、スペイン語、ブラジルポルトガル語、ロシア語、アラビア語、ヒンディー語、インドネシア語）に対応しています。アラビア語は右から左へ表示し、スクロール領域は画面の物理的な右端に保ちます。[対応言語](docs/APP-LANGUAGES.md)と[検証記録](docs/verification/device-library-2026-10-14.md)をご覧ください。
 
-**現在の公開ベータ版：** iPhone **1.0 (18)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.7.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。**[ビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。自宅のソニーとシャオミのテレビは現地での実機テスト未実施です。正式 App Store ビルド 15 の提出は別の手続きです。
+**現在の公開ベータ版：** iPhone **1.0 (18)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.7.3 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.3-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。**[ビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。自宅のソニーとシャオミのテレビは現地での実機テスト未実施です。正式 App Store ビルド 15 の提出は別の手続きです。
 
 **再接続の更新：** iPhone **1.0 (16)** と受信アプリ **0.7.2 beta.1** で、パソコン側の受信アプリを再起動した後の再接続を修正しました。iPhone アプリが前面にある間は、保存済みの選択中のパソコンへの接続を再試行し、再スキャンは不要です。無関係なネットワークアダプターが追加されてもペアリングを維持します。未確認の文章やマウス操作は自動再送しません。証明書の交換時は再ペアリングが必要で、既存の重複デバイスは自動統合しません。[自動再接続テスト](docs/verification/reconnect-2026-10-15.md)をご覧ください。実機 iPhone と Windows 間の終了・再起動検証は未完了です。
 
@@ -47,7 +50,7 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 **テレビ開発プレビュー：**ソースに LG webOS のプライベート IPv4 アドレスによるネイティブペアリングと、ポインター移動・タップ・スクロール・戻る・ホームを追加しました。ローカルのプロトコルと TLS テストは通過しましたが、実機検証済みのテレビ機種はまだありません。自動検出とテレビへの文字入力・音声入力は今後の実装です。[技術計画](docs/research/tv-implementation-plan.md)と[検証範囲](docs/verification/webos-pointer-preview.md)をご覧ください。
 
-**Android/Google TV ベータ：**[受信アプリ 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) は開発用署名の APK です。iPhone ビルド 17 以降と組み合わせると、アプリが前面にある間は選択中の保存済みテレビに自動再接続します。受信アプリの再起動や無関係なネットワークアダプターの変更でも、有効なペアリングを保持します。アクセシビリティのオーバーレイポインター、対応ノードのクリック・スクロール、独立した戻る・ホーム・フォーカス移動を提供します。テレビの文字入力・音声入力・ドラッグ・右クリックは未対応です。**自宅のソニーとシャオミのテレビは現地での実機テスト未実施です。**[インストール案内](android/README.md)、[再接続のソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)、[未完了の実機評価](docs/ACCEPTANCE.md)をご覧ください。
+**Android/Google TV ベータ：**[受信アプリ 0.1.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.2-beta.1) は開発用署名の APK です。iPhone ビルド 17 以降と組み合わせると、アプリが前面にある間は選択中の保存済みテレビに自動再接続します。受信アプリの再起動や無関係なネットワークアダプターの変更でも、有効なペアリングを保持します。アクセシビリティのオーバーレイポインター、対応ノードのクリック・スクロール、独立した戻る・ホーム・フォーカス移動を提供します。テレビの文字入力・音声入力・ドラッグ・右クリックは未対応です。**自宅のソニーとシャオミのテレビは現地での実機テスト未実施です。**[インストール案内](android/README.md)、[再接続のソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)、[未完了の実機評価](docs/ACCEPTANCE.md)をご覧ください。
 
 対応する受信アプリが、アクセシビリティの属性を公開する新しい編集可能な入力欄を検出すると、iPhone のキーボードが自動で開きます。バックグラウンドの検出では欄の内容を読みません。その後リアルタイム編集を開始すると、対応する欄の全文と選択範囲をペアリング済みの iPhone に転送するため、Backspace や「すべて選択 → 削除」で既存の文章も編集できます。検出とリアルタイム編集の対応範囲は異なります。Windows のリアルタイム編集は現在ネイティブの Edit/RichEdit、Mac は選択テキストと選択範囲を書き換えられる Accessibility の欄に対応します。必要な機能を持たないブラウザーや独自描画の欄、Linux、古い受信アプリでは下書き確認後の送信を使います。パスワード欄と読み取り専用の欄ではリアルタイム編集を開始しません。[検出、データ処理、各 OS の制限](docs/TEXT-FOCUS.md)をご確認ください。
 
@@ -64,9 +67,9 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 | プラットフォーム | 現在の状況 |
 | --- | --- |
 | iPhone | iOS 17 以降。1.0 (18) は 12 言語に対応し、[公開 TestFlight](https://testflight.apple.com/join/e6MuKx9S)で配布中です。専用テスト用 iPhone への TestFlight 経由のビルド 16 のインストールを確認しました。最終ビルドでの Windows 再起動後の復帰と入力検証は未完了です。過去のカメラ読み取りや入力検証は、実際に試した版を [0.7.1 の記録](docs/verification/receiver-0.7.1.md)と[ビルド 16 の開発検証記録](docs/verification/input-1.0-16.md)に明記しています。 |
-| Windows | 受信アプリ 0.7.2 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目と今回の再起動後の復帰は未検証です。Windows バイナリに Authenticode 署名はありません。 |
-| Mac | macOS 15 以降。0.7.2 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済み。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
-| Linux | 0.7.2 beta.1 の x64・ARM64 GTK3 パッケージを公開済みです。以前の 0.7.1 ARM64 版を隔離 Xvfb で実行し、その版で実機 iPhone のカメラ読み取り、Linux の識別、命名・名前変更の保存を確認しました。以前の X11 入力検証は別の結果です。実際の Wayland コンポジターと物理 Linux デスクトップへの入力は未検証です。[0.7.1 のデバイステスト記録](docs/verification/receiver-0.7.1.md)をご覧ください。 |
+| Windows | 受信アプリ 0.7.3 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目と今回の再起動後の復帰は未検証です。Windows バイナリに Authenticode 署名はありません。 |
+| Mac | macOS 15 以降。0.7.3 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済み。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
+| Linux | 0.7.3 beta.1 の x64・ARM64 GTK3 パッケージを公開済みです。以前の 0.7.1 ARM64 版を隔離 Xvfb で実行し、その版で実機 iPhone のカメラ読み取り、Linux の識別、命名・名前変更の保存を確認しました。以前の X11 入力検証は別の結果です。実際の Wayland コンポジターと物理 Linux デスクトップへの入力は未検証です。[0.7.1 のデバイステスト記録](docs/verification/receiver-0.7.1.md)をご覧ください。 |
 
 [Mac の検証記録](docs/verification/macos-0.3.0.md)には、2026-10-11 に行った実カメラによるペアリング、TLS 接続、入力文字の完全一致確認、一部のキー・ポインター操作を記載しています。[Linux の検証記録](docs/verification/linux-0.4.0.md)は、ネイティブ GTK の描画、独立した Xvfb デスクトップでの X11 入力、プライベート D-Bus 上の模擬 Wayland portal を対象としています。すべてのアプリとの互換性を保証するものではありません。
 
@@ -78,15 +81,15 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 | パソコン | ダウンロード | 手順 |
 | --- | --- | --- |
-| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.2-beta.1/SofaTap-Windows-x64.zip) | 展開して `SofaTap.exe` を実行します。ファイアウォールは信頼できる家庭内のプライベートネットワークのみ許可してください。[Windows ガイド](docs/WINDOWS-START.md) |
-| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.2-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.2-beta.1/SofaTap-macOS-x64-notarized.zip) | 両方とも公証済みです。[Mac のインストールと権限設定](docs/MAC-START.md)を参照してください。 |
-| Linux x64 / ARM64 | [x64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.2-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.2-beta.1/SofaTap-Linux-arm64.tar.gz) | システムの GTK と入力関連の依存パッケージを入れ、展開後に `./sofatap` を実行します。ネイティブウインドウから Wayland の許可を開始できます。[Linux ガイド](desktop/linux/README.md) |
+| Windows x64 | [Windows ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Windows-x64.zip) | 展開して `SofaTap.exe` を実行します。ファイアウォールは信頼できる家庭内のプライベートネットワークのみ許可してください。[Windows ガイド](docs/WINDOWS-START.md) |
+| Mac | [Apple Silicon ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-macOS-arm64-notarized.zip) · [Intel ZIP](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-macOS-x64-notarized.zip) | 両方とも公証済みです。[Mac のインストールと権限設定](docs/MAC-START.md)を参照してください。 |
+| Linux x64 / ARM64 | [x64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Linux-x64.tar.gz) · [ARM64 アーカイブ](https://github.com/chekusu/sofatap/releases/download/v0.7.3-beta.1/SofaTap-Linux-arm64.tar.gz) | システムの GTK と入力関連の依存パッケージを入れ、展開後に `./sofatap` を実行します。ネイティブウインドウから Wayland の許可を開始できます。[Linux ガイド](desktop/linux/README.md) |
 
-上記はすべて [0.7.2 beta.1 で、対応する SHA256 ファイルとリリースノート](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1)を公開しています。.NET ランタイムを同梱し、Linux では記載のシステム依存パッケージが別途必要です。`--dry-run` はデスクトップへの入力なしで接続を試せます。過去の検証記録には、実際に試したバージョンを残しています。
+上記はすべて [0.7.3 beta.1 で、対応する SHA256 ファイルとリリースノート](https://github.com/chekusu/sofatap/releases/tag/v0.7.3-beta.1)を公開しています。.NET ランタイムを同梱し、Linux では記載のシステム依存パッケージが別途必要です。`--dry-run` はデスクトップへの入力なしで接続を試せます。過去の検証記録には、実際に試したバージョンを残しています。
 
 ### iPhone アプリをインストールしてペアリング
 
-1. [TestFlight の公開ベータに参加](https://testflight.apple.com/join/e6MuKx9S)し、**iPhone 1.0 (18)** と**受信アプリ 0.7.2 beta.1**をインストールして再接続の修正を適用してください。受信アプリの QR コードには最低でも iPhone ビルド 15 が必要です。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
+1. [TestFlight の公開ベータに参加](https://testflight.apple.com/join/e6MuKx9S)し、**iPhone 1.0 (18)** と**受信アプリ 0.7.3 beta.1**をインストールして再接続の修正を適用してください。受信アプリの QR コードには最低でも iPhone ビルド 15 が必要です。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
 2. iPhone とパソコンを、互いに通信できる家庭内ネットワークにつなぎます。ゲスト Wi-Fi の端末分離設定によっては接続できません。
 3. 左上のデバイス選択をタップし、**デバイスを追加**から**QR コードをスキャン**を選びます。パソコンと Android/Google TV は同じスキャナーを使い、認証成功後に名前を設定します。受信アプリのネイティブウインドウの QR コードを読み取るか、完全なペアリングリンクを貼り付けてください。
 4. パソコンで入力欄を選び、iPhone のキーボードまたはマイクを開きます。対応する欄では文字、削除、音声認識の結果を自動同期します。未対応の欄では下書きを確認して**送信**します。フォーカスの競合や切断で一時停止した場合は、パソコン側を確認してから明示的に編集を再開してください。不明な編集は自動再送しません。

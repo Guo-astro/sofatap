@@ -5,6 +5,7 @@ import android.content.*;
 import android.graphics.Rect;
 import android.os.*;
 import android.view.WindowManager;
+import android.widget.Switch;
 import androidx.test.ext.junit.runners.AndroidJUnit4;
 import androidx.test.platform.app.InstrumentationRegistry;
 import com.chekusu.sofatap.tv.input.InputBridge;
@@ -168,6 +169,9 @@ public final class ReceiverDeviceTest {
         } finally { main(() -> { context.stopService(new Intent(context, ReceiverService.class)); activity.finish(); return null; }); }
     }
     @Test public void nativePairingProtectsOnlyVisibleCredentials() throws Exception {
+        ReceiverStartup preferences = new ReceiverStartup(context);
+        preferences.initializeFromVisibleLaunch(); preferences.setEnabled(false); preferences.setRunRequested(false);
+        main(() -> { ReceiverStartup.stop(context); return null; }); until(() -> ReceiverService.instance == null);
         MainActivity activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
         try {
             until(() -> main(() -> activity.getWindow().getDecorView().getWidth() > 0));
@@ -177,6 +181,75 @@ public final class ReceiverDeviceTest {
             until(() -> main(() -> (activity.getWindow().getAttributes().flags & WindowManager.LayoutParams.FLAG_SECURE) != 0));
             assertTrue(main(() -> ReceiverService.instance.pairingUri(ReceiverService.instance.identity.addresses.get(0)).startsWith("sofatap://tv?")));
         } finally { main(() -> { context.stopService(new Intent(context, ReceiverService.class)); activity.finish(); return null; }); }
+    }
+    @Test public void startupDefaultNativeToggleAndStopSurviveActivityRecreation() throws Exception {
+        main(() -> { ReceiverStartup.stop(context); return null; }); until(() -> ReceiverService.instance == null);
+        context.getSharedPreferences(ReceiverStartup.PREFERENCES, Context.MODE_PRIVATE).edit().clear().commit();
+        MainActivity activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+        try {
+            until(() -> ReceiverService.instance != null && ReceiverService.instance.server != null);
+            final MainActivity first = activity;
+            assertTrue(main(() -> ((Switch) first.findViewById(R.id.auto_start)).isChecked()));
+            String fingerprint = ReceiverService.instance.identity.fingerprint();
+            main(() -> { ((Switch) first.findViewById(R.id.auto_start)).performClick(); return null; });
+            assertFalse(new ReceiverStartup(context).enabled());
+            assertNotNull("Changing the boot preference must not terminate this connection", ReceiverService.instance.server);
+            main(() -> { ReceiverStartup.stop(context); first.finish(); return null; }); until(() -> ReceiverService.instance == null);
+            activity = (MainActivity) instrumentation.startActivitySync(new Intent(context, MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK));
+            final MainActivity second = activity;
+            assertFalse(main(() -> ((Switch) second.findViewById(R.id.auto_start)).isChecked()));
+            SystemClock.sleep(700);
+            assertNull("Opening the screen must not undo explicit Stop", ReceiverService.instance);
+            main(() -> { ((Switch) second.findViewById(R.id.auto_start)).performClick(); return null; });
+            until(() -> ReceiverService.instance != null && ReceiverService.instance.server != null);
+            assertEquals("Startup must preserve encrypted identity", fingerprint, ReceiverService.instance.identity.fingerprint());
+            assertTrue(new ReceiverStartup(context).enabled());
+            main(() -> { context.startService(new Intent(context, ReceiverService.class).setAction("stop")); return null; });
+            until(() -> ReceiverService.instance == null);
+            assertFalse(new ReceiverStartup(context).runRequested());
+        } finally {
+            final MainActivity last = activity;
+            main(() -> { ReceiverStartup.stop(context); last.finish(); return null; });
+        }
+    }
+    @Test public void bootAndUpdateRespectOptOutStopAndPlatformDenial() throws Exception {
+        final String name = "startup-test-" + UUID.randomUUID();
+        class RecordingContext extends ContextWrapper {
+            int starts; boolean denied;
+            RecordingContext() { super(context); }
+            @Override public SharedPreferences getSharedPreferences(String ignored, int mode) {
+                return context.getSharedPreferences(name, mode);
+            }
+            @Override public ComponentName startForegroundService(Intent service) {
+                assertEquals(ReceiverService.class.getName(), service.getComponent().getClassName());
+                if (denied) throw new IllegalStateException("simulated OEM restriction");
+                starts++; return service.getComponent();
+            }
+            @Override public boolean stopService(Intent service) { return true; }
+        }
+        RecordingContext fixture = new RecordingContext(); StartupReceiver receiver = new StartupReceiver();
+        try {
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_BOOT_COMPLETED)); assertEquals(0, fixture.starts);
+            ReceiverStartup initial = new ReceiverStartup(fixture); initial.initializeFromVisibleLaunch();
+            assertTrue(initial.enabled());
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_LOCKED_BOOT_COMPLETED)); assertEquals(0, fixture.starts);
+            receiver.onReceive(fixture, new Intent("unrelated")); assertEquals(0, fixture.starts);
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_BOOT_COMPLETED)); assertEquals(1, fixture.starts);
+            initial.setEnabled(false);
+            new ReceiverStartup(fixture).initializeFromVisibleLaunch();
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_BOOT_COMPLETED));
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED)); assertEquals(1, fixture.starts);
+            assertFalse("Opening again must retain opt-out", new ReceiverStartup(fixture).enabled());
+            initial.setEnabled(true); ReceiverStartup.stop(fixture);
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED)); assertEquals(1, fixture.starts);
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_BOOT_COMPLETED)); assertEquals(2, fixture.starts);
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_MY_PACKAGE_REPLACED)); assertEquals(3, fixture.starts);
+            fixture.denied = true;
+            receiver.onReceive(fixture, new Intent(Intent.ACTION_BOOT_COMPLETED));
+            assertTrue(new ReceiverStartup(fixture).blocked()); assertEquals(3, fixture.starts);
+            fixture.denied = false; assertTrue(ReceiverStartup.start(fixture)); assertEquals(4, fixture.starts);
+            assertFalse(new ReceiverStartup(fixture).blocked());
+        } finally { context.deleteSharedPreferences(name); }
     }
     @Test public void realAccessibilityClickScrollAndDisconnectOnTvEmulator() throws Exception {
         String previous = shell("settings get secure enabled_accessibility_services");
