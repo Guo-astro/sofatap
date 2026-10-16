@@ -42,19 +42,30 @@ def version_setting(name, pattern):
     return matches[0]
 version = version_setting('MARKETING_VERSION', r'\d+\.\d+(?:\.\d+)?')
 build = version_setting('CURRENT_PROJECT_VERSION', r'\d+')
+family_settings = re.findall(r'^\s*TARGETED_DEVICE_FAMILY:\s*["\']?([\d, ]+)["\']?\s*$', settings, re.MULTILINE)
+families = {tuple(int(item.strip()) for item in value.split(',')) for value in family_settings}
+if len(families) != 1:
+    raise SystemExit(f"Expected consistent TARGETED_DEVICE_FAMILY settings in {project}")
+device_family = list(families.pop())
+if device_family != [1, 2]:
+    raise SystemExit("The fallback supports the universal iPhone/iPad app only")
 data = plistlib.loads(Path(source).read_bytes())
 data.update({
     'CFBundleName': 'Sofatap', 'CFBundleIdentifier': 'com.chekusu.sofatap',
     'CFBundleExecutable': 'SofaTap', 'CFBundleShortVersionString': version,
     'CFBundleVersion': build, 'CFBundleSupportedPlatforms': [platform],
     'CFBundleDevelopmentRegion': 'en',
-    'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': [1],
-    'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}}
+    'DTPlatformName': sdk, 'MinimumOSVersion': '17.0', 'UIDeviceFamily': device_family,
+    'CFBundleIcons': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon60x60'], 'UIPrerenderedIcon': False}},
+    'CFBundleIcons~ipad': {'CFBundlePrimaryIcon': {'CFBundleIconFiles': ['AppIcon76x76', 'AppIcon83.5x83.5'], 'UIPrerenderedIcon': False}}
 })
 Path(output).write_bytes(plistlib.dumps(data))
 PY
 sips -z 120 120 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@2x.png" >/dev/null
 sips -z 180 180 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon60x60@3x.png" >/dev/null
+sips -z 76 76 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon76x76~ipad.png" >/dev/null
+sips -z 152 152 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon76x76@2x~ipad.png" >/dev/null
+sips -z 167 167 "$IOS_ROOT/SofaTap/Assets.xcassets/AppIcon.appiconset/AppIcon.png" --out "$APP_BUNDLE/AppIcon83.5x83.5@2x~ipad.png" >/dev/null
 cp "$IOS_ROOT/SofaTap/Assets.xcassets/BrandMark.imageset/BrandMark.png" "$APP_BUNDLE/BrandMark.png"
 cp "$IOS_ROOT/SofaTap/PrivacyInfo.xcprivacy" "$APP_BUNDLE/PrivacyInfo.xcprivacy"
 for localization in "$IOS_ROOT/SofaTap/"*.lproj; do

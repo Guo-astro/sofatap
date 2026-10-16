@@ -51,6 +51,8 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
     private let onScan: (String) -> Void
     private let onError: (String) -> Void
     private var preview: AVCaptureVideoPreviewLayer?
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+    private var previewRotationObservation: NSKeyValueObservation?
     private var scanned = false
     private var stopped = false
     private var wantsActive: Bool
@@ -105,6 +107,18 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
         layer.frame = view.bounds
         view.layer.addSublayer(layer)
         preview = layer
+        // The sensor's native orientation differs between iPhone and iPad.
+        // Observe AVFoundation's preview angle rather than assuming portrait.
+        let rotation = AVCaptureDevice.RotationCoordinator(device: camera, previewLayer: layer)
+        rotationCoordinator = rotation
+        previewRotationObservation = rotation.observe(\.videoRotationAngleForHorizonLevelPreview,
+                                                       options: [.initial, .new]) { [weak self] rotation, _ in
+            let angle = rotation.videoRotationAngleForHorizonLevelPreview
+            // RotationCoordinator delivers preview-angle observations on main.
+            guard let self, !self.stopped, let connection = self.preview?.connection,
+                  connection.isVideoRotationAngleSupported(angle) else { return }
+            connection.videoRotationAngle = angle
+        }
         configured = true
         updateCaptureRunning()
     }
@@ -139,6 +153,8 @@ final class ScannerController: UIViewController, AVCaptureMetadataOutputObjectsD
     }
     func stop() {
         stopped = true
+        previewRotationObservation = nil
+        rotationCoordinator = nil
         updateCaptureRunning()
     }
 }
