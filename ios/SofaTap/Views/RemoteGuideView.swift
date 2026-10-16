@@ -2,6 +2,8 @@ import SwiftUI
 
 /// Illustrations never send receiver input. Help is separate from device setup.
 struct RemoteGuideView: View {
+    var configuration = GestureConfiguration()
+    var target = GestureTarget.computer
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -11,18 +13,21 @@ struct RemoteGuideView: View {
                         .font(.title2.weight(.semibold))
                     Text(String(localized: "先在左上角选择设备，再看着电脑或电视屏幕操作。"))
                         .foregroundStyle(Palette.muted)
-                    guideCard("hand.draw", gesture: .move,
-                              title: String(localized: "滑动手指，移动电脑光标"),
-                              detail: String(localized: "光效跟随你在手机上的手指，电脑光标的位置请看电脑屏幕。"))
-                    guideCard("hand.tap", gesture: .tap,
-                              title: String(localized: "单击左键，左右分区双击"),
-                              detail: String(localized: "任意位置单击都是左键。左半区连续点两下发送两次左键，右半区连续点两下发送两次右键。分区只在指南中示意。"))
-                    guideCard("hand.point.up", gesture: .hold,
-                              title: String(localized: "按住 0.3 秒开始拖动，抬手松开"),
-                              detail: String(localized: "按住后滑动手指，拖动物件或选择文字。"))
-                    guideCard("hand.draw.fill", gesture: .scroll,
-                              title: String(localized: "双指或右侧单指滑动，滚动页面"),
-                              detail: String(localized: "双指像推动页面一样滚动；触控区右边的滚动条向下拉，页面向下走。"))
+                    VStack(alignment: .leading, spacing: 14) {
+                        Label(String(localized: "当前手势配置"), systemImage: "hand.draw")
+                            .font(.headline)
+                        ForEach(GestureID.allCases, id: \.self) { gesture in
+                            HStack(alignment: .firstTextBaseline, spacing: 14) {
+                                Text(gesture.title).foregroundStyle(Palette.muted)
+                                Spacer(minLength: 8)
+                                Text(configuration.action(for: gesture).title(for: target))
+                                    .multilineTextAlignment(.trailing)
+                            }.font(.subheadline)
+                        }
+                        Text(String(localized: "在手势设置中查看和修改操作。"))
+                            .font(.footnote).foregroundStyle(Palette.muted)
+                    }
+                    .padding(18).background(Palette.panel, in: RoundedRectangle(cornerRadius: 20))
                     guideCard("keyboard", gesture: .text,
                               title: String(localized: "键盘与语音输入"),
                               detail: String(localized: "先选中电脑输入框，再点键盘或麦克风。支持的输入框自动同步，其他输入框用发送按钮提交。箭头可收起或展开键盘。"))

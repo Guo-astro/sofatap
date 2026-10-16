@@ -79,8 +79,10 @@ jobs:
       - name: Single-screen touch gestures without desktop input
         shell: bash
         run: |
-          swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
+          swiftc ios/SofaTap/Core/GestureConfiguration.swift ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o "$RUNNER_TEMP/sofatap-touch-tests"
           "$RUNNER_TEMP/sofatap-touch-tests"
+      - name: Custom gesture profiles and persistence without device input
+        run: bash ios/scripts/test-custom-gestures.sh
       - name: Edge scroll gestures and native view without desktop input
         run: bash ios/scripts/test-edge-scroll.sh
       - name: TV protocol boundaries without devices

@@ -29,7 +29,7 @@ A one-minute tour of pointer gestures, typing on the phone keyboard and voice di
 
 TestFlight build 15 includes device management and native localization matching the website: English, Simplified Chinese, Japanese, Korean, German, French, Spanish, Brazilian Portuguese, Russian, Arabic, Hindi and Indonesian. Arabic text follows right-to-left layout while the scroll strip stays physically on the right. See the [language coverage](docs/APP-LANGUAGES.md) and [verification record](docs/verification/device-library-2026-10-14.md).
 
-**Current public beta:** iPhone **1.0 (17)** has passed TestFlight external review and is available through the [public invitation](https://testflight.apple.com/join/e6MuKx9S), with a limit of 10,000 testers. Use [desktop receiver 0.7.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1) for Windows, Mac and Linux, or [Android/Google TV receiver 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) for the experimental TV adapter. **TV automatic reconnect requires phone build 17 and receiver 0.1.1 beta.1.** See the [Build 17 distribution record](docs/verification/testflight-1.0-17.md) and [TV software verification](docs/verification/android-tv-reconnect-2026-10-16.md). The household Sony and Xiaomi TVs remain untested on site. The formal App Store build 15 submission is a separate process.
+**Current public beta:** iPhone **1.0 (18)** has passed TestFlight external review and is available through the [public invitation](https://testflight.apple.com/join/e6MuKx9S), with a limit of 10,000 testers. Use [desktop receiver 0.7.2 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.7.2-beta.1) for Windows, Mac and Linux, or [Android/Google TV receiver 0.1.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.1-beta.1) for the experimental TV adapter. **TV automatic reconnect requires phone build 17 or later and receiver 0.1.1 beta.1.** See the [Build 18 distribution record](docs/verification/testflight-1.0-18.md) and [TV software verification](docs/verification/android-tv-reconnect-2026-10-16.md). The household Sony and Xiaomi TVs remain untested on site. The formal App Store build 15 submission is a separate process.
 
 **Reconnection update:** iPhone **1.0 (16)** and receiver **0.7.2 beta.1** add recovery after a desktop receiver restart. While the phone app is active, it retries the selected saved computer without rescanning; the receiver preserves its pairing when an unrelated network adapter is added. Pending text and mouse actions are never replayed. Certificate replacement still requires pairing, and existing duplicate devices are not merged automatically. See the [automated reconnection checks](docs/verification/reconnect-2026-10-15.md); physical iPhone-to-Windows restart acceptance remains pending.
 
@@ -55,11 +55,15 @@ The keyboard opens automatically when a compatible receiver detects a new writab
 
 In build 16, keyboard Backspace edits an unsent fallback draft locally. After clearing the local draft, keyboard Backspace can delete text at the computer’s focused input position. The separate computer Backspace icon acts on that position without deleting the phone draft. Live editing continues to synchronize deletions normally. These changes passed [physical iPhone-to-recording-receiver checks](docs/verification/input-1.0-16.md), which do not establish Windows application acceptance; earlier build 15 retains its earlier behavior.
 
+## Custom gestures (Build 18)
+
+Build 18 adds a gear button on the touchpad. Choose Sofatap, Trackpad habits or Press for shortcuts, then assign actions to taps, left/right double-taps, two/three-finger taps, holds and slides. Computer and TV preferences are saved separately on the iPhone. Adjust timing and scroll direction, restore a preset, or try gestures in the offline practice pad. TV choices are limited to the receiver’s capabilities. See [gesture settings](docs/GESTURES.md) for details and validation limits. Available in public TestFlight 1.0 (18). Physical settings and local-practice checks passed on the dedicated iPhone and iPad; receiver effects remain separately qualified.
+
 ## Platform status
 
 | Platform | Current status |
 | --- | --- |
-| iPhone | iOS 17+. Version 1.0 (17) supports 12 interface languages and is available in [public TestFlight](https://testflight.apple.com/join/e6MuKx9S). TestFlight installation of build 16 on the dedicated test iPhone is verified; final-build Windows restart and input acceptance remain pending. Earlier camera pairing and input checks retain their actual tested versions in the [0.7.1 record](docs/verification/receiver-0.7.1.md) and [build 16 development record](docs/verification/input-1.0-16.md). |
+| iPhone | iOS 17+. Version 1.0 (18) supports 12 interface languages and is available in [public TestFlight](https://testflight.apple.com/join/e6MuKx9S). TestFlight installation of build 16 on the dedicated test iPhone is verified; final-build Windows restart and input acceptance remain pending. Earlier camera pairing and input checks retain their actual tested versions in the [0.7.1 record](docs/verification/receiver-0.7.1.md) and [build 16 development record](docs/verification/input-1.0-16.md). |
 | Windows | Receiver 0.7.2 beta.1 is available with native Edit/RichEdit live editing. Earlier scoped physical RichEdit keyboard checks passed; further device cases and current restart acceptance remain pending. Windows binaries are not Authenticode-signed. |
 | Mac | macOS 15+. Receiver 0.7.2 beta.1 Apple Silicon and Intel packages are signed and notarized. Earlier scoped Apple Silicon input checks passed; current live editing and Intel input still need physical acceptance. |
 | Linux | Receiver 0.7.2 beta.1 GTK3 packages are available for x64 and ARM64. The earlier 0.7.1 ARM64 receiver ran in isolated Xvfb; a physical iPhone passed scoped camera pairing, Linux identification, naming and rename persistence with that version. Earlier X11 input checks are separate. Real Wayland compositors and physical Linux desktop input remain unverified; see the [0.7.1 device-test record](docs/verification/receiver-0.7.1.md). |
@@ -82,7 +86,7 @@ All downloads above are [0.7.2 beta.1, with matching SHA256 files and release no
 
 ### Install the iPhone app and pair
 
-1. [Join the public TestFlight beta](https://testflight.apple.com/join/e6MuKx9S) and install **iPhone 1.0 (16)** with **receiver 0.7.2 beta.1** for the reconnection fix. Receiver QR codes require at least iPhone build 15. To build it yourself, open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, and run the app; this requires development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
+1. [Join the public TestFlight beta](https://testflight.apple.com/join/e6MuKx9S) and install **iPhone 1.0 (18)** with **receiver 0.7.2 beta.1** for the reconnection fix. Receiver QR codes require at least iPhone build 15. To build it yourself, open `ios/SofaTap.xcodeproj` in Xcode, select your development team and connected iPhone, and run the app; this requires development signing, device pairing and Developer Mode. See the [iOS build guide](ios/README.md).
 2. Connect the iPhone and computer to the same reachable home network. Guest Wi-Fi device isolation may prevent a connection.
 3. Tap the top-left device selector and choose **Scan QR Code** under **Add Device**. Computers and Android/Google TV share the scanner, and a naming step appears after successful authentication. Scan the QR in the receiver’s native window or paste its complete pairing link.
 4. Select a field on the computer and open the phone keyboard or microphone. A supported field synchronizes typing, deletion and recognized speech automatically; an unsupported field shows **Send** for a reviewed draft. If live input pauses after a focus conflict or disconnect, inspect the computer and explicitly reopen the editor. Uncertain edits are never replayed automatically.
@@ -141,7 +145,7 @@ swiftc ios/SofaTap/Core/Pairing.swift tests/PairingTests.swift -o /tmp/sofatap-p
 /tmp/sofatap-pairing-tests
 swiftc ios/SofaTap/Core/ReceiverState.swift tests/ReceiverStateTests.swift -o /tmp/sofatap-receiver-tests
 /tmp/sofatap-receiver-tests
-swiftc ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
+swiftc ios/SofaTap/Core/GestureConfiguration.swift ios/SofaTap/Core/TouchGestureState.swift tests/TouchGestureTests.swift -o /tmp/sofatap-gesture-tests
 /tmp/sofatap-gesture-tests
 python3 tests/text_focus_linux.py
 bash ios/scripts/build-manual.sh device

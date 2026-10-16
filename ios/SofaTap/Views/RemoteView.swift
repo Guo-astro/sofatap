@@ -33,6 +33,9 @@ struct RemoteView: View {
     @State private var pairingSheet = false
     @State private var incomingPairingLink: String?
     @State private var guideSheet = false
+    @State private var gestureSettingsSheet = false
+    @State private var gestureSettingsTarget = GestureTarget.computer
+    @State private var gesturePreferences = GesturePreferences.load(from: .standard)
     @State private var showingSpeechError = false
     @State private var touchControl = TouchSurface.Control()
     @State private var edgeScrollControl = EdgeScrollStrip.Control()
@@ -54,8 +57,22 @@ struct RemoteView: View {
     private var androidTVSelected: Bool { televisionSelected && androidSelected }
     private var currentStatusTitle: String { androidTVSelected ? androidTV.title : televisionSelected ? tv.title : model.statusTitle }
     private var inputEnabled: Bool {
-        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !guideSheet &&
+        (androidTVSelected ? androidTV.canControl : televisionSelected ? tv.canControl : model.canControl) && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet &&
         !showingSpeechError && !resendAlert && !clearAlert
+    }
+
+    private var gestureTarget: GestureTarget { televisionSelected ? .television : .computer }
+    private var gestureConfiguration: GestureConfiguration { gesturePreferences[gestureTarget] }
+    private var gestureAvailableActions: Set<GestureAction>? {
+        guard androidTVSelected, let capabilities = androidTV.status?.capabilities else { return nil }
+        var actions: Set<GestureAction> = [.none]
+        if capabilities.overlayCursor { actions.insert(.movePointer) }
+        if capabilities.nodeClick { actions.insert(.leftClick) }
+        if capabilities.scroll { actions.insert(.scroll) }
+        if capabilities.directionalFocus { actions.insert(.confirm) }
+        if capabilities.back { actions.insert(.back) }
+        if capabilities.home { actions.insert(.home) }
+        return actions
     }
 
     var body: some View { dictationEvents }
@@ -89,7 +106,13 @@ struct RemoteView: View {
                 .presentationDetents([.medium, .large])
                 .presentationDragIndicator(.visible)
         }
-        .sheet(isPresented: $guideSheet) { RemoteGuideView() }
+        .sheet(isPresented: $guideSheet) { RemoteGuideView(configuration: gestureConfiguration, target: gestureTarget) }
+        .sheet(isPresented: $gestureSettingsSheet) {
+            GestureSettingsView(configuration: Binding(
+                get: { gesturePreferences[gestureSettingsTarget] },
+                set: { gesturePreferences[gestureSettingsTarget] = $0.sanitized(for: gestureSettingsTarget) }
+            ), target: gestureSettingsTarget, availableActions: gestureSettingsTarget == gestureTarget ? gestureAvailableActions : nil)
+        }
         .alert(String(localized: "语音输入暂不可用"), isPresented: $showingSpeechError) {
             Button(String(localized: "使用键盘")) { toggleKeyboard() }
             Button(String(localized: "好"), role: .cancel) {}
@@ -119,6 +142,7 @@ struct RemoteView: View {
             applyRemoteFocus()
 #if targetEnvironment(simulator)
             if model.demo {
+                gestureSettingsSheet = ProcessInfo.processInfo.arguments.contains("--demo-gestures")
                 guideSheet = ProcessInfo.processInfo.arguments.contains("--demo-guide")
                 pairingSheet = ProcessInfo.processInfo.arguments.contains("--demo-pairing") || ProcessInfo.processInfo.arguments.contains("--demo-add-device") || ProcessInfo.processInfo.arguments.contains("--demo-added-device")
             }
@@ -141,14 +165,14 @@ struct RemoteView: View {
         }
         .onChange(of: androidTV.phase) { _, phase in
             if androidTVSelected && phase != .ready { touchControl.cancel() }
-            if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet { androidTV.resumeInput() }
+            if androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet { androidTV.resumeInput() }
         }
         .onChange(of: androidTV.canControl) { _, available in
             if androidTVSelected && !available { touchControl.cancel() }
         }
         .onChange(of: tv.phase) { _, phase in
             if televisionSelected && !androidTVSelected && phase != .ready { touchControl.cancel() }
-            if televisionSelected && !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet { tv.resumeInput() }
+            if televisionSelected && !androidTVSelected && phase == .ready && scenePhase == .active && !pairingSheet && !guideSheet && !gestureSettingsSheet { tv.resumeInput() }
         }
     }
 
@@ -181,6 +205,14 @@ struct RemoteView: View {
         .onChange(of: guideSheet) { _, shown in
             if shown { stopInteraction() }
             else { resumeCurrentInput() }
+        }
+        .onChange(of: gestureSettingsSheet) { _, shown in
+            if shown { stopInteraction() }
+            else { resumeCurrentInput() }
+        }
+        .onChange(of: gesturePreferences) { _, preferences in
+            touchControl.cancel()
+            if !model.demo { _ = preferences.save(to: .standard) }
         }
         .onChange(of: model.pairingError) { _, error in
             if !televisionSelected && error != nil && !pairingSheet { stopInteraction(); pairingSheet = true }
@@ -280,6 +312,20 @@ struct RemoteView: View {
             Button {
                 stopInteraction()
                 UISelectionFeedbackGenerator().selectionChanged()
+                gestureSettingsTarget = gestureTarget
+                gestureSettingsSheet = true
+            } label: {
+                Image(systemName: "gearshape")
+                    .font(.system(size: 21))
+                    .frame(width: 44, height: 44).contentShape(Rectangle())
+                    .foregroundStyle(Palette.mint.opacity(0.88))
+            }
+            .buttonStyle(RemoteIconButtonStyle())
+            .accessibilityLabel(String(localized: "手势设置"))
+            .accessibilityIdentifier("gestureSettingsButton")
+            Button {
+                stopInteraction()
+                UISelectionFeedbackGenerator().selectionChanged()
                 guideSheet = true
             } label: {
                 Image(systemName: "questionmark.circle")
@@ -302,6 +348,7 @@ struct RemoteView: View {
                 .allowsHitTesting(false)
             TouchSurface(enabled: inputEnabled, control: touchControl,
                          profile: televisionSelected ? .tvPointer : .desktop,
+                         configuration: gestureConfiguration,
                          onMove: { dx, dy in
                              if androidTVSelected { androidTV.move(dx: dx, dy: dy) }
                              else if televisionSelected { tv.move(dx: dx, dy: dy) }
@@ -310,7 +357,8 @@ struct RemoteView: View {
                          onLeftTap: { if androidTVSelected { androidTV.click() } else if televisionSelected { tv.click() } else { model.click("left") } },
                          onRightTap: { if !televisionSelected { model.click("right") } },
                          onDraggingChanged: { if !televisionSelected { model.setDragging($0) } },
-                         onScroll: scrollCurrentDevice)
+                         onScroll: scrollCurrentDevice,
+                         onShortcut: performGestureShortcut)
         }
         .overlay {
             RoundedRectangle(cornerRadius: 40, style: .continuous)
@@ -616,7 +664,7 @@ struct RemoteView: View {
         }
     }
     private func applyRemoteFocus() {
-        guard !televisionSelected, model.canControl, scenePhase == .active, !pairingSheet, !guideSheet, !showingSpeechError,
+        guard !televisionSelected, model.canControl, scenePhase == .active, !pairingSheet, !guideSheet, !gestureSettingsSheet, !showingSpeechError,
               !resendAlert, !clearAlert,
               handledFocusRevision != model.focusRevision else { return }
         // A desktop field may become focused while the user is selecting text.
@@ -683,9 +731,32 @@ struct RemoteView: View {
         model.setDesktopControlEnabled(true, reconnect: reconnect)
     }
     private func resumeCurrentInput() {
+        guard scenePhase == .active, !pairingSheet, !guideSheet, !gestureSettingsSheet,
+              !showingSpeechError, !resendAlert, !clearAlert else { return }
         if androidTVSelected { androidTV.resumeInput() }
         else if televisionSelected { tv.resumeInput() }
         else { applyRemoteFocus() }
+    }
+    private func performGestureShortcut(_ action: GestureAction) {
+        guard inputEnabled else { return }
+        switch action {
+        case .confirm:
+            if androidTVSelected { androidTV.key(.confirm) }
+            else if televisionSelected { tv.button(.enter) }
+            else { model.key("enter") }
+        case .back:
+            if androidTVSelected { androidTV.key(.back) }
+            else if televisionSelected { tv.button(.back) }
+            else { model.key("escape") }
+        case .home:
+            if androidTVSelected { androidTV.key(.home) }
+            else if televisionSelected { tv.button(.home) }
+        case .toggleKeyboard:
+            if !televisionSelected { toggleKeyboard() }
+        case .toggleDictation:
+            if !televisionSelected { toggleDictation() }
+        default: break
+        }
     }
     private func scrollCurrentDevice(_ delta: Double) {
         if androidTVSelected { androidTV.scroll(dy: delta) }
