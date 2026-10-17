@@ -4,11 +4,11 @@ This is the Android/Google TV experimental receiver for **free manual control**.
 
 **No physical TV model or third-party TV app is qualified yet.** A successful build, network connection, or visible cursor does not establish that a television accepts clicks. This is not a Google Play release.
 
-The [0.1.4 beta.1 development APK](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.1.4-beta.1) (version code 5) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds the native Start with TV option; see [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and the [recovery verification record](../docs/verification/android-tv-reconnect-2026-10-16.md). Physical testing has started on a Sony XRJ-85X95L running Android 12; first installation and user-granted accessibility setup are now confirmed on a Xiaomi MiTV-MOEU0 running Android 14. Neither has completed model acceptance. The Xiaomi setup exposed a TLS-disconnect crash; see the [cleanup fix and test boundaries](../docs/verification/android-tv-disconnect-cleanup-2026-10-17.md).
+The published [0.2.0 beta.1 development APK](https://github.com/chekusu/sofatap/releases/download/android-tv-v0.2.0-beta.1/Sofatap-Android-TV-0.2.0-beta.1.apk) (version code 6) pairs with **iPhone 1.0 build 17 or later** for automatic reconnection. It adds receiver update controls and retains the native Start with TV option; see the [release notes and checksum](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1), [release verification](../docs/verification/android-tv-release-0.2.0-2026-10-17.md), [startup verification](../docs/verification/receiver-autostart-2026-10-16.md) and [recovery verification](../docs/verification/android-tv-reconnect-2026-10-16.md). Sony XRJ-85X95L (Android 12) and Xiaomi MiTV-MOEU0 (Android 14) have completed limited installation/setup checks. Xiaomi’s same-signed 0.1.4 candidate preserved pairing and accessibility; its Sofatap input method was enabled and selected. Native Remote Service pairing and actual YouTube/Netflix/browser input remain pending on both TVs; see the [hardware results](../docs/verification/tv-native-controls-2026-10-17.md). Neither model has completed acceptance.
 
-## Native remote and text preview (0.1.4-beta.1)
+## Native remote and text preview (introduced in 0.1.4-beta.1)
 
-This source version adds a separate native TV remote mode and an optional Sofatap keyboard. It requires iPhone 1.0 build 20 or a later matching build with the `tvControls` extension. It has not yet passed physical Sony/Xiaomi or third-party-app acceptance.
+The receiver includes a separate native TV remote mode and an optional Sofatap keyboard. It requires iPhone 1.0 build 20 or a later matching build with the `tvControls` extension. It has not yet passed physical Sony/Xiaomi or third-party-app acceptance.
 
 After the usual Sofatap QR pairing, choose **Set up TV remote** on the phone and enter the six-character hexadecimal code shown by the TV. The receiver talks only to the TV's own Android TV Remote Service on loopback ports 6467 (pairing) and 6466 (control). The normal code challenge authorizes an encrypted, persistent client identity and pins the TV certificate. A changed certificate requires explicit pairing again. No ADB, model account or accessibility focus substitution is used for these native keys. Android TV Remote Service must be installed and enabled; it is not present on every Android-based television.
 
@@ -18,7 +18,7 @@ The phone session and the current editor epoch are checked immediately before in
 
 ## Receiver updates (0.2.0-beta.1)
 
-The direct-download receiver now provides native **Check for updates**, **Install update**, and **Download updates automatically** controls. Automatic downloading is enabled by default, can be disabled, and checks once a day while the foreground receiver is running. Stopping the receiver cancels its automatic transfer/check schedule. A manual check can be retried after one minute; GitHub rate limits delay both manual and automatic checks. Background work never opens an installer over the current TV app.
+The published direct-download receiver provides native **Check for updates**, **Install update**, and **Download updates automatically** controls. Automatic downloading is enabled by default, can be disabled, and checks once a day while the foreground receiver is running. Stopping the receiver cancels its automatic transfer/check schedule. A manual check can be retried after one minute; GitHub rate limits delay both manual and automatic checks. Background work never opens an installer over the current TV app.
 
 The current beta follows Android TV beta and stable releases; a stable receiver only follows stable releases. Desktop receiver releases are excluded. Checks read the fixed public `chekusu/sofatap` GitHub releases API, with ETag caching, pagination and bounded request/download budgets. This sends a standard updater user agent and the network request to GitHub; no phone/TV identifiers, pairing credentials, input text or private app data are sent.
 
@@ -28,7 +28,7 @@ Before offering installation, the APK must have the exact official release asset
 
 A Google Play distribution must be built with `-PsofatapDistribution=play`. That artifact omits `REQUEST_INSTALL_PACKAGES`, disables self-download/install, and sends **Check for updates** to the native Play Store. A direct build installed by Google Play also disables self-updating at runtime. This is preparation for a future Play distribution, not evidence of Play acceptance. Current public APKs retain the existing development signing key; the installer accepts only an exact match.
 
-The update implementation is verified with offline release/transfer fixtures and a disposable Android TV emulator; physical Sony/Xiaomi update installation still needs its own acceptance. See [the updater verification record](../docs/verification/android-tv-updates-2026-10-17.md).
+The update implementation is verified with offline release/transfer fixtures and a disposable Android TV emulator; installation through the new system-installer flow on physical Sony/Xiaomi TVs still needs its own acceptance. See [the updater verification record](../docs/verification/android-tv-updates-2026-10-17.md) and [published artifact verification](../docs/verification/android-tv-release-0.2.0-2026-10-17.md). Earlier receiver versions need one manual upgrade to 0.2.0 beta.1 before these controls are available.
 
 ## Build
 
