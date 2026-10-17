@@ -21,6 +21,8 @@ TEAM = "FKSR2JD63B"
 IDENTITY = f"Developer ID Application: CHEKUSU INC. ({TEAM})"
 BUNDLE = "com.chekusu.sofatap.receiver"
 ROOT = Path(sys.argv[1]).resolve()
+sys.path.insert(0, str(ROOT / "scripts/macos"))
+from sparkle import inventory as sparkle_inventory, FRAMEWORK, CODE, NATIVE
 parser = argparse.ArgumentParser(description="Preflight, submit, or resume notarization of a clean CHEKUSU macOS build.")
 parser.add_argument("--app", required=True, type=Path, help="Signed Sofatap Receiver.app from build-macos.sh")
 parser.add_argument("--manifest", required=True, type=Path, help="That build's BUILD-MANIFEST.json")
@@ -136,9 +138,29 @@ def verify_app(app, manifest):
                 f"The signed {name} hash differs from BUILD-MANIFEST.json; rebuild using the Developer ID identity.")
     # Reject new executable code until this pipeline's signing and manifest checks cover it.
     macho_magic = {bytes.fromhex(value) for value in ("feedface", "cefaedfe", "feedfacf", "cffaedfe", "cafebabe", "bebafeca", "cafebabf", "bfbafeca")}
-    known = set(paths.values())
+    framework = app / FRAMEWORK
+    updater_manifest = manifest.get("updateFramework", {})
+    config = json.loads((ROOT / "scripts/macos/update-config.json").read_text())
+    require(framework.is_dir() and not framework.is_symlink(), "Expected embedded Sparkle framework")
+    require(updater_manifest.get("name") == "Sparkle"
+            and updater_manifest.get("version") == config["sparkleVersion"]
+            and updater_manifest.get("archiveSHA256") == config["sparkleArchiveSHA256"],
+            "Unreviewed updater dependency version")
+    require(updater_manifest.get("files") == sparkle_inventory(framework),
+            "Signed updater framework differs from BUILD-MANIFEST.json")
+    architecture = manifest["runtime"].removeprefix("osx-")
+    require(info.get("SUFeedURL") == config["feedBaseURL"] + "/" + architecture + "/appcast.xml"
+            and info.get("SUPublicEDKey") == config["publicEdKey"]
+            and info.get("SURequireSignedFeed") is True
+            and info.get("SUVerifyUpdateBeforeExtraction") is True
+            and info.get("SUSignedFeedFailureExpirationInterval") == 0,
+            "Update feed or required signature verification policy differs from release configuration")
+    known = set(paths.values()) | {framework / relative for relative in NATIVE}
     for item in app.rglob("*"):
-        require(not item.is_symlink(), "Unexpected symlink in the receiver bundle; review the packaging before submitting.")
+        if item.is_symlink():
+            require(framework in item.parents and item.resolve().is_relative_to(framework.resolve()),
+                    "Unexpected or escaping symlink in receiver bundle")
+            continue
         if item.is_file():
             with item.open("rb") as stream:
                 is_macho = stream.read(4) in macho_magic
@@ -149,6 +171,8 @@ def verify_app(app, manifest):
         "executable": check_signature(paths["executable"], BUNDLE),
         "backend": check_signature(paths["backend"], BUNDLE + ".host"),
     }
+    for relative, identifier in CODE.items():
+        signatures["Sparkle/" + relative] = check_signature(framework / relative, identifier)
     require(signatures["backend"]["entitlements"].get("com.apple.security.cs.allow-jit") is True,
             "The .NET backend is missing its required allow-jit entitlement.")
     return signatures

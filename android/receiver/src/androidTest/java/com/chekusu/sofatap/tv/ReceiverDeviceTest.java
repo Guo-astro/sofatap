@@ -26,6 +26,7 @@ public final class ReceiverDeviceTest {
     private Instrumentation instrumentation;
     private UiAutomation automation;
     private Context context;
+    private boolean automaticUpdatePreference;
     interface Checked<T> { T call() throws Exception; }
     @Before public void emulatorOnly() {
         instrumentation = InstrumentationRegistry.getInstrumentation(); context = instrumentation.getTargetContext();
@@ -33,6 +34,11 @@ public final class ReceiverDeviceTest {
             "yes".equals(InstrumentationRegistry.getArguments().getString("disposableEmulator")) &&
             (Build.FINGERPRINT.contains("generic") || Build.MODEL.contains("sdk")));
         automation = instrumentation.getUiAutomation(UiAutomation.FLAG_DONT_SUPPRESS_ACCESSIBILITY_SERVICES);
+        automaticUpdatePreference = context.getSharedPreferences("receiver_updates", Context.MODE_PRIVATE).getBoolean("automatic", true);
+        ReceiverUpdates.get(context).setAutomatic(false); // No public update requests from deterministic input fixtures.
+    }
+    @After public void restoreUpdatePreference() {
+        if (context != null && automation != null) context.getSharedPreferences("receiver_updates", Context.MODE_PRIVATE).edit().putBoolean("automatic", automaticUpdatePreference).commit();
     }
     private <T> T main(Checked<T> operation) throws Exception {
         AtomicReference<T> value = new AtomicReference<>(); AtomicReference<Exception> error = new AtomicReference<>();

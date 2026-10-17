@@ -15,6 +15,8 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 **接收器自启更新：**电脑端 0.7.3 beta.1 与 Android/Google TV 0.1.2 beta.1 新增原生自启选项，首次正常打开时默认开启。电脑端在登录后启动，关闭窗口继续接收，明确选择退出才停止；电视端仍受 Android 和厂商系统限制。参见[行为和验证范围](docs/verification/receiver-autostart-2026-10-16.md)。
 
+**接收器更新功能：**下一版电脑端 0.8.0 beta.1 与 Android/Google TV 0.2.0 beta.1 将加入原生检查更新和默认自动下载；安装遵循各平台的系统要求。旧接收器需要先手动升级一次。参见[更新行为与限制](docs/RECEIVER-UPDATES.md)。
+
 ## 宣传视频
 
 [![观看 Sofatap 宣传视频：用 iPhone 的手势、键盘输入和语音听写操作电视上的电脑](https://sofatap.app/media/sofatap-demo-poster-zh-cn.jpg)](https://sofatap.app/zh/#video)

@@ -15,6 +15,8 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 **レシーバーの自動起動：**デスクトップ 0.7.3 beta.1 と Android/Google TV 0.1.2 beta.1 に、初回の通常起動で有効になるネイティブ設定を追加しました。パソコンではログイン後に起動し、ウィンドウを閉じても受信を続け、明示的な終了で停止します。テレビでは Android とメーカーの制限が適用されます。[動作と検証範囲](docs/verification/receiver-autostart-2026-10-16.md)をご覧ください。
 
+**レシーバーの更新機能：**次のデスクトップ版 0.8.0 beta.1 と Android/Google TV 版 0.2.0 beta.1 では、ネイティブの更新確認と既定で有効な自動ダウンロードを追加します。インストール方法は各 OS の要件に従います。旧バージョンからは一度手動更新が必要です。[更新の動作と制限](docs/RECEIVER-UPDATES.md)をご覧ください。
+
 ## 紹介動画
 
 [![Sofatap の紹介動画を見る：ジェスチャー、キーボード入力、音声入力で、テレビにつないだパソコンを iPhone から操作](https://sofatap.app/media/sofatap-demo-poster-ja.jpg)](https://sofatap.app/ja/#video)

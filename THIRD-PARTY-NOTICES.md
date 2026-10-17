@@ -41,3 +41,7 @@ The Android receiver includes the following runtime dependencies. License and no
 | Desugared OpenJDK runtime libraries | 2.1.5 | [GPL-2.0 with Classpath Exception](android/receiver/src/main/assets/licenses/DESUGAR-LICENSE.txt), [Assembly Exception](android/receiver/src/main/assets/licenses/DESUGAR-ASSEMBLY-EXCEPTION.txt), [additional license information](android/receiver/src/main/assets/licenses/DESUGAR-ADDITIONAL-LICENSE-INFO.txt) | [2.1.5 version source commit](https://github.com/google/desugar_jdk_libs/tree/73170c345e6a762fc6a1f0301bb15218850023ef), [source archive](https://github.com/google/desugar_jdk_libs/archive/73170c345e6a762fc6a1f0301bb15218850023ef.tar.gz) |
 
 The Android runtime's OpenJDK backports retain their GPL license and Classpath Exception; they are not described as Apache-licensed. Build tools (Gradle, Android Gradle Plugin, SDK tools) and test-only JUnit/AndroidX test libraries are not bundled as application runtime dependencies. This table describes the initial Android feasibility build; dependency upgrades must update the bundled notices before redistribution.
+
+## Sparkle (macOS website receiver only)
+
+The macOS website receiver bundles Sparkle 2.10.0, copyright the Sparkle contributors, under its BSD-style license. The exact upstream license is included in the application at `Contents/Resources/licenses/Sparkle-LICENSE.txt`. Sparkle and its helpers are not included in the Mac App Store basic build. Source and license: https://github.com/sparkle-project/Sparkle/tree/2.10.0

@@ -5,11 +5,16 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <DefaultItemExcludes>$(DefaultItemExcludes);update-fixture-host/**;update-lifecycle/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../WindowsStartupStore.cs" Link="WindowsStartupStore.cs" />
     <Compile Include="../StartupRegistration.cs" Link="StartupRegistration.cs" />
     <Compile Include="../NativeProtocol.cs" Link="NativeProtocol.cs" />
     <Compile Include="../BackendProcess.cs" Link="BackendProcess.cs" />
+    <Compile Include="../UpdatePackage.cs" Link="UpdatePackage.cs" />
+    <Compile Include="../UpdateTransaction.cs" Link="UpdateTransaction.cs" />
+    <Compile Include="../WindowsUpdates.cs" Link="WindowsUpdates.cs" />
+    <Compile Include="../UpdateApplication.cs" Link="UpdateApplication.cs" />
   </ItemGroup>
 </Project>

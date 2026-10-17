@@ -44,7 +44,7 @@ if len(header) != 20 or header[:6] != b"\x7fELF\x02\x01" or struct.unpack("<H", 
     raise SystemExit("Published receiver is not a 64-bit Linux ELF for the requested architecture")
 PY
 cp "$publish_dir/SofaTap" "$release_dir/lib/SofaTapHost"
-cp desktop/linux/sofatap.py desktop/linux/autostart.py desktop/linux/receiver_instance.py desktop/linux/input_worker.py desktop/linux/input_common.py \
+cp desktop/linux/sofatap.py desktop/linux/autostart.py desktop/linux/receiver_update.py desktop/linux/receiver_instance.py desktop/linux/input_worker.py desktop/linux/input_common.py \
   desktop/linux/wayland_input.py desktop/linux/x11_input.py desktop/linux/text_focus_worker.py "$release_dir/lib/linux/"
 cp scripts/linux/sofatap "$release_dir/sofatap"
 cp scripts/linux/sofatap.desktop "$release_dir/sofatap.desktop"
@@ -73,6 +73,9 @@ import xml.etree.ElementTree as ET
 root, release = map(Path, sys.argv[1:3])
 manifest = {
     "runtime": sys.argv[3],
+    "updateVersion": (root / "updates/desktop-version.txt").read_text().strip(),
+    "files": {p.relative_to(release).as_posix(): hashlib.sha256(p.read_bytes()).hexdigest()
+              for p in sorted(release.rglob("*")) if p.is_file() and p.name != "BUILD-MANIFEST.json"},
     "version": ET.parse(root / "host/SofaTap.Host.csproj").findtext(".//Version"),
     "sourceRevision": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip(),
     "sourceDirty": bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip()),

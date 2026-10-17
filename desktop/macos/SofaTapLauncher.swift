@@ -40,6 +40,7 @@ enum SofaTapLauncher {
 final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
     private let receiver = ReceiverController()
     private let options: ReceiverLaunchOptions
+    private lazy var updater = ReceiverUpdater(receiver: receiver)
     private let loginItem: ReceiverLoginItem
     private var window: NSWindow?
     private var isTerminating = false
@@ -62,6 +63,8 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         let appItem = NSMenuItem()
         let appMenu = NSMenu()
         appMenu.addItem(withTitle: "关于 Sofatap", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(.separator())
+        updater.addMenuItems(to: appMenu)
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "隐藏 Sofatap", action: #selector(NSApplication.hide(_:)), keyEquivalent: "h")
         appMenu.addItem(withTitle: "退出 Sofatap", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
@@ -111,6 +114,7 @@ final class LauncherDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate 
         }
         receiver.start()
         loginItem.configureFirstLaunch()
+        updater.start()
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {

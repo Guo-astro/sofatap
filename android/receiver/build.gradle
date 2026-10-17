@@ -1,4 +1,5 @@
 plugins { id 'com.android.application' }
+def selfUpdateEnabled = (providers.gradleProperty('sofatapDistribution').orElse('direct').get() == 'direct')
 
 android {
     namespace 'com.chekusu.sofatap.tv'
@@ -7,8 +8,9 @@ android {
         applicationId 'com.chekusu.sofatap.tv'
         minSdk 26
         targetSdk 36
-        versionCode 5
-        versionName '0.1.4-beta.1'
+        versionCode 6
+        versionName '0.2.0-beta.1'
+        buildConfigField 'boolean', 'SELF_UPDATE_ENABLED', selfUpdateEnabled.toString()
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
     }
     compileOptions {
@@ -17,8 +19,25 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
     buildTypes { release { minifyEnabled false } }
+    buildFeatures { buildConfig true }
+    sourceSets.main.manifest.srcFile layout.buildDirectory.file('generated/distribution/AndroidManifest.xml')
     packaging { resources.excludes += ['META-INF/*.kotlin_module', 'META-INF/INDEX.LIST'] }
 }
+
+// Keep the sideload-install permission entirely out of Google Play artifacts.
+tasks.register('generateDistributionManifest') {
+    inputs.file('src/main/AndroidManifest.xml')
+    inputs.property('selfUpdateEnabled', selfUpdateEnabled)
+    outputs.file(layout.buildDirectory.file('generated/distribution/AndroidManifest.xml'))
+    doLast {
+        def manifest = file('src/main/AndroidManifest.xml').getText('UTF-8')
+        if (selfUpdateEnabled) manifest = manifest.replace('</manifest>', '    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />\n</manifest>')
+        def output = layout.buildDirectory.file('generated/distribution/AndroidManifest.xml').get().asFile
+        output.parentFile.mkdirs()
+        output.setText(manifest, 'UTF-8')
+    }
+}
+tasks.named('preBuild').configure { dependsOn('generateDistributionManifest') }
 
 dependencies {
     coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.1.5'
