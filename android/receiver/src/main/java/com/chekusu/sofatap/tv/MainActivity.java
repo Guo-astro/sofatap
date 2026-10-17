@@ -25,6 +25,10 @@ public final class MainActivity extends Activity {
     private Button start, pair, permission, enableIme, selectIme;
     private Switch autoStart;
     private ReceiverStartup startup;
+    private ReceiverUpdates updates;
+    private TextView updateStatus;
+    private Button checkUpdate, installUpdate, cancelUpdate;
+    private Switch autoUpdate;
     private Spinner network;
     private String renderedURI;
     private List<String> addresses = new ArrayList<>();
@@ -100,10 +104,31 @@ public final class MainActivity extends Activity {
         selectIme = button(R.string.ime_select, () -> getSystemService(android.view.inputmethod.InputMethodManager.class).showInputMethodPicker());
         padded(right, selectIme, 6);
         capabilities = text(14, Color.rgb(164, 189, 180)); padded(right, capabilities, 16);
+        updates = ReceiverUpdates.get(this);
+        updateStatus = text(16, MINT); padded(right, updateStatus, 18);
+        autoUpdate = new Switch(this); autoUpdate.setId(R.id.auto_update);
+        autoUpdate.setText(R.string.update_automatic); autoUpdate.setTextColor(INK); autoUpdate.setTextSize(16);
+        autoUpdate.setPadding(dp(12), dp(8), dp(12), dp(8)); autoUpdate.setChecked(updates.automatic());
+        autoUpdate.setVisibility(updates.supported() ? View.VISIBLE : View.GONE);
+        autoUpdate.setOnCheckedChangeListener((button, checked) -> updates.setAutomatic(checked)); padded(right, autoUpdate, 6);
+        checkUpdate = button(R.string.update_check, () -> {
+            if (updates.supported()) updates.check(true);
+            else {
+                try { startActivity(new Intent(Intent.ACTION_VIEW, android.net.Uri.parse("market://details?id=" + getPackageName())).setPackage("com.android.vending")); }
+                catch (ActivityNotFoundException missing) { Toast.makeText(this, R.string.update_store, Toast.LENGTH_LONG).show(); }
+            }
+            refresh();
+        }); checkUpdate.setId(R.id.update_check); padded(right, checkUpdate, 6);
+        installUpdate = button(R.string.update_install, () -> { updates.install(this); refresh(); }); installUpdate.setId(R.id.update_install); padded(right, installUpdate, 6);
+        cancelUpdate = button(android.R.string.cancel, () -> {
+            if (updates.hasInstaller()) updates.cancelInstallation(); else updates.cancelTransfer(); refresh();
+        }); cancelUpdate.setId(R.id.update_cancel); padded(right, cancelUpdate, 6);
+        TextView updateHelp = text(14, Color.rgb(164, 189, 180)); updateHelp.setText(R.string.update_help); padded(right, updateHelp, 4);
         setContentView(root); renderQR(null); start.requestFocus();
         if (startup.runRequested() && ReceiverService.instance == null) ReceiverStartup.start(this);
     }
     private void refresh() {
+        refreshUpdates();
         ReceiverService receiver = ReceiverService.instance;
         ReceiverIdentity identity = receiver == null ? null : receiver.identity;
         ReceiverServer server = receiver == null ? null : receiver.server;
@@ -147,6 +172,31 @@ public final class MainActivity extends Activity {
             + "\n" + getString(imeSelected ? R.string.ime_selected_help : R.string.ime_setup_help));
         capabilities.setText(getString(R.string.probe_limitations) + "\n" + getString(R.string.probe_state,
             getString(probe.optBoolean("activeWindowReadable") && !probe.optBoolean("activeWindowProtected") ? R.string.available : R.string.unavailable)));
+    }
+    private void refreshUpdates() {
+        String state = updates.status();
+        int message = switch (state) {
+            case "checking" -> R.string.update_checking;
+            case "downloading" -> R.string.update_downloading;
+            case "ready" -> R.string.update_ready;
+            case "latest" -> R.string.update_latest;
+            case "recent" -> R.string.update_recent;
+            case "rate_limited" -> R.string.update_rate_limited;
+            case "permission", "permission_missing" -> R.string.update_permission;
+            case "preparing" -> R.string.update_preparing;
+            case "confirm" -> R.string.update_confirmation;
+            case "pending" -> R.string.update_pending;
+            case "installed" -> R.string.update_installed;
+            case "cancelled" -> R.string.update_cancelled;
+            case "failed", "install_failed" -> R.string.update_failed;
+            case "store" -> R.string.update_store;
+            default -> R.string.update_current;
+        };
+        updateStatus.setText(getString(message, updates.version()));
+        checkUpdate.setEnabled(!updates.busy() && !updates.hasInstaller());
+        installUpdate.setVisibility(updates.canInstall() ? View.VISIBLE : View.GONE);
+        installUpdate.setText(state.equals("confirm") ? R.string.update_continue : R.string.update_install);
+        cancelUpdate.setVisibility(updates.busy() || updates.hasInstaller() ? View.VISIBLE : View.GONE);
     }
     private void renderQR(String uri) {
         if (uri == null) {

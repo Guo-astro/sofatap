@@ -17,7 +17,7 @@ frontend_dir="$build_dir/frontend"
 # These directories contain generated release files only.
 rm -rf "$release_dir" "$backend_dir" "$frontend_dir"
 mkdir -p "$release_dir" "$backend_dir" "$frontend_dir"
-version="$(python3 -c 'import xml.etree.ElementTree as ET; print(ET.parse("host/SofaTap.Host.csproj").findtext(".//Version"))')"
+version="$(tr -d '\r\n' < updates/desktop-version.txt)"
 "$dotnet_cmd" publish host/SofaTap.Host.csproj -c Release -r win-x64 \
   --artifacts-path "$build_dir/backend-intermediate" --self-contained true \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true \
@@ -176,6 +176,19 @@ cp docs/WINDOWS-START.md "$release_dir/开始使用.md"
 cp scripts/windows/Start-SofaTap.cmd "$release_dir/Start-SofaTap.cmd"
 cp scripts/windows/Enable-Autostart.ps1 "$release_dir/Enable-Autostart.ps1"
 cp scripts/windows/Disable-Autostart.ps1 "$release_dir/Disable-Autostart.ps1"
+# The verified in-app updater requires a complete, version-bound file manifest.
+# Pairing/TLS/startup preferences live in LocalAppData and never enter this archive.
+python3 - "$release_dir" "$version" <<'PYMANIFEST'
+from pathlib import Path
+import hashlib, json, sys
+release, version = Path(sys.argv[1]), sys.argv[2]
+files = {path.relative_to(release).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
+         for path in sorted(release.rglob("*")) if path.is_file()}
+(release / "sofatap-package.json").write_text(json.dumps({
+    "Product": "com.chekusu.sofatap.receiver.windows", "Version": version,
+    "Architecture": "x64", "Files": files,
+}, indent=2) + "\n", encoding="utf-8")
+PYMANIFEST
 cd "$repo_dir/artifacts"
 # zipfile marks non-ASCII paths as UTF-8 so the Chinese guide keeps its name
 # in Windows Explorer and standard ZIP readers.

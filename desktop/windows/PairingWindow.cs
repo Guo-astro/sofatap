@@ -13,6 +13,13 @@ internal sealed class PairingWindow : Form
     private readonly ContextMenuStrip? _trayMenu;
     private bool _updatingStartup;
     private bool _quitRequested;
+    private bool _installUpdateRequested;
+    private readonly string? _healthTicket;
+    private WindowsUpdates? _updates;
+    private ToolStripMenuItem? _checkUpdates;
+    private ToolStripMenuItem? _automaticUpdates;
+    private ToolStripMenuItem? _installUpdate;
+    private readonly System.Windows.Forms.Timer _updateTimer = new() { Interval = 60 * 60 * 1000 };
     private readonly CheckBox _startAtLogin = new()
     {
         Text = "登录后启动", AutoSize = false, TabIndex = 4,
@@ -65,16 +72,17 @@ internal sealed class PairingWindow : Form
         return (Icon)icon.Clone();
     }
 
-    internal PairingWindow(ReceiverLaunchOptions options) : this(options, preview: false) { }
+    internal PairingWindow(ReceiverLaunchOptions options, string? healthTicket = null) : this(options, preview: false, healthTicket) { }
 
     // Offline rendering only: this constructor never attaches the backend-start event.
     internal PairingWindow(ReceiverState fixture) : this(new(false, false), preview: true) { ApplyState(fixture); }
     internal static PairingWindow CreatePendingPreview() => new(new(false, false), preview: true);
 
-    private PairingWindow(ReceiverLaunchOptions options, bool preview)
+    private PairingWindow(ReceiverLaunchOptions options, bool preview, string? healthTicket = null)
     {
         _options = options;
         _preview = preview;
+        _healthTicket = healthTicket;
         SuspendLayout();
         // These are design dimensions at 96 DPI. WinForms scales the form once;
         // LayoutContents then places children in the current device coordinates.
@@ -119,6 +127,11 @@ internal sealed class PairingWindow : Form
             {
                 _trayMenu = new ContextMenuStrip();
                 _trayMenu.Items.Add("打开 Sofatap", null, (_, _) => ShowReceiver());
+                _checkUpdates = new ToolStripMenuItem("检查更新…", null, async (_, _) => await CheckUpdatesAsync(manual: true));
+                _automaticUpdates = new ToolStripMenuItem("自动下载更新（下次打开时安装）") { CheckOnClick = true, Checked = true };
+                _automaticUpdates.Click += (_, _) => ChangeAutomaticUpdates();
+                _installUpdate = new ToolStripMenuItem("安装更新并重启…", null, (_, _) => InstallUpdate()) { Enabled = false };
+                _trayMenu.Items.AddRange([_checkUpdates, _automaticUpdates, _installUpdate, new ToolStripSeparator()]);
                 _trayMenu.Items.Add("退出", null, (_, _) => QuitReceiver());
                 _tray = new NotifyIcon { Icon = _brandIcon, Text = "Sofatap · 双击打开", ContextMenuStrip = _trayMenu, Visible = true };
                 _tray.DoubleClick += (_, _) => ShowReceiver();
@@ -126,7 +139,8 @@ internal sealed class PairingWindow : Form
             if (options.Startup) { WindowState = FormWindowState.Minimized; ShowInTaskbar = false; }
             _backend.StateReceived += state => OnUi(() => ApplyState(state));
             _backend.Failed += () => OnUi(ShowBackendFailure);
-            Shown += (_, _) => { InitializeStartup(); StartBackend(); if (options.Startup) Hide(); };
+            Shown += (_, _) => { InitializeStartup(); StartBackend(); InitializeUpdates(); if (options.Startup) Hide(); };
+            _updateTimer.Tick += async (_, _) => await CheckUpdatesAsync(manual: false);
         }
         FormClosing += ClosingAsync;
         _layoutReady = true;
@@ -323,6 +337,11 @@ internal sealed class PairingWindow : Form
         if (!_receivedInitialState)
         {
             _receivedInitialState = true;
+            if (_healthTicket is not null)
+            {
+                try { UpdateApplication.MarkHealthy(_healthTicket); }
+                catch (Exception error) when (WindowsUpdates.IsRecoverable(error)) { /* Helper will preserve/restore the previous version. */ }
+            }
             _scroll.AutoScrollPosition = Point.Empty;
         }
     }
@@ -416,6 +435,7 @@ internal sealed class PairingWindow : Form
         args.Cancel = true;
         if (_stopping) return;
         _stopping = true;
+        _updateTimer.Stop();
         _refresh.Enabled = false;
         _quit.Enabled = false;
         _addresses.Enabled = false;
@@ -433,8 +453,82 @@ internal sealed class PairingWindow : Form
             LayoutContents();
             return;
         }
+        if (_installUpdateRequested)
+        {
+            try { _ = UpdateApplication.StartPrepared(background: false); }
+            catch (Exception error) when (WindowsUpdates.IsRecoverable(error))
+            {
+                MessageBox.Show(this, "暂时无法安装更新。现有版本保持不变，请重新打开后重试。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+        }
         _allowClose = true;
         Close();
+    }
+
+    private void InitializeUpdates()
+    {
+        if (_preview || !_options.ManagesStartup) return;
+        try
+        {
+            _updates = new WindowsUpdates();
+            _updates.Changed += () => OnUi(UpdateMenus);
+            UpdateMenus();
+            _updateTimer.Start();
+            _ = CheckUpdatesAsync(manual: false);
+        }
+        catch (Exception error) when (WindowsUpdates.IsRecoverable(error))
+        {
+            if (_automaticUpdates is not null) { _automaticUpdates.Checked = false; _automaticUpdates.Enabled = false; }
+        }
+    }
+
+    private void UpdateMenus()
+    {
+        if (_updates is null) return;
+        if (_automaticUpdates is not null) _automaticUpdates.Checked = _updates.Settings.Automatic;
+        if (_installUpdate is not null) _installUpdate.Enabled = _updates.HasPreparedUpdate && !_stopping;
+        if (_checkUpdates is not null)
+        {
+            _checkUpdates.Text = _updates.HasPreparedUpdate ? "更新已下载 · 下次打开时安装" : _updates.Settings.LastError is not null ? "上次更新未完成 · 检查更新…" : "检查更新…";
+            _checkUpdates.ToolTipText = _updates.Settings.LastError ?? "";
+        }
+    }
+
+    private async Task CheckUpdatesAsync(bool manual)
+    {
+        if (_preview || !_options.ManagesStartup || _stopping) return;
+        try
+        {
+            _updates ??= new WindowsUpdates();
+            var message = await _updates.CheckAsync(manual);
+            UpdateMenus();
+            if (manual && !_stopping && !IsDisposed)
+                MessageBox.Show(this, message, "Sofatap 更新", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        catch (Exception error) when (WindowsUpdates.IsRecoverable(error))
+        {
+            if (manual && !_stopping && !IsDisposed)
+                MessageBox.Show(this, "无法完成更新检查。请检查网络和安装目录写入权限后重试。现有版本保持不变。", "Sofatap 更新", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    private void ChangeAutomaticUpdates()
+    {
+        if (_updates is null || _automaticUpdates is null || _stopping) return;
+        try { _updates.SetAutomatic(_automaticUpdates.Checked); UpdateMenus(); }
+        catch (Exception error) when (WindowsUpdates.IsRecoverable(error))
+        {
+            _automaticUpdates.Checked = !_automaticUpdates.Checked;
+            MessageBox.Show(this, "无法保存更新设置，请检查当前用户的文件权限。", "Sofatap", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+    }
+
+    private void InstallUpdate()
+    {
+        if (_updates?.HasPreparedUpdate != true || _stopping) return;
+        if (MessageBox.Show(this, "现在安装已校验的更新并重启接收器？当前手机连接会暂时断开，然后可自动重连。", "Sofatap 更新", MessageBoxButtons.OKCancel, MessageBoxIcon.Question) != DialogResult.OK) return;
+        _installUpdateRequested = true;
+        QuitReceiver();
     }
 
     private void InitializeStartup()
@@ -530,7 +624,7 @@ internal sealed class PairingWindow : Form
 
     protected override void Dispose(bool disposing)
     {
-        if (disposing) { _tray?.Dispose(); _trayMenu?.Dispose(); _startupHint.Dispose(); _copyFeedback.Dispose(); _backend.Dispose(); _brandIcon.Dispose(); }
+        if (disposing) { _updateTimer.Dispose(); _updates?.Dispose(); _tray?.Dispose(); _trayMenu?.Dispose(); _startupHint.Dispose(); _copyFeedback.Dispose(); _backend.Dispose(); _brandIcon.Dispose(); }
         base.Dispose(disposing);
     }
 }

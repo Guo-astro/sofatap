@@ -15,6 +15,8 @@ Sofatap is an open-source remote by [chekusu](https://github.com/chekusu). Turn 
 
 **Receiver startup update:** desktop 0.7.3 beta.1 and Android/Google TV 0.1.2 beta.1 add a native startup option, enabled on the first normal launch. Computer receivers start after desktop login; closing their window keeps receiving, while explicit Quit stops them. TV startup remains subject to Android and vendor policy. See [behavior and verification](docs/verification/receiver-autostart-2026-10-16.md).
 
+**Receiver update controls:** the next desktop 0.8.0 beta.1 and Android/Google TV 0.2.0 beta.1 packages add native update checks and default automatic downloads. Installation follows each platform’s rules; earlier versions need one manual upgrade. See [update behavior and limits](docs/RECEIVER-UPDATES.md).
+
 ## Watch the film
 
 [![Watch the Sofatap film: an iPhone controls the computer on the TV with gestures, keyboard input and voice dictation](https://sofatap.app/media/sofatap-demo-poster-en.jpg)](https://sofatap.app/#video)

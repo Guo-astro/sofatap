@@ -131,6 +131,14 @@ jobs:
             -o "$RUNNER_TEMP/sofatap-desktop-protocol-tests" desktop/macos/ReceiverProtocol.swift \
             desktop/macos/tests/ReceiverProtocolTests.swift
           "$RUNNER_TEMP/sofatap-desktop-protocol-tests"
+      - name: Mac updater policy without network or installation
+        shell: bash
+        run: |
+          xcrun swiftc -parse-as-library -swift-version 6 desktop/macos/ReceiverUpdatePolicy.swift \
+            desktop/macos/tests/ReceiverUpdatePolicyTests.swift -o "$RUNNER_TEMP/sofatap-update-tests"
+          "$RUNNER_TEMP/sofatap-update-tests"
+          python3 -m unittest discover -s scripts/macos -p 'test_updates.py' -v
+          python3 scripts/macos/test-sparkle-discovery.py
       - name: Mac independent pipe readers with quiet and busy stderr
         shell: bash
         run: |
@@ -159,6 +167,7 @@ jobs:
         run: |
           bash scripts/build-macos.sh arm64
           bash scripts/build-macos.sh x64
+          python3 scripts/macos/test-sparkle-discovery.py
       - name: Windows packaging provenance and license checks
         run: python3 tests/windows_packaging.py
       - name: Build Windows distribution and include licenses
@@ -208,6 +217,9 @@ jobs:
         run: dotnet run --project desktop/windows/tests/ProtocolChecks.csproj -c Release
       - name: Compile self-contained WinForms frontend without launching it
         run: dotnet publish desktop/windows/SofaTap.Desktop.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -p:DebugType=None -p:DebugSymbols=false -o artifacts/windows-ui-ci
+      - name: Verify real updater installation and rollback with inert backends
+        timeout-minutes: 8
+        run: ./desktop/windows/tests/test-update-lifecycle.ps1
       - name: Render synthetic WinForms fixtures without a receiver backend
         run: dotnet run --project desktop/windows/preview/MintCalmPreview.csproj -c Release -- artifacts/mint-calm
       - name: Save synthetic Windows UI fixtures
@@ -236,6 +248,7 @@ jobs:
         run: |
           /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_protocol.py
           /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_autostart.py
+          /usr/bin/python3 -B -W error::ResourceWarning desktop/linux/check_updates.py
           /usr/bin/python3 -B desktop/linux/check_input.py
           /usr/bin/python3 -B desktop/linux/check_wayland_input.py
           /usr/bin/python3 -B tests/text_focus_linux.py

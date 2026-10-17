@@ -267,7 +267,7 @@ class Backend:
             stream.close()
 
 
-def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, startup_error=None):
+def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, startup_error=None, updater=None):
     """Build the real native UI with an injectable owned backend for isolated previews."""
     from gi.repository import Pango
     provider = Gtk.CssProvider()
@@ -413,6 +413,10 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, st
             footer = text("iPhone 与电脑连接同一网络\n配对码和链接包含控制凭据，请勿分享", "muted")
             footer.set_justify(Gtk.Justification.CENTER)
             layout.pack_start(footer, False, False, 0)
+            self.updater = updater
+            self.update_busy = False
+            self.update_restart = False
+            self.phone_connected = False
             self.autostart = autostart
             startup_message = startup_error
             self.startup_toggle = Gtk.CheckButton(label="登录后自动启动")
@@ -429,6 +433,28 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, st
             self.startup_detail.set_no_show_all(True)
             layout.pack_start(self.startup_detail, False, False, 0)
             self.startup_detail.set_visible(bool(startup_message))
+            self.update_toggle = Gtk.CheckButton(label="自动检查并下载更新")
+            self.update_toggle.set_halign(Gtk.Align.CENTER)
+            self.update_toggle.set_sensitive(updater is not None)
+            try:
+                self.update_toggle.set_active(updater.preferences()["automatic"] if updater else False)
+            except (OSError, ValueError):
+                self.update_toggle.set_active(False)
+            self.update_toggle.connect("toggled", self.change_updates)
+            layout.pack_start(self.update_toggle, False, False, 0)
+            update_buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+            update_buttons.set_halign(Gtk.Align.CENTER)
+            self.update_check = styled(Gtk.Button(label="检查更新"), "quiet")
+            self.update_check.set_sensitive(updater is not None)
+            self.update_check.connect("clicked", lambda *_: self.check_updates(True))
+            self.update_install = styled(Gtk.Button(label="更新并重启"), "quiet")
+            self.update_install.set_sensitive(False)
+            self.update_install.connect("clicked", self.install_update)
+            update_buttons.pack_start(self.update_check, False, False, 0)
+            update_buttons.pack_start(self.update_install, False, False, 0)
+            layout.pack_start(update_buttons, False, False, 0)
+            self.update_detail = text("", "muted")
+            layout.pack_start(self.update_detail, False, False, 0)
             buttons = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=12)
             buttons.set_halign(Gtk.Align.CENTER)
             self.refresh = styled(Gtk.Button(label="刷新"), "quiet")
@@ -450,10 +476,61 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, st
                 lambda: GLib.idle_add(self.show_failure))
             self.show_all()
             GLib.timeout_add_seconds(1, self.check_state_deadline)
+            if self.updater is not None:
+                GLib.timeout_add_seconds(10, lambda: self.check_updates(False))
+                GLib.timeout_add_seconds(3600, self.periodic_update)
             try:
                 self.backend.start()
             except OSError:
                 self.show_failure()
+
+        def change_updates(self, toggle):
+            if self.updater is None:
+                return
+            try:
+                self.updater.set_automatic(toggle.get_active())
+            except (OSError, ValueError):
+                toggle.handler_block_by_func(self.change_updates)
+                toggle.set_active(not toggle.get_active())
+                toggle.handler_unblock_by_func(self.change_updates)
+                self.update_detail.set_text("无法保存更新设置，请检查文件权限")
+
+        def periodic_update(self):
+            if self.stopping:
+                return False
+            self.check_updates(False)
+            return True
+
+        def check_updates(self, manual=False):
+            if self.updater is None or self.update_busy or self.stopping:
+                return False
+            self.update_busy = True
+            self.update_check.set_sensitive(False)
+            if manual:
+                self.update_detail.set_text("正在检查更新…")
+            def work():
+                try:
+                    message = self.updater.check(manual)
+                except Exception:
+                    message = "暂时无法检查或验证更新，请稍后重试"
+                GLib.idle_add(self.update_finished, message)
+            threading.Thread(target=work, daemon=True).start()
+            return False
+
+        def update_finished(self, message):
+            self.update_busy = False
+            if self.stopping:
+                return False
+            self.update_check.set_sensitive(True)
+            if message:
+                self.update_detail.set_text(message)
+            self.update_install.set_sensitive(bool(self.updater.pending()) and not self.phone_connected)
+            return False
+
+        def install_update(self, *_):
+            if self.updater is not None and not self.phone_connected and not self.update_busy:
+                self.update_restart = True
+                self.close_receiver()
 
         def change_autostart(self, toggle):
             if self.autostart is None:
@@ -484,6 +561,10 @@ def create_window(Gtk, Gdk, GdkPixbuf, GLib, backend_factory, autostart=None, st
             if self.stopping or self.failed:
                 return False
             self.last_state_at = time.monotonic()
+            self.phone_connected = state.connected
+            if self.updater is not None:
+                self.update_install.set_sensitive(bool(self.updater.pending()) and not state.connected and not self.update_busy)
+                self.update_install.set_tooltip_text("请先断开手机连接" if state.connected else "保留配对和设置，重启接收器")
             self.name.set_text(state.name)
             self.name.set_tooltip_text(state.name)
             self.name.get_accessible().set_name(state.name)
@@ -705,6 +786,7 @@ def main(argv=None):
     instance = None
     startup = None
     startup_error = None
+    updater = None
     if not args.dry_run:
         try:
             instance = ReceiverInstance()
@@ -713,6 +795,14 @@ def main(argv=None):
         except OSError:
             print("Sofatap could not safely open its private receiver session.", file=sys.stderr)
             return 2
+        from receiver_update import ReceiverUpdater
+        try:
+            updater = ReceiverUpdater(executable.parent.parent)
+            if updater.apply_pending():
+                instance.close()
+                os.execv(sys.executable, [sys.executable, "-E", "-s", "-B", str(Path(__file__).resolve()), *sys.argv[1:]])
+        except (OSError, ValueError, KeyError, subprocess.TimeoutExpired, SyntaxError):
+            startup_error = "自动更新未完成，继续使用当前版本；可通过检查更新重试"
         startup = Autostart([sys.executable, "-E", "-s", "-B", str(Path(__file__).resolve()),
                              "--backend", str(executable), "--startup"])
         try:
@@ -723,7 +813,7 @@ def main(argv=None):
     try:
         window = create_window(Gtk, Gdk, GdkPixbuf, GLib,
             lambda on_state, on_failure: Backend(executable, on_state, on_failure, dry_run=args.dry_run),
-            autostart=startup, startup_error=startup_error)
+            autostart=startup, startup_error=startup_error, updater=updater)
         if args.startup:
             window.iconify()
         if instance is not None:
@@ -736,11 +826,18 @@ def main(argv=None):
                 return True
             GLib.timeout_add(100, check_activation)
         Gtk.main()
+        if window.update_restart and updater is not None:
+            try:
+                updater.apply_pending(explicit=True)
+            except (OSError, ValueError, subprocess.TimeoutExpired, SyntaxError):
+                print("Sofatap update could not be installed; the previous package is retained.", file=sys.stderr)
     finally:
         if window is not None:
             window.backend.stop()
         if instance is not None:
             instance.close()
+    if window is not None and window.update_restart:
+        os.execv(sys.executable, [sys.executable, "-E", "-s", "-B", str(Path(__file__).resolve()), *sys.argv[1:]])
     return 0
 
 

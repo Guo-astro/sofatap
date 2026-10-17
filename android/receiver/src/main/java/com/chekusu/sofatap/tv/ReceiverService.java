@@ -77,6 +77,7 @@ public final class ReceiverService extends Service {
         }
         if (intent == null && !settings.runRequested()) { stopSelf(); return START_NOT_STICKY; }
         settings.setRunRequested(true); settings.setBlocked(false);
+        ReceiverUpdates.get(this).serviceStarted();
         requestRefresh();
         // OS process reclamation may restore the requested listener, but explicit Stop removes it.
         return START_STICKY;
@@ -226,6 +227,7 @@ public final class ReceiverService extends Service {
         } catch (Exception ignored) { return null; }
     }
     @Override public void onDestroy() {
+        ReceiverUpdates.get(this).serviceStopped();
         synchronized (this) { stopped = true; closeRuntime(); }
         main.removeCallbacks(refreshNetwork);
         if (connectivity != null && networkRegistered) connectivity.unregisterNetworkCallback(networkCallback);

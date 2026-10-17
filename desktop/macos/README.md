@@ -116,3 +116,9 @@ xcrun swiftc -parse-as-library -swift-version 6 -target arm64-apple-macosx15.0 \
 ```
 
 Add `-D SOFATAP_MAC_APP_STORE` to the offscreen appearance-fixture command to inspect the store capability note and first-run startup confirmation. These fixtures cannot replace real Mac App Store screenshots or physical input acceptance.
+
+## Updates
+
+Website builds use Sparkle for native **检查更新…** and default-on **自动检查并下载更新** in the Sofatap application menu. Automatic downloads install when the receiver quits; an active phone connection is not forcibly interrupted. A user-requested relaunch waits until the phone disconnects. The opt-out persists across launches. Mac App Store builds use Apple's managed updates and open the App Store Updates page, with no external updater bundled.
+
+Packaging, architecture-specific signed feeds, release verification, and the one-time upgrade needed by older receivers are documented in [the macOS update release guide](../../scripts/macos/UPDATES.md). Dry-run/fixture/test-display launches do not start the updater or modify its preferences.
