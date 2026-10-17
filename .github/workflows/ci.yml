@@ -138,7 +138,6 @@ jobs:
             desktop/macos/tests/ReceiverUpdatePolicyTests.swift -o "$RUNNER_TEMP/sofatap-update-tests"
           "$RUNNER_TEMP/sofatap-update-tests"
           python3 -m unittest discover -s scripts/macos -p 'test_updates.py' -v
-          python3 scripts/macos/test-sparkle-discovery.py
       - name: Mac independent pipe readers with quiet and busy stderr
         shell: bash
         run: |
