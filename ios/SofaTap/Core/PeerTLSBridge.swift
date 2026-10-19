@@ -31,7 +31,7 @@ final class PeerTLSBridge: @unchecked Sendable {
 
     private func startListener() async throws -> UInt16 {
         try await withCheckedThrowingContinuation { continuation in
-            queue.async {
+            queue.async { [self] in
                 guard !self.started, !self.stopped else {
                     continuation.resume(throwing: URLError(.cancelled)); return
                 }
@@ -74,7 +74,7 @@ final class PeerTLSBridge: @unchecked Sendable {
         }
     }
 
-    func stop() { queue.async { self.finish(URLError(.cancelled)) } }
+    func stop() { queue.async { [self] in self.finish(URLError(.cancelled)) } }
 
     private func finish(_ error: Error) {
         guard !stopped else { return }; stopped = true

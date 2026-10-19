@@ -34,6 +34,7 @@ bash ios/scripts/test-pointer-motion.sh
 bash ios/scripts/test-drag-release.sh
 bash ios/scripts/test-pairing-attempt.sh
 bash ios/scripts/test-peer-discovery.sh
+bash scripts/macos/test-peer-lifecycle.sh
 bash ios/scripts/test-explicit-text.sh
 bash ios/scripts/test-live-text.sh
 .tools/dotnet/dotnet build host/SofaTap.Host.csproj -c Release
@@ -72,3 +73,23 @@ without verified input isolation.
 
 Raw device captures, experimental apps, local profiles, signing material and
 chronological development notes remain local and are excluded from the PR.
+
+## Review follow-up
+
+A non-drag `input_busy` movement refusal now clears unsent motion and keeps the
+session for fresh input. Held/releasing drags, partial delivery and uncertain
+results still disconnect; no uncertain frame is replayed. The recording-transport
+drag suite now passes 58 checks, including rejection recovery and safety cases.
+
+The helper publishes validated peer port/certificate metadata independently of
+LAN QR addresses. Native-controller tests use a real relay to verify survival of
+empty pairing lists, port/certificate rotation, shutdown and addressless startup.
+The host suite passes 424 checks. Older helper states without peer metadata still
+decode for LAN use, but cannot advertise the new peer transport.
+
+The TLS bridge check creates its output directory and accepts SOFATAP_DOTNET for
+CI. It passed with no existing artifacts directory using a temporary source
+fixture and the built Release receiver. Explicit capture lists retain the
+warnings-as-errors compile gate. Local validation used Swift 6.2; Swift 6.4 was
+not installed locally. Both peer lifecycle and TLS bridge checks are wired into
+CI. No physical radio interruption or desktop input was induced by these tests.

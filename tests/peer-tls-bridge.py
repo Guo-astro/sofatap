@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Production URLSession pin delegate + real TLS receiver via fixed loopback proxy. No OS input."""
-import json,pathlib,queue,socket,subprocess,tempfile,threading
+import json,os,pathlib,queue,socket,subprocess,tempfile,threading
 ROOT=pathlib.Path(__file__).resolve().parents[1]
+DOTNET=os.environ.get('SOFATAP_DOTNET',str(ROOT/'.tools/dotnet/dotnet'))
 with tempfile.TemporaryDirectory(prefix='sofatap-peer-tls-') as tmp:
     tmp=pathlib.Path(tmp)
     lifecycle=tmp/'lifecycle'
@@ -14,7 +15,7 @@ with tempfile.TemporaryDirectory(prefix='sofatap-peer-tls-') as tmp:
     subprocess.run(['xcrun','swiftc','-warnings-as-errors',str(fixture),str(ROOT/'desktop/macos/MacPeerRelay.swift'),str(ROOT/'ios/SofaTap/Core/PeerTLSBridge.swift'),str(ROOT/'tests/PeerTLSBridgeRunner.swift'),'-o',str(binary)],check=True,timeout=60)
     with socket.socket() as sock: sock.bind(('127.0.0.1',0));port=sock.getsockname()[1]
     with (tmp/'server.log').open('w') as log:
-        server=subprocess.Popen([str(ROOT/'.tools/dotnet/dotnet'),str(ROOT/'host/bin/Release/net10.0/SofaTap.dll'),'--native-ui','--dry-run','--data-dir',str(tmp/'profile'),'--control-port',str(port)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log,text=True)
+        server=subprocess.Popen([DOTNET,str(ROOT/'host/bin/Release/net10.0/SofaTap.dll'),'--native-ui','--dry-run','--data-dir',str(tmp/'profile'),'--control-port',str(port)],stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=log,text=True)
         states=queue.Queue()
         def pump():
             for line in server.stdout:
@@ -30,6 +31,7 @@ with tempfile.TemporaryDirectory(prefix='sofatap-peer-tls-') as tmp:
                 if run.returncode: raise AssertionError(mode+': '+run.stdout[-200:]+(' unexpected connection' if 'negative fixture unexpectedly connected' in run.stderr else ''))
                 checks.append(mode);print(run.stdout.strip())
             destination=ROOT/'artifacts/pointer-development/peer-tls-bridge-e2e.json'
+            destination.parent.mkdir(parents=True,exist_ok=True)
             destination.write_text(json.dumps({'mode':'real pinned TLS/WebSocket via explicit loopback TLS bridge; dry-run, no OS input','passed':checks},indent=2)+'\n')
         finally:
             server.stdin.close()

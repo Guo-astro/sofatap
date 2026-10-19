@@ -33,6 +33,22 @@ MacTextEditorChecks.Run(Check);
 #endif
 await LiveTextWireChecks.Run(Check);
 
+// Stable peer identity must survive absence of advertisable LAN addresses.
+var peerProfile = Path.Combine(Path.GetTempPath(), "sofatap-peer-state-" + Guid.NewGuid().ToString("N"));
+try
+{
+    using var peerCredentials = Credentials.LoadOrCreate(peerProfile, Array.Empty<string>());
+    var peerServer = new ReceiverServer(new(true, peerProfile, 53319), peerCredentials, new DryRunInput());
+    using var peerState = JsonDocument.Parse(JsonSerializer.Serialize(peerServer.NativeState()));
+    Check(peerState.RootElement.GetProperty("pairings").GetArrayLength() == 0, "peer fixture has no LAN pairing address");
+    var peerIdentity = peerState.RootElement.GetProperty("peer");
+    Check(peerIdentity.GetProperty("port").GetInt32() == 53319 &&
+        peerIdentity.GetProperty("fingerprint").GetString() == peerCredentials.Fingerprint,
+        "stable peer port and certificate do not depend on LAN QR addresses");
+    Check(!peerIdentity.TryGetProperty("token", out _), "peer routing metadata contains no bearer token");
+}
+finally { Directory.Delete(peerProfile, recursive: true); }
+
 var focusTracker = new TextFocusTracker();
 Check(focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), false) == new TextFocusMetadata("unknown", 0), "unavailable desktop never exposes a focused field");
 var firstFocus = focusTracker.Update(new(TextFocusKind.Editable, "native-private-target"), true);

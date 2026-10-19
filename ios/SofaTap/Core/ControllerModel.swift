@@ -1086,6 +1086,7 @@ final class ControllerModel: ObservableObject {
 
     private func sendMovement(dx: Double, dy: Double) {
         let flight = UUID(), currentGeneration = generation
+        let sentDuringDrag = dragging || dragReleasePending
         movementFlights[flight] = movementTime
 #if DEBUG
         PointerTiming.shared.pulse("sendInterval")
@@ -1102,6 +1103,13 @@ final class ControllerModel: ObservableObject {
             if case .accepted = result {
                 if self.dragReleasePending { self.finishDragRelease() }
                 else { self.flushMovement() }
+            } else if case .rejected(let reason) = result,
+                      reason.hasPrefix("input_busy:"), !sentDuringDrag,
+                      !self.dragging, !self.dragReleasePending {
+                // The receiver explicitly refused before posting an event. Keep
+                // the session for a fresh gesture, never replay the queued batch.
+                self.queuedDX = 0; self.queuedDY = 0
+                self.queuedMovementStart = self.movementTime
             } else {
                 self.disconnect(message: String(localized: "拖拽移动未得到确认，已断开并释放鼠标。"))
             }

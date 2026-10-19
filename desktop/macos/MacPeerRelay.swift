@@ -38,7 +38,7 @@ final class MacPeerRelay: @unchecked Sendable {
 
     private func startListener() async throws -> UInt16 {
         try await withCheckedThrowingContinuation { continuation in
-            queue.async {
+            queue.async { [self] in
                 guard !self.started, !self.stopped else {
                     continuation.resume(throwing: URLError(.cancelled)); return
                 }
@@ -81,7 +81,7 @@ final class MacPeerRelay: @unchecked Sendable {
         }
     }
 
-    func stop() { queue.async { self.finish(URLError(.cancelled)) } }
+    func stop() { queue.async { [self] in self.finish(URLError(.cancelled)) } }
 
     /// Called by the owner, outside the relay queue. Failed/cancelled listeners
     /// must not be reused just because the receiver certificate is unchanged.

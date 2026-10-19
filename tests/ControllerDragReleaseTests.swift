@@ -36,6 +36,37 @@ struct ControllerDragReleaseTests {
             passed += 1
         }
 
+        // Explicit input_busy is a zero-event refusal, unlike uncertain delivery.
+        var busyReplies: [([String: Any]) -> Void] = []
+        var busyFrames: [[String: Any]] = []
+        let refusedMove = ControllerModel(testLiveSend: { _, fields, reply in
+            busyFrames.append(fields); busyReplies.append(reply)
+        })
+        for _ in 0..<12 { refusedMove.moveFromTouch(dx: 1, dy: 0) }
+        refusedMove.moveFromTouch(dx: 99, dy: 0)
+        busyReplies[0](["ok": false, "error": "input_busy: physical button held"])
+        check("ordinary busy refusal preserves connection", refusedMove.connected)
+        for i in 1..<12 { busyReplies[i](["ok": true]) }
+        check("busy refusal discards queued obsolete movement", busyFrames.count == 12)
+        refusedMove.moveFromTouch(dx: 2, dy: 0)
+        check("fresh gesture resumes after busy refusal", busyFrames.count == 13 && busyFrames.last?["dx"] as? Double == 2)
+        busyReplies[12](["ok": true])
+        for reason in ["uncertain", "input_partial: delivery interrupted", "other refusal"] {
+            var reply: (([String: Any]) -> Void)?
+            let model = ControllerModel(testLiveSend: { _, _, callback in reply = callback })
+            model.moveFromTouch(dx: 1, dy: 0)
+            reply?(reason == "uncertain" ? ["uncertain": true] : ["ok": false, "error": reason])
+            check("unsafe movement failure still disconnects: " + reason, !model.connected)
+        }
+        var heldReply: (([String: Any]) -> Void)?
+        let held = ControllerModel(testLiveSend: { type, _, reply in
+            if type == "button" { reply(["ok": true]) } else { heldReply = reply }
+        })
+        held.setDragging(true)
+        held.moveFromTouch(dx: 1, dy: 0)
+        heldReply?(["ok": false, "error": "input_busy: physical button held"])
+        check("drag busy refusal retains disconnect protection", !held.connected && !held.dragging)
+
         // A touch callback must not wait on a second periodic clock. A recovered
         // send window must drain fresh motion on ACK, not wait one more timer tick.
         let lan = DragFixture(peer: false)

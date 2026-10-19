@@ -35,6 +35,14 @@ final class ReceiverController: ObservableObject {
     private var copyTask: Task<Void, Never>?
     private var stopCompletion: ((Bool) -> Void)?
 
+#if SOFATAP_RECEIVER_TESTING
+    func testPeerState(_ state: ReceiverState) { updatePeerRelay(state) }
+    var testPeerIdentity: ObjectIdentifier? { peerRelay.map(ObjectIdentifier.init) }
+    var testPeerKey: String? { peerRelayKey }
+    var testPeerReady: Bool { peerRelay?.isActive == true && peerRelayTask == nil }
+    func testHelperStopped() { cleanUp() }
+#endif
+
     var selectedPairing: ReceiverPairing? {
         state?.pairings.first { $0.host == selectedHost }
     }
@@ -263,14 +271,10 @@ final class ReceiverController: ObservableObject {
     }
 
     private func updatePeerRelay(_ update: ReceiverState) {
-        guard MacPeerRelay.isEnabled(),
-              let pairing = update.pairings.first,
-              let components = URLComponents(string: pairing.uri),
-              let portText = components.queryItems?.first(where: { $0.name == "port" })?.value,
-              let port = UInt16(portText), port > 0,
-              let fingerprint = components.queryItems?.first(where: { $0.name == "fingerprint" })?.value else {
+        guard MacPeerRelay.isEnabled(), let peer = update.peer else {
             stopPeerRelay(); return
         }
+        let port = peer.port, fingerprint = peer.fingerprint
         let key = "\(port):\(fingerprint.lowercased())"
         guard key != peerRelayKey || (peerRelayTask == nil && peerRelay?.isActive != true) else { return }
         stopPeerRelay()
