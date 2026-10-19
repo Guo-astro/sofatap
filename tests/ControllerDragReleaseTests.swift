@@ -12,8 +12,10 @@ private final class DragFixture {
             type == "button" ? ((fields["down"] as? Bool) == true ? "down" : "up") : type
         }
     }
+    let peer: Bool
+    init(peer: Bool = true) { self.peer = peer }
     var frames: [Frame] = []
-    lazy var model = ControllerModel(testSend: { [unowned self] type, fields, ack in
+    lazy var model = ControllerModel(testPeer: peer, testSend: { [unowned self] type, fields, ack in
         self.frames.append(Frame(type: type, fields: fields, ack: ack))
     })
     var tags: [String] { frames.map(\.tag) }
@@ -33,6 +35,78 @@ struct ControllerDragReleaseTests {
             guard value() else { fputs("FAIL: \(name)\n", stderr); exit(1) }
             passed += 1
         }
+
+        // A touch callback must not wait on a second periodic clock. A recovered
+        // send window must drain fresh motion on ACK, not wait one more timer tick.
+        let lan = DragFixture(peer: false)
+        lan.begin()
+        for _ in 0..<12 { lan.model.moveFromTouch(dx: 1, dy: 0) }
+        check("LAN admits twelve bounded moves for 120Hz over 100ms RTT", lan.frames.count == 13)
+        lan.model.moveFromTouch(dx: 2, dy: 0)
+        check("LAN does not exceed twelve in flight", lan.frames.count == 13)
+        lan.model.setDragging(false)
+        for index in (2...12).reversed() { lan.ack(index) }
+        check("LAN release still waits for the oldest move", !lan.tags.contains("up"))
+        lan.ack(1)
+        check("LAN frozen tail is sent after every prior ACK", lan.frames.count == 14 && lan.frames[13].fields["dx"] as? Double == 2)
+        lan.ack(13)
+        check("LAN release follows tail acknowledgement", lan.tags.last == "up")
+        lan.ack(14)
+
+        let direct = DragFixture()
+        direct.model.moveFromTouch(dx: 3, dy: -2)
+        check("touch sample sends before an unrelated timer tick", direct.frames.count == 1)
+        direct.ack(0)
+        for _ in 0..<8 { direct.model.moveFromTouch(dx: 3, dy: -2) }
+        check("touch stream keeps the bounded eight-frame window", direct.frames.count == 9)
+        direct.model.moveFromTouch(dx: 2, dy: -1)
+        direct.model.moveFromTouch(dx: 4, dy: -2)
+        check("full touch window retains a coalesced batch", direct.frames.count == 9)
+        direct.ack(1)
+        check("ACK sends the fresh batch without timer-phase delay", direct.frames.count == 10 && direct.frames[9].fields["dx"] as? Double == 6)
+        for index in 2..<10 { direct.ack(index) }
+
+        // Failure modes: ACK latency drops relative distance; stop-and-wait reduces
+        // cadence; congestion grows stale motion; out-of-order ACK releases a drag
+        // early; rejection leaks motion; old-generation ACK corrupts a new session.
+        let stream = DragFixture()
+        for _ in 0..<8 {
+            stream.model.move(dx: 3, dy: -2)
+            stream.model.testFlushMovement()
+        }
+        check("eight frames can travel before the first ACK", stream.frames.count == 8)
+        for _ in 0..<3 { stream.model.move(dx: 3, dy: -2); stream.model.testFlushMovement() }
+        check("congestion never exceeds eight in-flight moves", stream.frames.count == 8)
+        stream.ack(0)
+        stream.model.testFlushMovement()
+        check("waiting relative samples accumulate instead of overwrite", stream.frames.count == 9 &&
+              stream.frames[8].fields["dx"] as? Double == 9 && stream.frames[8].fields["dy"] as? Double == -6)
+        for index in 1..<9 { stream.ack(index) }
+        check("all fresh relative displacement is conserved", stream.frames.reduce(0.0) { $0 + ($1.fields["dx"] as? Double ?? 0) } == 33)
+
+        let pipelinedDrag = DragFixture()
+        pipelinedDrag.begin()
+        for _ in 0..<3 { pipelinedDrag.model.move(dx: 4, dy: 0); pipelinedDrag.model.testFlushMovement() }
+        pipelinedDrag.model.setDragging(false)
+        pipelinedDrag.ack(3)
+        pipelinedDrag.ack(1)
+        check("out-of-order ACKs cannot release drag before every move", !pipelinedDrag.tags.contains("up"))
+        pipelinedDrag.ack(2)
+        check("all movement ACKs permit one release", pipelinedDrag.tags == ["down", "move", "move", "move", "up"])
+        pipelinedDrag.ack(4)
+
+        let stalled = DragFixture()
+        stalled.model.move(dx: 10, dy: 0); stalled.model.testFlushMovement()
+        Thread.sleep(forTimeInterval: 0.14)
+        stalled.model.move(dx: 8, dy: 0); stalled.model.testFlushMovement()
+        check("old outstanding frame closes the send window", stalled.frames.count == 1)
+        stalled.ack(0); stalled.model.testFlushMovement()
+        check("recovered window sends only fresh queued movement", stalled.frames.count == 2 && stalled.frames[1].fields["dx"] as? Double == 8)
+        stalled.ack(1)
+        stalled.model.move(dx: 9, dy: 0)
+        Thread.sleep(forTimeInterval: 0.14)
+        stalled.model.testFlushMovement()
+        check("expired unsent motion is never replayed", stalled.frames.count == 2)
 
         let tail = DragFixture()
         tail.begin()

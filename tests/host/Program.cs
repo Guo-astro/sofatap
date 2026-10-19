@@ -5,6 +5,13 @@ using SofaTap;
 var passed = 0;
 void Check(bool value, string name) { if (!value) throw new Exception("FAIL: " + name); passed++; }
 ReceiverDistributionChecks.Run(Check);
+if (args.Contains("--mac-permission-only", StringComparer.Ordinal))
+{
+    MacPermissionChecks.Run(Check);
+    Console.WriteLine($"PASS {passed} permission checks (no OS input)");
+    return;
+}
+
 // A focused non-interactive mode for the shared Mac: no server, native AX calls,
 // permission requests or real input. Default runs still include the full suite.
 if (args.Contains("--distribution-only", StringComparer.Ordinal))
@@ -16,6 +23,7 @@ PairingUriChecks.Run(Check);
 CredentialPersistenceChecks.Run(Check);
 LinuxInputChecks.Run(Check);
 TextFocusChecks.Run(Check);
+MacPermissionChecks.Run(Check);
 UnlockCapabilityChecks.Run(Check);
 WindowsTextInputChecks.Run(Check);
 LiveTextChecks.Run(Check);
