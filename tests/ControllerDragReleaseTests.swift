@@ -27,6 +27,19 @@ private final class DragFixture {
     func begin() { model.setDragging(true); ack(0) }
 }
 
+@MainActor
+private final class AckFixture {
+    var frames: [[String: Any]] = []
+    lazy var model = ControllerModel(testRecordingWire: { [unowned self] text in
+        frames.append(try! JSONSerialization.jsonObject(with: Data(text.utf8)) as! [String: Any])
+    })
+    func ack(_ index: Int, error: String? = nil) {
+        var message: [String: Any] = ["type": "ack", "id": frames[index]["id"]!, "ok": error == nil]
+        if let error { message["error"] = error }
+        precondition(model.testReceiveAcknowledgement(message))
+    }
+}
+
 @main
 struct ControllerDragReleaseTests {
     @MainActor static func main() {
@@ -36,36 +49,41 @@ struct ControllerDragReleaseTests {
             passed += 1
         }
 
-        // Explicit input_busy is a zero-event refusal, unlike uncertain delivery.
-        var busyReplies: [([String: Any]) -> Void] = []
-        var busyFrames: [[String: Any]] = []
-        let refusedMove = ControllerModel(testLiveSend: { _, fields, reply in
-            busyFrames.append(fields); busyReplies.append(reply)
-        })
-        for _ in 0..<12 { refusedMove.moveFromTouch(dx: 1, dy: 0) }
-        refusedMove.moveFromTouch(dx: 99, dy: 0)
-        busyReplies[0](["ok": false, "error": "input_busy: physical button held"])
-        check("ordinary busy refusal preserves connection", refusedMove.connected)
-        for i in 1..<12 { busyReplies[i](["ok": true]) }
-        check("busy refusal discards queued obsolete movement", busyFrames.count == 12)
-        refusedMove.moveFromTouch(dx: 2, dy: 0)
-        check("fresh gesture resumes after busy refusal", busyFrames.count == 13 && busyFrames.last?["dx"] as? Double == 2)
-        busyReplies[12](["ok": true])
-        for reason in ["uncertain", "input_partial: delivery interrupted", "other refusal"] {
-            var reply: (([String: Any]) -> Void)?
-            let model = ControllerModel(testLiveSend: { _, _, callback in reply = callback })
-            model.moveFromTouch(dx: 1, dy: 0)
-            reply?(reason == "uncertain" ? ["uncertain": true] : ["ok": false, "error": reason])
-            check("unsafe movement failure still disconnects: " + reason, !model.connected)
+        // Failure cases: ordinary busy must preserve the session without replay;
+        // unknown/partial failures, timeouts, held/releasing drags must disconnect.
+        // Use serialized outbound frames and production ACK dispatch, not testLiveSend.
+        for error in ["input_busy: physical button held", "input_busy"] {
+            let busy = AckFixture()
+            for _ in 0..<12 { busy.model.moveFromTouch(dx: 1, dy: 0) }
+            busy.model.moveFromTouch(dx: 99, dy: 0)
+            busy.ack(0, error: error)
+            check("production busy ACK preserves connection", busy.model.connected)
+            check("notice never echoes server suffix", !busy.model.notice.contains("physical button held"))
+            for i in 1..<12 { busy.ack(i) }
+            check("production busy ACK discards queued motion", busy.frames.count == 12)
+            busy.model.moveFromTouch(dx: 2, dy: 0)
+            check("fresh gesture resumes after production busy ACK", busy.frames.count == 13 && busy.frames.last?["dx"] as? Double == 2)
+            busy.ack(12)
+            busy.model.disconnect()
         }
-        var heldReply: (([String: Any]) -> Void)?
-        let held = ControllerModel(testLiveSend: { type, _, reply in
-            if type == "button" { reply(["ok": true]) } else { heldReply = reply }
-        })
-        held.setDragging(true)
-        held.moveFromTouch(dx: 1, dy: 0)
-        heldReply?(["ok": false, "error": "input_busy: physical button held"])
-        check("drag busy refusal retains disconnect protection", !held.connected && !held.dragging)
+        for error in ["input_partial: interrupted", "unknown: private server text", "input_busy_extra: held", "input_failed: failed"] {
+            let failed = AckFixture()
+            failed.model.moveFromTouch(dx: 1, dy: 0)
+            failed.ack(0, error: error)
+            check("unsafe production ACK disconnects: " + error, !failed.model.connected)
+        }
+        let timeout = AckFixture()
+        timeout.model.moveFromTouch(dx: 1, dy: 0)
+        timeout.model.testCommandTimeout("move")()
+        check("uncertain movement timeout disconnects", !timeout.model.connected)
+        for releasing in [false, true] {
+            let held = AckFixture()
+            held.model.setDragging(true); held.ack(0)
+            held.model.moveFromTouch(dx: 1, dy: 0)
+            if releasing { held.model.setDragging(false) }
+            held.ack(1, error: "input_busy: physical button held")
+            check("busy ACK during held/releasing drag disconnects", !held.model.connected && !held.model.dragging)
+        }
 
         // A touch callback must not wait on a second periodic clock. A recovered
         // send window must drain fresh motion on ACK, not wait one more timer tick.

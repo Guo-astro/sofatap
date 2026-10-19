@@ -44,9 +44,9 @@ python3 ios/scripts/check-localizations.py
 git diff --check
 ```
 
-The latest targeted review passed 122 connection/lifecycle checks, 15 pointer
+The initial targeted review passed 122 connection/lifecycle checks, 15 pointer
 motion checks, 93 touch gesture checks, 51 drag checks, 61 explicit-text checks
-and 63 live-text checks. Real Bonjour tests exercise matching, interface scoping,
+and 63 live-text checks. Later review results are recorded below. Real Bonjour tests exercise matching, interface scoping,
 service removal, timeout and cancellation. The TLS bridge tests cover a valid
 pinned connection, invalid pin/hostname/token, stopped endpoints and cleanup.
 All 12 localization catalogs passed. The earlier complete host and TLS/WebSocket
@@ -76,10 +76,42 @@ chronological development notes remain local and are excluded from the PR.
 
 ## Review follow-up
 
-A non-drag `input_busy` movement refusal now clears unsent motion and keeps the
-session for fresh input. Held/releasing drags, partial delivery and uncertain
-results still disconnect; no uncertain frame is replayed. The recording-transport
-drag suite now passes 58 checks, including rejection recovery and safety cases.
+The first busy-refusal fix was incomplete: its 58-check recording fixture passed
+raw errors directly to the completion callback and bypassed production ACK
+normalization. The real dispatcher removed the colon suffix and replaced
+`input_busy` with generic display text, so the recovery branch never matched.
+
+The follow-up regression failed before the correction. It now records serialized
+outbound frames, creates real pending commands and feeds ACKs through the
+production dispatcher. The dispatcher preserves an allowlisted machine code,
+keeps display text bounded and matches `input_busy` exactly. A non-drag busy
+refusal clears unsent motion and keeps the session for fresh input. Held/releasing
+drags, partial delivery and uncertain results still disconnect; no uncertain
+frame is replayed.
+
+The corrected suite passes 66 checks, including busy codes with and without a
+suffix, queued-motion discard, fresh-gesture recovery, unknown/partial failures,
+timeouts and held/releasing drags. Connection/lifecycle (122), explicit text (61),
+live text (63), TLS/WebSocket dry-run integration (69), all six pinned-TLS bridge
+scenarios and 12-locale validation also passed. The controller regression covers
+production ACK dispatch but substitutes network I/O; it is not a physical-device
+end-to-end test. TLS integration alone does not verify physical mouse ownership.
+
+Development builds iOS 41 and macOS 37 were installed and launched; the receiver
+reported desktop-ready and sockets confirmed AWDL transport. The user subsequently
+reported manual acceptance on the device-direct route:
+phone movement did not move the pointer while the physical left mouse button
+was held, and fresh phone movement worked after release. This confirms observed
+refusal/recovery; uninterrupted connection was not explicitly reported. The user
+also confirmed that phone dragging moves a window, releasing the
+gesture stops the drag, and subsequent ordinary movement moves only the pointer.
+These are user-reported observations, not automated input verification. The local
+receipt records source hashes, checks and these limitations. No automated desktop
+input is permitted until virtual-display input isolation has been verified.
+For manual acceptance, the user holds a physical mouse button while moving on
+the phone, releases it and verifies that a fresh phone gesture works without
+reconnecting; a separate phone drag must stop when released. Record the observed
+transport and each outcome, without treating connection readiness as acceptance.
 
 The helper publishes validated peer port/certificate metadata independently of
 LAN QR addresses. Native-controller tests use a real relay to verify survival of

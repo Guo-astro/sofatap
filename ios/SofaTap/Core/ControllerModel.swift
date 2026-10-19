@@ -253,6 +253,12 @@ final class ControllerModel: ObservableObject {
         self.testLiveSend = testLiveSend
         restoreDeliveryReceipt()
     }
+    convenience init(testRecordingWire: @escaping (String) -> Void) {
+        self.init(testLiveSend: { _, _, _ in })
+        testLiveSend = nil
+        testWireSend = testRecordingWire
+    }
+    func testReceiveAcknowledgement(_ message: [String: Any]) -> Bool { handle(message) }
     func testFlushMovement() { flushMovement() }
     func testReceiveFocus(_ revision: Int, editable: Bool = true, kind: RemoteTextFocus? = nil) {
         var state = receiverState; state.focusRevision = revision; state.textFocus = kind ?? (editable ? .editable : .other)
@@ -908,19 +914,21 @@ final class ControllerModel: ObservableObject {
             }
             if ok { item.completion?(.accepted(message)) }
             else {
-                // Show a bounded generic code, not server-controlled arbitrary text or echoed drafts.
+                // Preserve an allowlisted machine code for control flow. Display text
+                // stays bounded and never includes server-controlled suffixes or drafts.
                 let rawCode = (message["error"] as? String)?.split(separator: ":", maxSplits: 1).first.map(String.init)
                 let code = rawCode.flatMap { value -> String? in
-                    let allowed = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"]
+                    let allowed = ["input_busy", "input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"]
                     return allowed.contains(value) ? value : nil
-                } ?? String(localized: "操作未完成")
+                } ?? "unknown_error"
                 // A failed injection can have typed a prefix. Unknown errors are conservative.
                 let definitelyRejected = ["input_unavailable", "invalid_frame", "input_failed", "unsupported_key", "too_large", "invalid_message", "rate_limited", "live_text_unsupported", "live_text_conflict", "live_text_changed", "live_text_uncertain", "live_text_invalid"].contains(rawCode ?? "")
                 if item.type == "text" && !definitelyRejected {
                     notice = String(localized: "电脑未完整确认操作，文字可能已经部分输入。请先查看电脑屏幕。")
                     item.completion?(.uncertain)
                 } else {
-                    notice = String(localized: "电脑未接受操作：\(code)")
+                    let displayCode = code == "unknown_error" ? String(localized: "操作未完成") : code
+                    notice = String(localized: "电脑未接受操作：\(displayCode)")
                     item.completion?(.rejected(code))
                 }
             }
@@ -1104,7 +1112,7 @@ final class ControllerModel: ObservableObject {
                 if self.dragReleasePending { self.finishDragRelease() }
                 else { self.flushMovement() }
             } else if case .rejected(let reason) = result,
-                      reason.hasPrefix("input_busy:"), !sentDuringDrag,
+                      reason == "input_busy", !sentDuringDrag,
                       !self.dragging, !self.dragReleasePending {
                 // The receiver explicitly refused before posting an event. Keep
                 // the session for a fresh gesture, never replay the queued batch.
