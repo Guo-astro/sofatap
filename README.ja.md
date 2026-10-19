@@ -34,9 +34,9 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 言語（英語、簡体字中国語、日本語、韓国語、ドイツ語、フランス語、スペイン語、ブラジルポルトガル語、ロシア語、アラビア語、ヒンディー語、インドネシア語）に対応しています。アラビア語は右から左へ表示し、スクロール領域は画面の物理的な右端に保ちます。[対応言語](docs/APP-LANGUAGES.md)と[検証記録](docs/verification/device-library-2026-10-14.md)をご覧ください。
 
-**現在の公開ベータ版：** iPhone **1.0 (20)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。ネイティブのテレビ操作には iPhone ビルド 20 以降が必要です。**[過去のビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。ネイティブの Remote Service ペアリングとサードパーティ製アプリへの入力は未検証です。[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)をご覧ください。正式 App Store ビルド 15 の提出は別の手続きです。
+**現在の公開ベータ版：** iPhone **1.0 (22)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。ネイティブのテレビ操作には iPhone ビルド 20 以降が必要です。**[過去のビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。ネイティブの Remote Service ペアリングとサードパーティ製アプリへの入力は未検証です。[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)をご覧ください。正式 App Store ビルド 15 の提出は別の手続きです。
 
-**最新の内部テスト版：**iPhone **1.0 (22)** はポインターの送信間隔と、一時的な入力競合からの通常移動の復帰を改善しました。利用可能な Mac ピア接続を自動で優先し、認証済み Wi-Fi 接続にもフォールバックします。内部テスター向けに配布中で、外部配布は Apple の承認待ちです。公開招待では引き続き承認済みの **1.0 (20)** を提供します。Mac ピア接続には受信アプリ **0.8.1 beta.1** が必要です。[実装と検証範囲](docs/verification/pointer-transport.md)をご覧ください。
+**iPhone ビルド 22 の更新：**iPhone **1.0 (22)** はポインターの送信間隔と、一時的な入力競合からの通常移動の復帰を改善しました。利用可能な Mac ピア接続を自動で優先し、認証済み Wi-Fi 接続にもフォールバックします。ビルド 22 は外部審査を通過し、内部テストと公開テストで同じ版を配布しています。上記の公開招待からインストールできます。Mac ピア接続には受信アプリ **0.8.1 beta.1** が必要です。[実装と検証範囲](docs/verification/pointer-transport.md)をご覧ください。
 
 **再接続の更新：** iPhone **1.0 (16)** と受信アプリ **0.7.2 beta.1** で、パソコン側の受信アプリを再起動した後の再接続を修正しました。iPhone アプリが前面にある間は、保存済みの選択中のパソコンへの接続を再試行し、再スキャンは不要です。無関係なネットワークアダプターが追加されてもペアリングを維持します。未確認の文章やマウス操作は自動再送しません。証明書の交換時は再ペアリングが必要で、既存の重複デバイスは自動統合しません。[自動再接続テスト](docs/verification/reconnect-2026-10-15.md)をご覧ください。実機 iPhone と Windows 間の終了・再起動検証は未完了です。
 
@@ -70,7 +70,7 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 | プラットフォーム | 現在の状況 |
 | --- | --- |
-| iPhone | iOS 17 以降。公開版 1.0 (20) は 12 言語に対応し、[公開 TestFlight](https://testflight.apple.com/join/e6MuKx9S)で配布中です。専用テスト用 iPhone への TestFlight 経由のビルド 16 のインストールを確認しました。最終ビルドでの Windows 再起動後の復帰と入力検証は未完了です。過去のカメラ読み取りや入力検証は、実際に試した版を [0.7.1 の記録](docs/verification/receiver-0.7.1.md)と[ビルド 16 の開発検証記録](docs/verification/input-1.0-16.md)に明記しています。 |
+| iPhone | iOS 17 以降。公開版 1.0 (22) は 12 言語に対応し、[公開 TestFlight](https://testflight.apple.com/join/e6MuKx9S)で配布中です。専用テスト用 iPhone への TestFlight 経由のビルド 16 のインストールを確認しました。最終ビルドでの Windows 再起動後の復帰と入力検証は未完了です。過去のカメラ読み取りや入力検証は、実際に試した版を [0.7.1 の記録](docs/verification/receiver-0.7.1.md)と[ビルド 16 の開発検証記録](docs/verification/input-1.0-16.md)に明記しています。 |
 | Windows | 受信アプリ 0.8.1 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目と今回の再起動後の復帰は未検証です。Windows バイナリに Authenticode 署名はありません。 |
 | Mac | macOS 15 以降。0.8.1 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済みで、署名付き Sparkle 更新フィードを提供します。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
 | Linux | 0.8.1 beta.1 の x64・ARM64 GTK3 パッケージを公開済みです。以前の 0.7.1 ARM64 版を隔離 Xvfb で実行し、その版で実機 iPhone のカメラ読み取り、Linux の識別、命名・名前変更の保存を確認しました。以前の X11 入力検証は別の結果です。実際の Wayland コンポジターと物理 Linux デスクトップへの入力は未検証です。[0.7.1 のデバイステスト記録](docs/verification/receiver-0.7.1.md)をご覧ください。 |
@@ -93,7 +93,7 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 ### iPhone アプリをインストールしてペアリング
 
-1. [TestFlight の公開ベータに参加](https://testflight.apple.com/join/e6MuKx9S)し、承認済みの最新 iPhone 版と**受信アプリ 0.8.1 beta.1**をインストールしてください。ビルド 22 は外部承認まで内部テストのみで、公開招待は現在 **1.0 (20)** を提供します。受信アプリの QR コードには最低でも iPhone ビルド 15 が必要です。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
+1. [TestFlight の公開ベータに参加](https://testflight.apple.com/join/e6MuKx9S)し、**iPhone 1.0 (22)** と**受信アプリ 0.8.1 beta.1**をインストールしてください。TestFlight の内部テストと外部テストは、どちらもビルド 22 を提供しています。受信アプリの QR コードには最低でも iPhone ビルド 15 が必要です。自分でビルドする場合は、Xcode で `ios/SofaTap.xcodeproj` を開き、自分の開発チームと接続した iPhone を選んで実行します。この方法には開発署名、デバイスのペアリング、デベロッパモードが必要です。[iOS ビルドガイド](ios/README.md)を参照してください。
 2. iPhone とパソコンを、互いに通信できる家庭内ネットワークにつなぎます。ゲスト Wi-Fi の端末分離設定によっては接続できません。
 3. 左上のデバイス選択をタップし、**デバイスを追加**から**QR コードをスキャン**を選びます。パソコンと Android/Google TV は同じスキャナーを使い、認証成功後に名前を設定します。受信アプリのネイティブウインドウの QR コードを読み取るか、完全なペアリングリンクを貼り付けてください。
 4. パソコンで入力欄を選び、iPhone のキーボードまたはマイクを開きます。対応する欄では文字、削除、音声認識の結果を自動同期します。未対応の欄では下書きを確認して**送信**します。フォーカスの競合や切断で一時停止した場合は、パソコン側を確認してから明示的に編集を再開してください。不明な編集は自動再送しません。

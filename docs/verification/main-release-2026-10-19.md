@@ -12,7 +12,7 @@ Windows packaging regression checks passed, with package metadata and architectu
 
 ## Phone distribution and smoke test
 
-The Release archive for iOS 1.0 (22) passed Apple processing and is available in the internal group. It was submitted for external review on 2026-10-19 and was waiting for review when this record was written. Public availability must be confirmed from the actual review state and public-group distribution; a successful submission is not approval.
+The Release archive for iOS 1.0 (22) passed Apple processing and is available in the internal group. It was submitted and approved for external review on 2026-10-19. Apple reports APPROVED and both internalBuildState and externalBuildState as IN_BETA_TESTING. The existing internal and public groups contain Build 22, and the public TestFlight invitation accepts new testers. Build 22 is the latest uploaded build and is available to both groups.
 
 A development-signed export of the same Release archive was installed on a dedicated physical iPhone SE. Main-screen launch, device management, gesture settings, keyboard expansion and keyboard hiding were checked. The test phone was returned to Home and its device lease released. No receiver was paired on that phone, so this smoke test does not establish physical end-to-end input or the paired Mac transport-selector UI.
 
