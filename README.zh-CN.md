@@ -17,6 +17,8 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 **接收器更新功能：**[电脑接收器 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1) 已提供 Windows、Mac 和 Linux 下载。Windows、Linux 加入原生检查更新与自动下载。Mac 的 Apple Silicon 和 Intel 安装包均已签名、公证，并提供已验证的签名更新源。旧接收器需先手动安装一次，后续检查与下载通过原生更新器完成。[Android/Google TV 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1) 仍是当前实验性电视接收器，安装需在电视确认。旧接收器需要先手动升级一次，才能获得更新入口。参见[更新行为与限制](docs/RECEIVER-UPDATES.md)。
 
+**开发中的电脑控制（尚未发布）：**电脑遥控新增默认输出设备的音量减、音量加和静音切换，以及可保存的 0.25–3× 指针速度。音量控制需要新版接收器与可调节的系统音频输出；电视控制保持原样。见[行为与验证范围](docs/verification/desktop-controls-2026-10-18.md)。
+
 ## 宣传视频
 
 [![观看 Sofatap 宣传视频：用 iPhone 的手势、键盘输入和语音听写操作电视上的电脑](https://sofatap.app/media/sofatap-demo-poster-zh-cn.jpg)](https://sofatap.app/zh/#video)

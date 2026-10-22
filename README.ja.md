@@ -17,6 +17,8 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 **レシーバーの更新機能：**[デスクトップ受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1) を Windows・Mac・Linux 向けに公開しました。Windows と Linux はネイティブの更新確認と自動ダウンロードに対応します。Mac の Apple Silicon・Intel パッケージは署名・公証済みで、署名付き更新フィードも検証済みです。旧バージョンからは一度手動でインストールし、その後はネイティブ更新機能で確認・ダウンロードできます。[Android/Google TV 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1) が引き続き現在の実験的テレビ版で、インストールにはテレビ側の確認が必要です。旧バージョンには更新機能を得るための手動更新が一度必要です。[動作と制限](docs/RECEIVER-UPDATES.md)をご覧ください。
 
+**開発中のパソコン操作（未リリース）：**既定の出力デバイスの音量を下げる・上げる・ミュートを切り替える操作と、保存可能な 0.25–3× のポインター速度設定を追加します。音量操作には更新された受信アプリと調整可能なシステム音声出力が必要です。テレビ操作は変更しません。[動作と検証範囲](docs/verification/desktop-controls-2026-10-18.md)をご覧ください。
+
 ## 紹介動画
 
 [![Sofatap の紹介動画を見る：ジェスチャー、キーボード入力、音声入力で、テレビにつないだパソコンを iPhone から操作](https://sofatap.app/media/sofatap-demo-poster-ja.jpg)](https://sofatap.app/ja/#video)
