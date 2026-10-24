@@ -15,7 +15,9 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 **レシーバーの自動起動：**デスクトップ 0.7.3 beta.1 と Android/Google TV 0.1.2 beta.1 に、初回の通常起動で有効になるネイティブ設定を追加しました。パソコンではログイン後に起動し、ウィンドウを閉じても受信を続け、明示的な終了で停止します。テレビでは Android とメーカーの制限が適用されます。[動作と検証範囲](docs/verification/receiver-autostart-2026-10-16.md)をご覧ください。
 
-**レシーバーの更新機能：**[デスクトップ受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1) を Windows・Mac・Linux 向けに公開しました。Windows と Linux はネイティブの更新確認と自動ダウンロードに対応します。Mac の Apple Silicon・Intel パッケージは署名・公証済みで、署名付き更新フィードも検証済みです。旧バージョンからは一度手動でインストールし、その後はネイティブ更新機能で確認・ダウンロードできます。[Android/Google TV 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1) が引き続き現在の実験的テレビ版で、インストールにはテレビ側の確認が必要です。旧バージョンには更新機能を得るための手動更新が一度必要です。[動作と制限](docs/RECEIVER-UPDATES.md)をご覧ください。
+**レシーバーの更新機能：**[デスクトップ受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1) を Windows・Mac・Linux 向けに公開しました。Windows と Linux はネイティブの更新確認と自動ダウンロードに対応します。Mac の Apple Silicon・Intel パッケージは署名・公証済みで、署名付き更新フィードも検証済みです。旧バージョンからは一度手動でインストールし、その後はネイティブ更新機能で確認・ダウンロードできます。[Android/Google TV 0.2.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.1-beta.1) が引き続き現在の実験的テレビ版で、インストールにはテレビ側の確認が必要です。旧バージョンには更新機能を得るための手動更新が一度必要です。[動作と制限](docs/RECEIVER-UPDATES.md)をご覧ください。
+
+**開発中のパソコン操作（未リリース）：**既定の出力デバイスの音量を下げる・上げる・ミュートを切り替える操作と、保存可能な 0.25–3× のポインター速度設定を追加します。音量操作には更新された受信アプリと調整可能なシステム音声出力が必要です。テレビ操作は変更しません。[動作と検証範囲](docs/verification/desktop-controls-2026-10-18.md)をご覧ください。
 
 ## 紹介動画
 
@@ -34,7 +36,7 @@ Sofatap は [chekusu](https://github.com/chekusu) が開発するオープンソ
 
 TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 言語（英語、簡体字中国語、日本語、韓国語、ドイツ語、フランス語、スペイン語、ブラジルポルトガル語、ロシア語、アラビア語、ヒンディー語、インドネシア語）に対応しています。アラビア語は右から左へ表示し、スクロール領域は画面の物理的な右端に保ちます。[対応言語](docs/APP-LANGUAGES.md)と[検証記録](docs/verification/device-library-2026-10-14.md)をご覧ください。
 
-**現在の公開ベータ版：** iPhone **1.0 (22)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。ネイティブのテレビ操作には iPhone ビルド 20 以降が必要です。**[過去のビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。ネイティブの Remote Service ペアリングとサードパーティ製アプリへの入力は未検証です。[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)をご覧ください。正式 App Store ビルド 15 の提出は別の手続きです。
+**現在の公開ベータ版：** iPhone **1.0 (22)** は TestFlight の外部審査を通過し、[公開招待](https://testflight.apple.com/join/e6MuKx9S)からインストールできます。上限は 10,000 人です。Windows・Mac・Linux には[受信アプリ 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)、実験的なテレビ対応には [Android/Google TV 受信アプリ 0.2.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.1-beta.1)をお使いください。**テレビの自動再接続には iPhone ビルド 17 以降と受信アプリ 0.1.1 beta.1 の両方が必要です。ネイティブのテレビ操作には iPhone ビルド 20 以降が必要です。**[過去のビルド 18 の配布記録](docs/verification/testflight-1.0-18.md)と[テレビのソフトウェア検証](docs/verification/android-tv-reconnect-2026-10-16.md)をご覧ください。ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。ネイティブの Remote Service ペアリングとサードパーティ製アプリへの入力は未検証です。[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)をご覧ください。正式 App Store ビルド 15 の提出は別の手続きです。
 
 **iPhone ビルド 22 の更新：**iPhone **1.0 (22)** はポインターの送信間隔と、一時的な入力競合からの通常移動の復帰を改善しました。利用可能な Mac ピア接続を自動で優先し、認証済み Wi-Fi 接続にもフォールバックします。ビルド 22 は外部審査を通過し、内部テストと公開テストで同じ版を配布しています。上記の公開招待からインストールできます。Mac ピア接続には受信アプリ **0.8.1 beta.1** が必要です。[実装と検証範囲](docs/verification/pointer-transport.md)をご覧ください。
 
@@ -54,7 +56,7 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 **テレビ開発プレビュー：**ソースに LG webOS のプライベート IPv4 アドレスによるネイティブペアリングと、ポインター移動・タップ・スクロール・戻る・ホームを追加しました。ローカルのプロトコルと TLS テストは通過しましたが、実機検証済みのテレビ機種はまだありません。自動検出とテレビへの文字入力・音声入力は今後の実装です。[技術計画](docs/research/tv-implementation-plan.md)と[検証範囲](docs/verification/webos-pointer-preview.md)をご覧ください。
 
-**Android/Google TV ベータ：**[受信アプリ 0.2.0 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.0-beta.1) は開発用署名の APK です。iPhone ビルド 17 以降と組み合わせると、アプリが前面にある間は選択中の保存済みテレビに自動再接続します。受信アプリの再起動や無関係なネットワークアダプターの変更でも、有効なペアリングを保持します。アクセシビリティのオーバーレイポインターと、対応ノードのクリック・スクロールを提供します。独立したネイティブの方向キー・OK・戻る・ホームには、テレビに表示されるコードで Android TV Remote Service とペアリングする必要があります。文字入力と音声文字起こしには、ユーザーが有効化・選択した Sofatap キーボードと通常の Android 入力欄が必要です。ドラッグと右クリックは未対応です。**ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。シャオミの同一署名による更新はペアリングとアクセシビリティの許可を保持し、Sofatap キーボードの有効化・選択も確認済みです。両テレビでのネイティブリモコンのペアリングと、YouTube・Netflix・ブラウザーへの実入力は未検証です。**[インストール案内](android/README.md)、[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)、[未完了の実機評価](docs/ACCEPTANCE.md)をご覧ください。
+**Android/Google TV ベータ：**[受信アプリ 0.2.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.1-beta.1) は開発用署名の APK です。iPhone ビルド 17 以降と組み合わせると、アプリが前面にある間は選択中の保存済みテレビに自動再接続します。受信アプリの再起動や無関係なネットワークアダプターの変更でも、有効なペアリングを保持します。アクセシビリティのオーバーレイポインターと、対応ノードのクリック・スクロールを提供します。独立したネイティブの方向キー・OK・戻る・ホームには、テレビに表示されるコードで Android TV Remote Service とペアリングする必要があります。文字入力と音声文字起こしには、ユーザーが有効化・選択した Sofatap キーボードと通常の Android 入力欄が必要です。ドラッグと右クリックは未対応です。**ソニー XRJ-85X95L とシャオミ MiTV-MOEU0 で一部のインストールと設定を確認しました。シャオミの同一署名による更新はペアリングとアクセシビリティの許可を保持し、Sofatap キーボードの有効化・選択も確認済みです。両テレビでのネイティブリモコンのペアリングと、YouTube・Netflix・ブラウザーへの実入力は未検証です。**[インストール案内](android/README.md)、[限定的な実機確認結果](docs/verification/tv-native-controls-2026-10-17.md)、[未完了の実機評価](docs/ACCEPTANCE.md)をご覧ください。
 
 対応する受信アプリが、アクセシビリティの属性を公開する新しい編集可能な入力欄を検出すると、iPhone のキーボードが自動で開きます。バックグラウンドの検出では欄の内容を読みません。その後リアルタイム編集を開始すると、対応する欄の全文と選択範囲をペアリング済みの iPhone に転送するため、Backspace や「すべて選択 → 削除」で既存の文章も編集できます。検出とリアルタイム編集の対応範囲は異なります。Windows のリアルタイム編集は現在ネイティブの Edit/RichEdit、Mac は選択テキストと選択範囲を書き換えられる Accessibility の欄に対応します。必要な機能を持たないブラウザーや独自描画の欄、Linux、古い受信アプリでは下書き確認後の送信を使います。パスワード欄と読み取り専用の欄ではリアルタイム編集を開始しません。[検出、データ処理、各 OS の制限](docs/TEXT-FOCUS.md)をご確認ください。
 
@@ -66,10 +68,17 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 ビルド 18 では、タッチ領域の歯車から Sofatap、トラックパッド操作、長押しショートカットのプリセットを選び、タップ、左右のダブルタップ、2本指・3本指タップ、長押し、スライドに操作を割り当てられます。パソコン用とテレビ用の設定は iPhone 内に別々に保存されます。判定時間やスクロール方向の調整、プリセットへの復元、オフラインの練習も可能です。テレビの操作候補は受信アプリの対応機能に制限されます。[設定と検証範囲](docs/GESTURES.md)を参照してください。公開 TestFlight 1.0 (18) で利用できます。専用 iPhone と iPad で設定・ローカル練習の実機テストに合格しました。受信側での実操作は別途検証が必要です。
 
+## Android スマートフォン向けベータ
+
+ネイティブの **Android スマートフォン／タブレット用コントローラー 0.1.0-beta.1** は [`android/controller`](android/controller/README.md) にあり、テレビの受信アプリとは別です。Android 8.0 以降が対象で、英語・簡体字中国語・日本語に対応します。ペアリングと保存済みデバイス、パソコン用・テレビ用の独立したジェスチャー設定、3つのプリセットとローカル練習を利用できます。受信アプリと入力欄が対応するパソコンでは、文字・選択範囲・削除をリアルタイムで同期します。それ以外のパソコン入力欄とテレビは送信操作が必要です。フォアグラウンドの音声入力は、端末の音声サービスに途中結果を要求します。結果の頻度、利用可否、音声処理はそのサービスによります。
+
+直接 APK ベータ版：[リリースノート](https://github.com/chekusu/sofatap/releases/tag/android-controller-v0.1.0-beta.1) · [Sofatap-Android-0.1.0-beta.1.apk](https://github.com/chekusu/sofatap/releases/download/android-controller-v0.1.0-beta.1/Sofatap-Android-0.1.0-beta.1.apk)。Google Play 公開版ではなく、自動更新機能もありません。公開パッケージは `com.chekusu.sofatap`、開発用は `com.chekusu.sofatap.dev` です。実機での確認は別途記録し、ソースやエミュレーターの確認から推定しません。[設定・入力の制限・検証](android/controller/README.md)をご確認ください。
+
 ## プラットフォーム別の状況
 
 | プラットフォーム | 現在の状況 |
 | --- | --- |
+| Android スマートフォン／タブレット | **0.1.0-beta.1 プレリリース**、Android 8.0 以降。ジェスチャー設定、対応するパソコン入力欄のリアルタイム編集、テレビへの明示的な文字送信、端末サービスによる音声入力。直接 APK 配布で、Google Play・自動更新はありません。[設定と検証範囲](android/controller/README.md)。 |
 | iPhone | iOS 17 以降。公開版 1.0 (22) は 12 言語に対応し、[公開 TestFlight](https://testflight.apple.com/join/e6MuKx9S)で配布中です。専用テスト用 iPhone への TestFlight 経由のビルド 16 のインストールを確認しました。最終ビルドでの Windows 再起動後の復帰と入力検証は未完了です。過去のカメラ読み取りや入力検証は、実際に試した版を [0.7.1 の記録](docs/verification/receiver-0.7.1.md)と[ビルド 16 の開発検証記録](docs/verification/input-1.0-16.md)に明記しています。 |
 | Windows | 受信アプリ 0.8.1 beta.1 を公開済み。Edit/RichEdit のリアルタイム編集に対応します。以前の RichEdit キーボード操作は限定実機確認済みで、追加項目と今回の再起動後の復帰は未検証です。Windows バイナリに Authenticode 署名はありません。 |
 | Mac | macOS 15 以降。0.8.1 beta.1 の Apple Silicon・Intel 両パッケージを署名・公証済みで、署名付き Sparkle 更新フィードを提供します。以前の Apple Silicon 入力を一部確認していますが、現在のリアルタイム編集と Intel の入力は実機検証が必要です。 |
@@ -104,7 +113,9 @@ TestFlight ビルド 15 はデバイス管理と、公式サイトと同じ 12 �
 
 Sofatap はローカルネットワークで直接接続し、このプロジェクトはクラウド中継サービスを提供していません。ペアリングでは TLS 証明書を固定して検証します。認証情報は iPhone の Keychain、Windows の DPAPI、または Mac/Linux 上の現在のユーザーのみ読み取り可能な受信アプリのファイルに保存します。Mac の入力にはアクセシビリティ権限、Wayland の入力には明示的な portal の許可が必要です。
 
-マイクは明示的なタップと必要な権限の許可後にのみ起動します。対応する端末内の音声認識では音声は iPhone 内にとどまり、Sofatap は音声をアップロードせず、自動的にクラウド認識へ切り替えません。リアルタイム編集中は途中の認識結果と訂正をパソコンへ同期します。下書きモードでは**送信**を押すまでローカルに保持します。システムの音声入力やサードパーティ製キーボードには、それぞれ独自のデータ処理方針があります。
+iPhone アプリのマイクは明示的なタップまたは設定済みの音声入力ジェスチャーと、必要な権限の許可後にのみ起動します。対応する端末内の音声認識では音声は iPhone 内にとどまり、iPhone アプリは音声をアップロードせず、自動的にクラウド認識へ切り替えません。リアルタイム編集中は途中の認識結果と訂正をパソコンへ同期します。下書きモードでは**送信**を押すまでローカルに保持します。システムの音声入力やサードパーティ製キーボードには、それぞれ独自のデータ処理方針があります。
+
+Android の音声入力は、マイクのタップまたは設定済みジェスチャーとマイク権限の許可後、インストール済みの音声サービスを利用します。そのサービスが音声をオンラインで処理する場合があり、端末内認識は保証されません。Sofatap は途中結果を要求し、フォアグラウンドを離れると自身の録音セッションをキャンセルします。[Android の音声入力とプライバシー](android/controller/README.md#dictation)をご覧ください。
 
 リアルタイム編集では、対応する現在の欄の全文と選択範囲を、証明書を固定検証した TLS 接続でペアリング済みの iPhone に直接転送します。取り込んだリアルタイムの文章は iPhone のメモリに保持し、自動で下書きには保存しません。接続先の切り替え後、残った文章の再送信を明示的に許可した場合だけ、確認して送信する端末内の下書きとして保存します。切り替えだけで文章を送信することはありません。受信アプリは重複編集を防ぐため、文章を含む確認応答を接続中の上限付きメモリに保持します。接続終了後にこのキャッシュを保持しません。確認して送信する別の下書きは復元用に端末内へ保存します。欄の文章はログやクラウドサービスへ送らず、バックグラウンドのフォーカス通知は属性情報だけです。
 
@@ -167,6 +178,8 @@ Host runner は模擬入力を使います。TLS/WebSocket の確認は一時的
 | パス | 内容 |
 | --- | --- |
 | `ios/` | ネイティブ iPhone アプリ、Xcode プロジェクト、プロジェクト生成設定 |
+| `android/controller/` | ネイティブ Android スマートフォン／タブレット用コントローラー beta |
+| `android/receiver/` | 実験的な Android/Google TV 受信アプリ |
 | `host/` | 共通受信プロトコル、Windows/Mac 入力バックエンド、Linux worker へのブリッジ |
 | `desktop/` | ネイティブのペアリングウインドウと Linux 入力 worker |
 | `tests/` | プロトコル、認証、入力境界の確認 |

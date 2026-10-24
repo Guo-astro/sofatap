@@ -24,6 +24,30 @@ struct ReceiverStateTests {
         let unknown = ReceiverState.hello(["inputAvailable": true, "inputStatus": "future_state", "platform": "future_os"])!
         check("unknown state fails closed", !unknown.inputAvailable && unknown.platform == .unknown)
         check("missing availability rejected", ReceiverState.hello([:]) == nil)
+        check("legacy hello has no volume capability", !old.supportsSystemVolume)
+        let volume = ReceiverState.hello(["inputAvailable": true, "systemVolume": ["version": 1]])!
+        check("explicit volume v1 is recognized", volume.supportsSystemVolume)
+        for version: Any in [true, 0, 2, 1.5, "1", NSNull()] {
+            check("invalid or unknown volume version is disabled", !ReceiverState.hello(["inputAvailable": true, "systemVolume": ["version": version]])!.supportsSystemVolume)
+        }
+        let ping: [String: Any] = ["inputAvailable": true, "dryRun": false, "inputStatus": "ready"]
+        check("legacy ping preserves negotiated volume support", volume.updating(ping)!.supportsSystemVolume)
+        var revokedVolume = ping; revokedVolume["systemVolume"] = NSNull()
+        check("explicit null revokes support on output removal", !volume.updating(revokedVolume)!.supportsSystemVolume)
+        var availableVolume = ping; availableVolume["systemVolume"] = ["version": 1]
+        check("output change can enable support without reconnect", old.updating(availableVolume)!.supportsSystemVolume)
+        var focusPolicy = RemoteTextFocusPolicy()
+        check("initial editable focus can open editor", focusPolicy.next(revision: 1, focus: .editable, interactionAvailable: true, dragging: false, speechBusy: false) == .editable)
+        // A volume sheet uses the same interaction gate as every other modal.
+        check("focus revision during volume modal cannot open editor", focusPolicy.next(revision: 2, focus: .editable, interactionAvailable: false, dragging: false, speechBusy: false) == nil)
+        check("modal does not consume the blocked revision", focusPolicy.handledRevision == 1)
+        check("foreground or completed drag cannot bypass the modal", focusPolicy.next(revision: 3, focus: .editable, interactionAvailable: false, dragging: false, speechBusy: false) == nil)
+        check("dismissal handles the latest focus exactly once", focusPolicy.next(revision: 3, focus: .editable, interactionAvailable: true, dragging: false, speechBusy: false) == .editable && focusPolicy.next(revision: 3, focus: .editable, interactionAvailable: true, dragging: false, speechBusy: false) == nil)
+        check("active drag also defers editable focus", focusPolicy.next(revision: 4, focus: .editable, interactionAvailable: true, dragging: true, speechBusy: false) == nil && focusPolicy.handledRevision == 3)
+        check("mouse up handles the deferred focus", focusPolicy.next(revision: 4, focus: .editable, interactionAvailable: true, dragging: false, speechBusy: false) == .editable)
+        check("protected focus can close editing after dismissal", focusPolicy.next(revision: 5, focus: .protected, interactionAvailable: true, dragging: false, speechBusy: false) == .protected)
+        focusPolicy.reset()
+        check("device change resets revision ownership", focusPolicy.next(revision: 1, focus: .editable, interactionAvailable: true, dragging: false, speechBusy: false) == .editable)
         let focusBase: [String: Any] = ["platform": "macos", "inputAvailable": true, "dryRun": false, "inputStatus": "ready"]
         func focused(_ value: Any) -> ReceiverState {
             var frame = focusBase; frame["textFocus"] = value
