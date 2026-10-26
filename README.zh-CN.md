@@ -28,7 +28,7 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 ## 可以做什么
 
 - 一个大圆角触控区域，容纳当前设备选择、独立指南、麦克风和键盘入口。背景铺满缓慢流动的点阵，触摸会使附近点阵弯曲、偏移，点击产生涟漪。触控面不放说明文字；开启「减弱动态效果」后点阵保持静止，触摸反馈简化。
-- 滑动移动鼠标，任意位置单击都是左键。构建 16 在隐形左半区连续点两下发送两次左键，在右半区连续点两下发送两次右键；旧构建 15 是任意位置双击发送一次右键。静止按住 300 ms 后拖动，双指滑动滚动；触控区不增加分隔线或文字。
+- 使用默认 Sofatap 预设时，滑动移动光标，轻点执行左键；隐形左半区双击发送两次左键，右半区双击发送两次右键。按住 300 ms 后移动即可拖动，双指滑动滚动。手势设置可以更改这些操作，指南会显示当前映射；触控区没有分隔线或额外文字。
 - 点击底部麦克风使用设备支持的本机语音识别，也可使用 iPhone 键盘／Typeless。受支持的输入框默认实时同步：键盘确认的文字、删除、选区和语音识别更新直接反映到电脑，无需点**发送**。其他输入框及旧接收端保留检查草稿后发送；不会额外追加回车或提交操作。
 - 扫描**电脑原生窗口**里的二维码配对：Mac 使用 AppKit/SwiftUI，Windows 使用 WinForms，Linux 使用 GTK3，无需打开浏览器。
 - 三端接收器采用已选定的**暮色薄荷**设计：深灰底色、薄荷绿操作按钮与清晰的白底二维码。当前 beta 安装包已包含该设计和新版 Sofatap 图标，参见[设计规格](docs/RECEIVER-DESIGN.md)。
@@ -36,9 +36,11 @@ Sofatap 是 [chekusu](https://github.com/chekusu) 开发的开源遥控工具。
 
 TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：英语、简体中文、日语、韩语、德语、法语、西班牙语、巴西葡萄牙语、俄语、阿拉伯语、印地语、印尼语。阿拉伯语采用从右到左排版，滚动条仍位于触控区物理右侧。见[语言覆盖](docs/APP-LANGUAGES.md)与[验证记录](docs/verification/device-library-2026-10-14.md)。
 
-**当前公开测试版：**iPhone **1.0 (23)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.2.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.1-beta.1)。**电视自动重连需要手机构建 17 及以上和电视接收器 0.1.1 beta.1 配合；原生电视控制需要手机构建 20 或更高版本。**参见[构建 18 历史分发记录](docs/verification/testflight-1.0-18.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。索尼 XRJ-85X95L 与小米 MiTV-MOEU0 已完成部分安装与设置检查；原生遥控服务配对和第三方应用输入仍待验收。参见[限定实测结果](docs/verification/tv-native-controls-2026-10-17.md)。正式 App Store 构建 15 的提交是独立流程。
+**当前公开测试版：**iPhone/iPad **1.0 (23)** 已通过 TestFlight 外部审核，可通过[公开邀请](https://testflight.apple.com/join/e6MuKx9S)安装，测试人数上限为 10,000 人。Windows、Mac、Linux 使用[电脑接收器 0.8.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/v0.8.1-beta.1)，实验性的电视适配器使用 [Android/Google TV 接收器 0.2.1 beta.1](https://github.com/chekusu/sofatap/releases/tag/android-tv-v0.2.1-beta.1)。**电视自动重连需要手机构建 17 及以上和电视接收器 0.1.1 beta.1 配合；原生电视控制需要手机构建 20 或更高版本。**参见[构建 18 历史分发记录](docs/verification/testflight-1.0-18.md)和[电视软件验证](docs/verification/android-tv-reconnect-2026-10-16.md)。索尼 XRJ-85X95L 与小米 MiTV-MOEU0 已完成部分安装与设置检查；原生遥控服务配对和第三方应用输入仍待验收。参见[限定实测结果](docs/verification/tv-native-controls-2026-10-17.md)。
 
-**手机构建 23 更新：**iPhone **1.0 (23)** 修复按住拖拽：手指静止后轻微滚动不超过 7 点时，按住仍会进入拖拽；指针移动仍在 3 点后开始。该版本在构建 22 基础上只加入这一项修复，不包含上方开发中的音量和指针速度控制。构建 23 已通过外部审核，内部测试与公开测试均已提供。见[分发记录](docs/verification/testflight-1.0-23.md)。
+**App Store 审核：**已于 **2026-10-26 23:11:37 JST** 提交 **1.0 (23)**，替换已撤回的构建 15。App Store Connect 当时已确认状态为**等待审核（Waiting for Review）**。见[重新送审记录](docs/verification/app-store-resubmission-2026-10-26.md)。
+
+**手机构建 23 更新：**iPhone **1.0 (23)** 修复按住拖拽：手指静止后轻微滚动不超过 7 点时，按住仍会进入拖拽；指针移动仍在 3 点后开始。该版本在构建 22 基础上只加入这一项修复，不包含上方开发中的音量和指针速度控制。构建 23 已通过外部审核，内部测试与公开测试均已提供。见[分发记录](docs/verification/testflight-1.0-23.md)。 已上传安装包对应源码 `c7ad3ab2cb5f86c55839ff349c9026561ec8b68d`。主干仍使用构建号 23，但包含后来合入、尚未发布的工作，重新构建主干并不等于这个已上传版本。
 
 **手机构建 22 更新：**iPhone **1.0 (22)** 改善指针发送节奏，修复接收端明确返回忙碌后普通移动无法恢复的问题，并在可用时自动使用 Mac 点对点连接，保留经过身份校验的 Wi-Fi 回退。构建 22 已于 2026-10-19 通过外部审核，两个测试组现已改为提供构建 23。Mac 点对点连接需配合接收器 **0.8.1 beta.1**。参见[实现与验证范围](docs/verification/pointer-transport.md)。
 
@@ -68,7 +70,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 
 ## 自定义手势（构建 18）
 
-构建 18 在触控区新增齿轮入口。可以选择 Sofatap、触控板习惯或长按快捷操作预设，再为单击、左右区双击、双指/三指轻点、长按与滑动分别指定动作。电脑与电视的偏好在 iPhone 上独立保存；可以调整判定时间和滚动方向、恢复预设，或在离线练习区试用。电视可选动作受接收端能力限制。详情和验证范围见[手势设置说明](docs/GESTURES.md)。此功能已通过公开 TestFlight 1.0 (18) 提供。已在专用 iPhone 和 iPad 上通过设置与本地练习测试；接收端实际效果仍需单独验收。
+构建 18 在触控区新增齿轮入口。可以选择 Sofatap、触控板习惯或长按快捷操作预设，再为单击、左右区双击、双指/三指轻点、长按与滑动分别指定动作。电脑与电视的偏好在 iPhone 上独立保存；可以调整判定时间和滚动方向、恢复预设，或在离线练习区试用。电视可选动作受接收端能力限制。详情和验证范围见[手势设置说明](docs/GESTURES.md)。此功能从构建 18 开始提供，当前公开 TestFlight 1.0 (23) 也已包含。已在专用 iPhone 和 iPad 上通过设置与本地练习测试；接收端实际效果仍需单独验收。
 
 ## 安卓手机版本
 
@@ -83,7 +85,7 @@ TestFlight 构建 15 已包含设备管理，并对齐官网的 12 种语言：�
 | 平台 | 当前状态 |
 | --- | --- |
 | Android 手机／平板 | **0.1.0-beta.1 预发布版**，Android 8.0+。自定义手势、受支持的电脑实时编辑、电视明确发送及依赖系统服务的听写。直接 APK 分发，无 Google Play 或自动更新器。[设置与验收范围](android/controller/README.md)。 |
-| iPhone | iOS 17+。公开版 1.0 (23) 支持 12 种界面语言，可通过[公开 TestFlight](https://testflight.apple.com/join/e6MuKx9S)安装。已确认通过 TestFlight 将构建 16 安装到专用测试 iPhone；最终构建的 Windows 重启恢复与输入验收仍待完成。此前扫码和输入检查仍按实际测试版本记录在 [0.7.1 验证记录](docs/verification/receiver-0.7.1.md)与[构建 16 开发测试记录](docs/verification/input-1.0-16.md)中。 |
+| iPhone / iPad | iOS/iPadOS 17+。公开版 1.0 (23) 支持 12 种界面语言，可通过[公开 TestFlight](https://testflight.apple.com/join/e6MuKx9S)安装。已确认通过 TestFlight 将构建 16 安装到专用测试 iPhone；最终构建的 Windows 重启恢复与输入验收仍待完成。此前扫码和输入检查仍按实际测试版本记录在 [0.7.1 验证记录](docs/verification/receiver-0.7.1.md)与[构建 16 开发测试记录](docs/verification/input-1.0-16.md)中。 本次已通过 TestFlight 在专用 iPad Pro 安装构建 23，并取得断开状态的界面截图用于[重新送审](docs/verification/app-store-resubmission-2026-10-26.md)；这不代表接收端输入验收。 |
 | Windows | 接收器 0.8.1 beta.1 已发布，支持原生 Edit/RichEdit 实时编辑。此前限定 RichEdit 真机键盘验收已通过，其他设备项目与本次重启恢复实测仍待完成。Windows 程序尚无 Authenticode 签名。 |
 | Mac | macOS 15+。0.8.1 beta.1 的 Apple Silicon 和 Intel 包均已签名、公证，并提供签名 Sparkle 更新源。此前 Apple Silicon 完成部分输入验收；当前实时编辑及 Intel 输入仍待真机验收。 |
 | Linux | 0.8.1 beta.1 的 x64、ARM64 GTK3 包已发布。此前 0.7.1 ARM64 接收器曾在隔离 Xvfb 中运行，真 iPhone 对该版本通过了限定的相机配对、Linux 识别、命名及重命名持久化检查。此前 X11 输入检查是独立结果；真实 Wayland 合成器及实体 Linux 桌面输入仍待验收，见 [0.7.1 设备测试记录](docs/verification/receiver-0.7.1.md)。 |
