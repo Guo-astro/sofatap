@@ -479,3 +479,10 @@
 "连接电脑后即可调节系统音量。" = "Conecte-se a um computador para ajustar o volume.";
 "音量操作未确认，请查看电脑音量后再操作。" = "A alteração de volume não foi confirmada. Confira o volume do computador antes de tentar novamente.";
 "无法调节系统音量，请检查电脑的输出设备和接收器。" = "Não foi possível ajustar o volume. Verifique o dispositivo de saída e o receptor do computador.";
+
+/* TV app shortcuts and delayed navigation. */
+"打开 YouTube" = "Abrir YouTube";
+"打开 Netflix" = "Abrir Netflix";
+"电视上未安装此应用。" = "Este aplicativo não está instalado na TV.";
+"电视未能打开此应用，请在电视上检查。" = "A TV não conseguiu abrir este aplicativo. Verifique a TV.";
+"电视操作等待过久，请重新选择后确认。" = "A navegação na TV demorou demais. Selecione um item novamente antes de confirmar.";

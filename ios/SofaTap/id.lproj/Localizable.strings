@@ -479,3 +479,10 @@
 "连接电脑后即可调节系统音量。" = "Hubungkan ke komputer untuk mengatur volumenya.";
 "音量操作未确认，请查看电脑音量后再操作。" = "Perubahan volume belum dikonfirmasi. Periksa volume komputer sebelum mencoba lagi.";
 "无法调节系统音量，请检查电脑的输出设备和接收器。" = "Tidak dapat mengatur volume. Periksa perangkat keluaran dan penerima komputer.";
+
+/* TV app shortcuts and delayed navigation. */
+"打开 YouTube" = "Buka YouTube";
+"打开 Netflix" = "Buka Netflix";
+"电视上未安装此应用。" = "Aplikasi ini tidak terpasang di TV.";
+"电视未能打开此应用，请在电视上检查。" = "TV tidak dapat membuka aplikasi ini. Periksa TV.";
+"电视操作等待过久，请重新选择后确认。" = "Navigasi TV terlalu lama. Pilih item lagi sebelum mengonfirmasi.";
