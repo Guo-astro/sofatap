@@ -2,6 +2,8 @@
 
 Sofatap is maintained in the public `chekusu/sofatap` GitHub repository. Keep product development here and coordinate the Sandbank Dev copy through Yobiru. GitHub is the sole source distribution channel: send repository/branch/commit references, not source archives or source-file attachments, through Yobiru.
 
+The project-root `.sandbank/` directory, including `.sandbank/handoff/`, contains the user's local development material and must not be committed. Keep `/.sandbank/` in the root `.gitignore`. If files there are already tracked, preserve them on disk and remove only their Git index entries with `git rm -r --cached -- .sandbank`; verify that both existing files and future generated files are ignored before committing or integrating changes.
+
 ## Product scope and development order
 
 Keep the two core functions separate:
